@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Main">
+      <UniqueIdentifier>{b5d010f1-cdbf-4439-bcf3-8d6e1cd4b642}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\Driver Files">
+      <UniqueIdentifier>{8E41214B-6785-4CFE-B992-037D68949A14}</UniqueIdentifier>
+      <Extensions>inf;inv;inx;mof;mc;</Extensions>
+    </Filter>
+    <Filter Include="Main\Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Main\Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Main\Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Kernel-Bridge">
+      <UniqueIdentifier>{0a643a2f-5347-4505-81cf-4a8180227028}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="API">
+      <UniqueIdentifier>{54118567-cea9-4a10-9867-9e055b1c1cb4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Inf Include="Kernel-Bridge.inf">
+      <Filter>Main\Driver Files</Filter>
+    </Inf>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Kernel-Bridge.rc">
+      <Filter>Main\Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Kernel-Bridge.cpp">
+      <Filter>Main\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Kernel-Bridge\FilterCallbacks.cpp">
+      <Filter>Kernel-Bridge</Filter>
+    </ClCompile>
+    <ClCompile Include="API\MemoryUtils.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\ProcessesUtils.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\GetProcAddress.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\OSVersion.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\CppSupport.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\IO.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\CPU.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="Kernel-Bridge\IOCTLHandlers.cpp">
+      <Filter>Kernel-Bridge</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Kernel-Bridge\FilterCallbacks.h">
+      <Filter>Kernel-Bridge</Filter>
+    </ClInclude>
+    <ClInclude Include="Kernel-Bridge\IOCTLs.h">
+      <Filter>Kernel-Bridge</Filter>
+    </ClInclude>
+    <ClInclude Include="API\MemoryUtils.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\ProcessesUtils.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\GetProcAddress.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\RAII.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\OSVersion.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\Locks.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\CppSupport.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\IO.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="Kernel-Bridge\CtlTypes.h">
+      <Filter>Kernel-Bridge</Filter>
+    </ClInclude>
+    <ClInclude Include="API\CPU.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="Kernel-Bridge\IOCTLHandlers.h">
+      <Filter>Kernel-Bridge</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Exports.def">
+      <Filter>Main</Filter>
+    </None>
+  </ItemGroup>
+</Project>

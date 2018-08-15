@@ -1,0 +1,3 @@
+NAME Kernel-Bridge
+EXPORTS
+	DriverEntry
