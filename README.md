@@ -57,7 +57,12 @@ bcdedit.exe /debug off  -  disable it
 #### Communication with usermode apps:  
 For communication with usermode you can use a `DriversUtils.h` from "DriversUtils" folder that have a functions to install a driver and communicate with it using DeviceIoControl. You can directly include `CtlTypes.h` from "Kernel-Bridge/Kernel-Bridge/" folder to your usermode app for using Kernel-Bridge data types for requests.
   
-Example (using of KbReadProcessMemory):
+#### Files hierarchy:
+`/Kernel-Bridge/DriversUtils` - usermode module for drivers loading  
+`/Kernel-Bridge/Kernel-Bridge/API` - standalone kernel API for using in C++ drivers  
+`/Kernel-Bridge/Kernel-Bridge/Kernel-Bridge` - driver template files  
+  
+#### Example (using of KbReadProcessMemory):
 ```
 #include <Windows.h>
 #include <winternl.h>
