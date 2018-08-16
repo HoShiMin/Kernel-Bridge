@@ -1,5 +1,84 @@
 #pragma once
 
+namespace Ctls {
+    enum KbCtlIndices {
+        // Beeper:
+        /* 00 */ KbSetBeeperRegime,
+        /* 01 */ KbStartBeeper,
+        /* 02 */ KbStopBeeper,
+        /* 03 */ KbSetBeeperIn,
+        /* 04 */ KbSetBeeperOut,
+        /* 05 */ KbSetBeeperDivider,
+        /* 06 */ KbSetBeeperFrequency,
+
+        // IO-Ports:
+        /* 07 */ KbReadPort,
+        /* 08 */ KbReadPortString,
+        /* 09 */ KbWritePort,
+        /* 10 */ KbWritePortString,
+
+        // Interrupts:
+        /* 11 */ KbCli,
+        /* 12 */ KbSti,
+        /* 13 */ KbHlt,
+
+        // MSR:
+        /* 14 */ KbReadMsr,
+        /* 15 */ KbWriteMsr,
+
+        // CPUID:
+        /* 16 */ KbCpuid,
+        /* 17 */ KbCpuidEx,
+
+        // TSC & PMC:
+        /* 18 */ KbReadPmc,
+        /* 19 */ KbReadTsc,
+        /* 20 */ KbReadTscp,
+
+        // Memory management:
+        /* 21 */ KbAllocKernelMemory,
+        /* 22 */ KbFreeKernelMemory,
+        /* 23 */ KbCopyMoveMemory,
+        /* 24 */ KbFillMemory,
+        /* 25 */ KbEqualMemory,
+
+        // Memory mappings:
+        /* 26 */ KbMapMemory,
+        /* 27 */ KbUnmapMemory,
+
+        // Physical memory:
+        /* 28 */ KbMapPhysicalMemory,
+        /* 29 */ KbUnmapPhysicalMemory,
+        /* 30 */ KbGetPhysicalAddress,
+        /* 31 */ KbReadPhysicalMemory,
+        /* 32 */ KbWritePhysicalMemory,
+        /* 33 */ KbReadDmiMemory,
+
+        // Processes & Threads:
+        /* 34 */ KbGetEprocess,
+        /* 35 */ KbGetEthread,
+        /* 36 */ KbOpenProcess,
+        /* 37 */ KbDereferenceObject,
+        /* 38 */ KbCloseHandle,
+        /* 39 */ KbAllocUserMemory,
+        /* 40 */ KbFreeUserMemory,
+        /* 41 */ KbReadProcessMemory,
+        /* 42 */ KbWriteProcessMemory,
+        /* 43 */ KbSuspendProcess,
+        /* 44 */ KbResumeProcess,
+        /* 45 */ KbCreateUserThread,
+        /* 46 */ KbCreateSystemThread,
+        /* 47 */ KbRaiseIopl,
+        /* 48 */ KbResetIopl,
+
+        // Stuff u kn0w:
+        /* 49 */ KbGetKernelProcAddress,
+        /* 50 */ KbStallExecutionProcessor,
+        /* 51 */ KbBugCheck,
+    };
+}
+
+
 // Direct WDK types port for use in usermode:
 namespace WdkTypes {
     enum KPROCESSOR_MODE {
@@ -199,13 +278,13 @@ DECLARE_STRUCT(KB_MAP_MEMORY_IN, {
 });
 
 DECLARE_STRUCT(KB_MAP_MEMORY_OUT, {
-    WdkTypes::PMDL Mdl; // Necessary for unmapping, don't change!
     WdkTypes::PVOID BaseAddress;
+    WdkTypes::PMDL Mdl; // Necessary for unmapping, don't change!
 });
 
 DECLARE_STRUCT(KB_UNMAP_MEMORY_IN, {
-    WdkTypes::PMDL Mdl;
     WdkTypes::PVOID BaseAddress;
+    WdkTypes::PMDL Mdl;
 });
 
 DECLARE_STRUCT(KB_MAP_PHYSICAL_MEMORY_IN, {

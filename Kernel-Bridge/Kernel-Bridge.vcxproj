@@ -83,24 +83,28 @@
     <CodeAnalysisRuleSet>F:\Windows Kits\10\CodeAnalysis\DriverRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <EnableInf2cat>false</EnableInf2cat>
+    <IncludePath>../SharedTypes;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
     <CodeAnalysisRuleSet>F:\Windows Kits\10\CodeAnalysis\DriverRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <EnableInf2cat>false</EnableInf2cat>
+    <IncludePath>../SharedTypes;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
     <CodeAnalysisRuleSet>F:\Windows Kits\10\CodeAnalysis\DriverRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <EnableInf2cat>false</EnableInf2cat>
+    <IncludePath>../SharedTypes;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
     <CodeAnalysisRuleSet>F:\Windows Kits\10\CodeAnalysis\DriverRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <EnableInf2cat>false</EnableInf2cat>
+    <IncludePath>../SharedTypes;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Link>
@@ -156,6 +160,7 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\SharedTypes\CtlTypes.h" />
     <ClInclude Include="API\CppSupport.h" />
     <ClInclude Include="API\CPU.h" />
     <ClInclude Include="API\GetProcAddress.h" />
@@ -165,7 +170,6 @@
     <ClInclude Include="API\OSVersion.h" />
     <ClInclude Include="API\ProcessesUtils.h" />
     <ClInclude Include="API\RAII.h" />
-    <ClInclude Include="Kernel-Bridge\CtlTypes.h" />
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h" />
     <ClInclude Include="Kernel-Bridge\IOCTLHandlers.h" />
     <ClInclude Include="Kernel-Bridge\IOCTLs.h" />

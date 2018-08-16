@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Файлы ресурсов">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Main">
+      <UniqueIdentifier>{edd61105-dcb8-4c04-b050-5d8d1b91ae6b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\Исходные файлы">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Main\Файлы заголовков">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="API">
+      <UniqueIdentifier>{62eb9047-d1c0-4981-a9b7-b578b342fcda}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SharedTypes">
+      <UniqueIdentifier>{9e1ef5e3-399c-452c-8091-9142deb2d845}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="API\DriversUtils.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\User-Bridge.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SharedTypes\CtlTypes.h">
+      <Filter>SharedTypes</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="API\DriversUtils.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\User-Bridge.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="Main.cpp">
+      <Filter>Main\Исходные файлы</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

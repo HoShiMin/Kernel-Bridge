@@ -26,6 +26,9 @@
     <Filter Include="API">
       <UniqueIdentifier>{54118567-cea9-4a10-9867-9e055b1c1cb4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="SharedTypes">
+      <UniqueIdentifier>{d3a9dfce-6a9f-4eef-a3ea-0a30ace51980}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Inf Include="Kernel-Bridge.inf">
@@ -100,14 +103,14 @@
     <ClInclude Include="API\IO.h">
       <Filter>API</Filter>
     </ClInclude>
-    <ClInclude Include="Kernel-Bridge\CtlTypes.h">
-      <Filter>Kernel-Bridge</Filter>
-    </ClInclude>
     <ClInclude Include="API\CPU.h">
       <Filter>API</Filter>
     </ClInclude>
     <ClInclude Include="Kernel-Bridge\IOCTLHandlers.h">
       <Filter>Kernel-Bridge</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SharedTypes\CtlTypes.h">
+      <Filter>SharedTypes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

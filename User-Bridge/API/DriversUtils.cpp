@@ -1,7 +1,9 @@
-#include "stdafx.h"
+#include <Windows.h>
+
 #include "DriversUtils.h"
 
-BOOL InstallDriver(LPCWSTR FilePath, LPCWSTR DriverName, DWORD DriverType) {
+BOOL InstallDriver(LPCWSTR FilePath, LPCWSTR DriverName, DWORD DriverType) 
+{
 	SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
 	if (hSCManager == NULL) return FALSE;
 	
@@ -27,7 +29,8 @@ BOOL InstallDriver(LPCWSTR FilePath, LPCWSTR DriverName, DWORD DriverType) {
 	return Status;
 }
 
-BOOL DeleteDriver(LPCWSTR DriverName) {
+BOOL DeleteDriver(LPCWSTR DriverName) 
+{
 	SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
 	if (hSCManager == NULL) return FALSE;
 
@@ -47,15 +50,17 @@ BOOL DeleteDriver(LPCWSTR DriverName) {
 	return Status;
 }
 
-HANDLE OpenDevice(LPCWSTR DeviceName) {
-	WCHAR Prefix[] = L"\\\\.\\";
-	SIZE_T NTPathLength = (sizeof(Prefix) / sizeof(WCHAR)) + wcslen(DeviceName);
-	LPWSTR NTPath = new WCHAR[NTPathLength];
-	wcscpy_s(NTPath, NTPathLength, Prefix);
-	wcscat_s(NTPath, NTPathLength, DeviceName);
-	HANDLE hDevice = CreateFile(NTPath, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_SYSTEM, NULL);
-	delete[] NTPath;
-	return hDevice;
+HANDLE OpenDevice(LPCWSTR NativeDeviceName) 
+{
+	return CreateFile(
+        NativeDeviceName, 
+        0, 
+        FILE_SHARE_READ | FILE_SHARE_WRITE, 
+        NULL, 
+        OPEN_EXISTING, 
+        FILE_ATTRIBUTE_SYSTEM, 
+        NULL
+    );
 }
 
 BOOL SendIOCTL(
