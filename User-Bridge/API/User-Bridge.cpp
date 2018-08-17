@@ -49,7 +49,7 @@ static inline BOOL WINAPI KbSendRequest(
     OUT PVOID Output = NULL, 
     ULONG OutputSize = 0
 ) {
-    return SendRawIOCTL(KbLoader::hDriver, CTL_BASE + Index, Input, InputSize, Output, OutputSize);
+    return SendIOCTL(KbLoader::hDriver, CTL_BASE + Index, Input, InputSize, Output, OutputSize);
 }
 
 namespace IO {
