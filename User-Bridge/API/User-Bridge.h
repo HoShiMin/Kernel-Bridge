@@ -61,6 +61,7 @@ namespace IO {
     }
 
     namespace Iopl {
+        // Allows to use 'in/out/cli/sti' in usermode:
         BOOL WINAPI KbRaiseIopl();
         BOOL WINAPI KbResetIopl();
     }
@@ -91,6 +92,7 @@ namespace CPU {
 }
 
 namespace VirtualMemory {
+    // Supports both user- and kernel-memory in context of current process:
     BOOL WINAPI KbAllocKernelMemory(ULONG Size, BOOLEAN Executable, OUT WdkTypes::PVOID* KernelAddress);
     BOOL WINAPI KbFreeKernelMemory(IN WdkTypes::PVOID KernelAddress);
     BOOL WINAPI KbCopyMoveMemory(OUT WdkTypes::PVOID Dest, IN WdkTypes::PVOID Src, ULONG Size, BOOLEAN Intersects);
@@ -121,15 +123,21 @@ namespace Mdl {
 }
 
 namespace PhysicalMemory {
+    // Maps physical memory to a KERNEL address-space, so if you
+    // wants to work with it in usermode, you should map it to usermode
+    // by Mdl::MapMemory:
     BOOL WINAPI KbMapPhysicalMemory(IN WdkTypes::PVOID PhysicalAddress, ULONG Size, OUT WdkTypes::PVOID* VirtualAddress);
     BOOL WINAPI KbUnmapPhysicalMemory(IN WdkTypes::PVOID VirtualAddress, ULONG Size);
     
+    // Obtains physical address for specified virtual address 
+    // in context of target process:
     BOOL WINAPI KbGetPhysicalAddress(
         IN OPTIONAL WdkTypes::PEPROCESS Process, 
         IN WdkTypes::PVOID VirtualAddress,
         OUT WdkTypes::PVOID* PhysicalAddress
     );
     
+    // Reads and writes raw physical memory to buffer in context of current process:
     BOOL WINAPI KbReadPhysicalMemory(WdkTypes::PVOID64 PhysicalAddress, OUT PVOID Buffer, ULONG Size);
     BOOL WINAPI KbWritePhysicalMemory(WdkTypes::PVOID64 PhysicalAddress, IN PVOID Buffer, ULONG Size);
     
@@ -138,6 +146,8 @@ namespace PhysicalMemory {
 
 namespace Processes {
     namespace Descriptors {
+        // EPROCESS/ETHREAD must be dereferenced by KbDereferenceObject,
+        // HANDLE must be closed by KbCloseHandle:
         BOOL WINAPI KbGetEprocess(ULONG ProcessId, OUT WdkTypes::PEPROCESS* Process);
         BOOL WINAPI KbGetEthread(ULONG ThreadId, OUT WdkTypes::PETHREAD* Thread);
         BOOL WINAPI KbOpenProcess(ULONG ProcessId, OUT WdkTypes::HANDLE* hProcess);
