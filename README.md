@@ -24,8 +24,7 @@ kernel-mode API and wrappers written on C++17.
 * Minifilter with usermode callbacks
 * Processes and modules usermode callbacks
 * Execution of custom usermode shellcodes
-* Unsigned drivers, kernel and usermode libraries mapping
-* Usermode wrapper for all Kernel-Bridge functions
+* Unsigned drivers, kernel and usermode libraries mapping  
   
 Driver template has full support of C++ static and global initializers and all of C++17 features (without C++ exceptions). All of API modules are easy-to-use and have no external dependiencies, so you can include them to your own C++ drivers. All of API functions are grouped into a logical categories into namespaces, so you can quickly find all functions you want.
   
@@ -58,47 +57,39 @@ bcdedit.exe /debug off  -  disable it
 For communication with usermode you can use a `DriversUtils.h` from "DriversUtils" folder that have a functions to install a driver and communicate with it using DeviceIoControl. You can directly include `CtlTypes.h` from "Kernel-Bridge/Kernel-Bridge/" folder to your usermode app for using Kernel-Bridge data types for requests.
   
 #### Files hierarchy:
-`/Kernel-Bridge/DriversUtils` - usermode module for drivers loading  
-`/Kernel-Bridge/Kernel-Bridge/API` - standalone kernel API for using in C++ drivers  
-`/Kernel-Bridge/Kernel-Bridge/Kernel-Bridge` - driver template files  
+`/User-Bridge/API` - usermode API and wrappers for all functions of KB  
+`/Kernel-Bridge/API` - standalone kernel API for using in C++ drivers  
+`/Kernel-Bridge/Kernel-Bridge` - driver template files  
+`/SharedTypes/CtlTypes` - shared types header required for UM and KM modules  
+`/Kernel-Tests` - unit-tests for UM and KM modules and common functions  
   
 #### Example (using of KbReadProcessMemory):
 ```
 #include <Windows.h>
-#include <winternl.h>
-
-#include "DriversUtils.h"
+ 
 #include "CtlTypes.h"
+#include "User-Bridge.h"
+
+using namespace Processes::MemoryManagement;
 
 ...
-
-InstallDriver(
-    L"N:\\Path\\To\\Driver.sys",
-    L"Kernel-Bridge"
+ 
+KbLoader::KbLoad(L"N:\\Folder\\Kernel-Bridge.sys");
+ 
+constexpr int Size = 64;
+UCHAR Buffer[Size] = {};
+ 
+BOOL Status = KbReadProcessMemory(
+    ProcessId,
+    0x7FFF0000, // Desired address in context of ProcessId
+    &Buffer,
+    Size
 );
-
-HANDLE hDriver = OpenDevice(L"\\\\.\\Kernel-Bridge");
-
-const int Size = 64;
-BYTE Buffer[Size];
-
-// Filling the input struct:
-KB_READ_WRITE_PROCESS_MEMORY_IN Input = {};
-Input.ProcessId = 1234; // Desired process
-Input.BaseAddress = 0x7FFF000; // Desired address you want to read
-Input.Buffer = static_cast<PVOID>(Buffer);
-Input.Size = Size;
-
-// 0x800 = base, 41 = index of KbReadProcessMemory (look at the IOCTLHandlers.cpp):
-constexpr int CTL_READ_PROCESS_MEMORY = IOCTL(0x800 + 41, METHOD_NEITHER);
-
-// Sending request:
-SendIOCTL(
-    hDriver,
-    CTL_READ_PROCESS_MEMORY,
-    &Input,
-    sizeof(Input),
-    NULL,
-    0
-);
+ 
+if (Status)
+    printf("All good!\r\n");
+ 
+...
+ 
+KbLoader::KbUnload();
 ```
