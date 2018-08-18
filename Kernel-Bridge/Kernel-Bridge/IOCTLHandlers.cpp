@@ -760,15 +760,15 @@ namespace
 
         if (!Input || !Output) return STATUS_INVALID_PARAMETER;
 
-        HANDLE hProcess;
-        NTSTATUS Status = Processes::Descriptors::OpenProcess(
+        HANDLE hProcess = ZwCurrentProcess();
+        NTSTATUS Status = Input->ProcessId ? Processes::Descriptors::OpenProcess(
             reinterpret_cast<HANDLE>(Input->ProcessId),
             &hProcess
-        );
+        ) : STATUS_SUCCESS;
 
         if (!NT_SUCCESS(Status)) return STATUS_UNSUCCESSFUL;
 
-        PVOID BaseAddress;
+        PVOID BaseAddress = NULL;
         Status = Processes::MemoryManagement::AllocateVirtualMemory(
             hProcess,
             Input->Size,
@@ -776,7 +776,7 @@ namespace
             &BaseAddress
         );
 
-        ZwClose(hProcess);
+        if (hProcess && hProcess != ZwCurrentProcess()) ZwClose(hProcess);
 
         if (NT_SUCCESS(Status)) {
             Output->BaseAddress = reinterpret_cast<WdkTypes::PVOID>(BaseAddress);
@@ -796,11 +796,11 @@ namespace
         auto Input = static_cast<PKB_FREE_USER_MEMORY_IN>(RequestInfo->InputBuffer);
         if (!Input) return STATUS_INVALID_PARAMETER;
 
-        HANDLE hProcess;
-        NTSTATUS Status = Processes::Descriptors::OpenProcess(
+        HANDLE hProcess = ZwCurrentProcess();
+        NTSTATUS Status = Input->ProcessId ? Processes::Descriptors::OpenProcess(
             reinterpret_cast<HANDLE>(Input->ProcessId),
             &hProcess
-        );
+        ) : STATUS_SUCCESS;
 
         if (!NT_SUCCESS(Status)) return STATUS_UNSUCCESSFUL;
 
@@ -824,7 +824,8 @@ namespace
         auto Input = static_cast<PKB_READ_WRITE_PROCESS_MEMORY_IN>(RequestInfo->InputBuffer);
         if (!Input) return STATUS_INVALID_PARAMETER;
 
-        PEPROCESS Process = Processes::Descriptors::GetEPROCESS(reinterpret_cast<HANDLE>(Input->ProcessId));
+        HANDLE ProcessId = Input->ProcessId ? reinterpret_cast<HANDLE>(Input->ProcessId) : PsGetCurrentProcessId();
+        PEPROCESS Process = Processes::Descriptors::GetEPROCESS(ProcessId);
         if (!Process) return STATUS_UNSUCCESSFUL;
 
         NTSTATUS Status = Processes::MemoryManagement::ReadProcessMemory(
@@ -849,7 +850,8 @@ namespace
         auto Input = static_cast<PKB_READ_WRITE_PROCESS_MEMORY_IN>(RequestInfo->InputBuffer);
         if (!Input) return STATUS_INVALID_PARAMETER;
 
-        PEPROCESS Process = Processes::Descriptors::GetEPROCESS(reinterpret_cast<HANDLE>(Input->ProcessId));
+        HANDLE ProcessId = Input->ProcessId ? reinterpret_cast<HANDLE>(Input->ProcessId) : PsGetCurrentProcessId();
+        PEPROCESS Process = Processes::Descriptors::GetEPROCESS(ProcessId);
         if (!Process) return STATUS_UNSUCCESSFUL;
 
         NTSTATUS Status = Processes::MemoryManagement::WriteProcessMemory(

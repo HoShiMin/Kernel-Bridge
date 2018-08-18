@@ -174,7 +174,7 @@ namespace IO {
             Input.Count = Count;
             Input.BufferSize = ByteStringSizeInBytes;
             Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(ByteString);
-            return KbSendRequest(Ctls::KbWritePort, &Input, sizeof(Input));
+            return KbSendRequest(Ctls::KbWritePortString, &Input, sizeof(Input));
         }
 
         BOOL WINAPI KbWritePortWordString(USHORT PortNumber, ULONG Count, IN PUSHORT WordString, ULONG WordStringSizeInBytes) {
@@ -185,7 +185,7 @@ namespace IO {
             Input.Count = Count;
             Input.BufferSize = WordStringSizeInBytes;
             Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(WordString);
-            return KbSendRequest(Ctls::KbWritePort, &Input, sizeof(Input));
+            return KbSendRequest(Ctls::KbWritePortString, &Input, sizeof(Input));
         }
 
         BOOL WINAPI KbWritePortDwordString(USHORT PortNumber, ULONG Count, IN PULONG DwordString, ULONG DwordStringSizeInBytes) {
@@ -196,7 +196,7 @@ namespace IO {
             Input.Count = Count;
             Input.BufferSize = DwordStringSizeInBytes;
             Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(DwordString);
-            return KbSendRequest(Ctls::KbWritePort, &Input, sizeof(Input));
+            return KbSendRequest(Ctls::KbWritePortString, &Input, sizeof(Input));
         }
     }
 
@@ -281,7 +281,7 @@ namespace CPU {
     BOOL WINAPI KbReadTsc(OUT PUINT64 TscValue) {
         if (!TscValue) return FALSE;
         KB_READ_TSC_OUT Output = {};
-        BOOL Status = KbSendRequest(Ctls::KbReadPmc, NULL, 0, &Output, sizeof(Output));
+        BOOL Status = KbSendRequest(Ctls::KbReadTsc, NULL, 0, &Output, sizeof(Output));
         *TscValue = Output.Value;
         return Status;
     }
@@ -289,7 +289,7 @@ namespace CPU {
     BOOL WINAPI KbReadTscp(OUT PUINT64 TscValue, OUT OPTIONAL PULONG TscAux) {
         if (!TscValue) return FALSE;
         KB_READ_TSCP_OUT Output = {};
-        BOOL Status = KbSendRequest(Ctls::KbReadPmc, NULL, 0, &Output, sizeof(Output));
+        BOOL Status = KbSendRequest(Ctls::KbReadTscp, NULL, 0, &Output, sizeof(Output));
         *TscValue = Output.Value;
         if (TscAux) *TscAux = Output.TscAux;
         return Status;
@@ -312,7 +312,9 @@ namespace VirtualMemory {
         if (!KernelAddress) return FALSE;
         KB_FREE_KERNEL_MEMORY_IN Input = {};
         Input.KernelAddress = KernelAddress;
-        return KbSendRequest(Ctls::KbAllocKernelMemory, &Input, sizeof(Input));
+        BOOL Status = KbSendRequest(Ctls::KbFreeKernelMemory, &Input, sizeof(Input));
+        DWORD LE = GetLastError();
+        return Status;
     }
 
     BOOL WINAPI KbCopyMoveMemory(OUT WdkTypes::PVOID Dest, IN WdkTypes::PVOID Src, ULONG Size, BOOLEAN Intersects) {
@@ -415,7 +417,7 @@ namespace PhysicalMemory {
         KB_GET_PHYSICAL_ADDRESS_OUT Output = {};
         Input.Process = Process;
         Input.VirtualAddress = VirtualAddress;
-        BOOL Status = KbSendRequest(Ctls::KbMapPhysicalMemory, &Input, sizeof(Input), &Output, sizeof(Output));
+        BOOL Status = KbSendRequest(Ctls::KbGetPhysicalAddress, &Input, sizeof(Input), &Output, sizeof(Output));
         *PhysicalAddress = Output.PhysicalAddress;
         return Status;
     }
@@ -578,7 +580,7 @@ namespace Processes {
             Input.BaseAddress = BaseAddress;
             Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
             Input.Size = Size;
-            return KbSendRequest(Ctls::KbReadProcessMemory, &Input, sizeof(Input));
+            return KbSendRequest(Ctls::KbWriteProcessMemory, &Input, sizeof(Input));
         }
 
         BOOL WINAPI KbSuspendProcess(ULONG ProcessId) {

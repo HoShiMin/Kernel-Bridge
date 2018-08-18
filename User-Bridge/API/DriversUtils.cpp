@@ -2,9 +2,14 @@
 
 #include "DriversUtils.h"
 
+#include <iostream>
+
 BOOL InstallDriver(LPCWSTR FilePath, LPCWSTR DriverName, DWORD DriverType) 
 {
-    SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
+    DWORD LE = GetLastError();
+    std::cout << "hSCManager = " << hSCManager << " LE: " << LE << std::endl;
+
     if (hSCManager == NULL) return FALSE;
     
     SC_HANDLE hService = CreateService(
@@ -12,8 +17,9 @@ BOOL InstallDriver(LPCWSTR FilePath, LPCWSTR DriverName, DWORD DriverType)
         SERVICE_ALL_ACCESS, DriverType, SERVICE_DEMAND_START, SERVICE_ERROR_NORMAL, FilePath, 
         NULL, NULL, NULL, NULL, NULL
     );
-    
-    DWORD LastError = GetLastError();
+
+    LE = GetLastError();
+    std::cout << "hService = " << hService << " LE: " << LE << std::endl;
 
     if (hService == NULL) {
         CloseServiceHandle(hSCManager);
@@ -23,6 +29,9 @@ BOOL InstallDriver(LPCWSTR FilePath, LPCWSTR DriverName, DWORD DriverType)
     LPCWSTR Arguments = NULL;
     BOOL Status = StartService(hService, 0, &Arguments);
     
+    LE = GetLastError();
+    std::cout << "Status = " << Status << " LE: " << LE << std::endl;
+
     CloseServiceHandle(hService);
     CloseServiceHandle(hSCManager);
     
@@ -31,7 +40,7 @@ BOOL InstallDriver(LPCWSTR FilePath, LPCWSTR DriverName, DWORD DriverType)
 
 BOOL DeleteDriver(LPCWSTR DriverName) 
 {
-    SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
     if (hSCManager == NULL) return FALSE;
 
     SC_HANDLE hService = OpenService(hSCManager, DriverName, SERVICE_ALL_ACCESS);

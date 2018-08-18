@@ -105,7 +105,7 @@ static CONST FLT_REGISTRATION FilterRegistration =
     NULL, // NormalizeNameComponent
     NULL, // TransactionNotifierCallback
     NULL, // NormalizeNameComponentExCallback
-    NULL  // SectionNotificationCallback
+    // NULL  // SectionNotificationCallback
 };
 
 

@@ -5,6 +5,32 @@ namespace KbLoader {
     BOOL WINAPI KbUnload();
 }
 
+namespace AddressRange {
+    inline BOOLEAN IsUserAddress(PVOID Address) {
+        return reinterpret_cast<SIZE_T>(Address) < (static_cast<SIZE_T>(1) << (8 * sizeof(SIZE_T) - 1));
+    }
+
+    inline BOOLEAN IsKernelAddress(PVOID Address) {
+        return reinterpret_cast<SIZE_T>(Address) >= (static_cast<SIZE_T>(1) << (8 * sizeof(SIZE_T) - 1));
+    }
+
+    inline BOOLEAN IsUserAddressIa32(UINT64 Address) {
+        return Address < 0x80000000;
+    }
+
+    inline BOOLEAN IsUserAddressAmd64(UINT64 Address) {
+        return Address < 0x8000000000000000;
+    }
+
+    inline BOOLEAN IsKernelAddressIa32(UINT64 Address) {
+        return Address > 0x7FFFFFFF;
+    }
+
+    inline BOOLEAN IsKernelAddressAmd64(UINT64 Address) {
+        return Address > 0x7FFFFFFFFFFFFFFF;
+    }
+}
+
 namespace IO {
     namespace Beeper {
         BOOL WINAPI KbSetBeeperRegime();
@@ -85,10 +111,10 @@ namespace Mdl {
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PVOID VirtualAddress,
         ULONG Size,
-        WdkTypes::KPROCESSOR_MODE AccessMode,
-        WdkTypes::LOCK_OPERATION LockOperation,
-        WdkTypes::MEMORY_CACHING_TYPE CacheType,
-        OPTIONAL WdkTypes::PVOID UserRequestedAddress
+        WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode,
+        WdkTypes::LOCK_OPERATION LockOperation = WdkTypes::IoWriteAccess,
+        WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
+        OPTIONAL WdkTypes::PVOID UserRequestedAddress = NULL
     );
 
     BOOL WINAPI KbUnmapMemory(IN PMAPPING_INFO MappingInfo);
@@ -120,7 +146,7 @@ namespace Processes {
     }
 
     namespace Threads {
-        
+        using NTSTATUS = ULONG;
         using _ThreadRoutine = NTSTATUS (NTAPI*)(PVOID Argument);
 
         BOOL WINAPI KbCreateUserThread(
