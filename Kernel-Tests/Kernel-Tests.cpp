@@ -24,8 +24,7 @@ bool IoplTest::RunTest() {
     BOOL RaisingStatus = KbRaiseIopl();
     if (!RaisingStatus) return false;
     __try {
-        //_disable();
-        //_enable();
+        __outbyte(0x43, 0xB6); // Set beeper regime
         Status = true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         Status = false;
@@ -93,9 +92,7 @@ bool MdlTest::RunTest() {
     BOOL Equals = FALSE;
     __try {
         FillMemory(Mapped, Size, 0xC6);
-        Log(L"Filled successfully!");
         Equals = !memcmp(Buffer, Mapped, Size);
-        Log(L"Compared successfully!");
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         Log(L"Filling and comparing failure!");
         Equals = FALSE;
@@ -109,6 +106,7 @@ bool MdlTest::RunTest() {
 
 bool PhysicalMemoryTest::RunTest() {
     using namespace PhysicalMemory;
+    using namespace Mdl;
 
     UINT64 Value = 0x1EE7C0DEC0FFEE;
     VirtualLock(&Value, sizeof(Value));
@@ -128,7 +126,10 @@ bool PhysicalMemoryTest::RunTest() {
         Status = KbMapPhysicalMemory(PhysicalAddress, sizeof(Value), &VirtualAddress);
         if (!Status) Log(L"KbMapPhysicalMemory == FALSE");
 
-        PUINT64 Mapping = reinterpret_cast<PUINT64>(VirtualAddress);
+        Mdl::MAPPING_INFO MappingInfo = {};
+        KbMapMemory(&MappingInfo, 0, 0, VirtualAddress, sizeof(Value));
+
+        PUINT64 Mapping = reinterpret_cast<PUINT64>(MappingInfo.MappedAddress);
 
         if (*Mapping != Value) {
             Log(L"*Mapping != Value");
@@ -138,6 +139,8 @@ bool PhysicalMemoryTest::RunTest() {
 
         *Mapping = 0xC0FFEE;
         if (Value != 0xC0FFEE) Log(L"Value != 0xC0FFEE");
+
+        KbUnmapMemory(&MappingInfo);
 
         UINT64 Buffer = 0;
         Status = KbReadPhysicalMemory(PhysicalAddress, &Buffer, sizeof(Buffer));

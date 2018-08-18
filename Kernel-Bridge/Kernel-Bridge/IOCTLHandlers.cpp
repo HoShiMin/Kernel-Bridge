@@ -809,7 +809,7 @@ namespace
             reinterpret_cast<PVOID>(Input->BaseAddress)
         );
 
-        ZwClose(hProcess);
+        if (hProcess && hProcess != ZwCurrentProcess()) ZwClose(hProcess);
 
         return Status;
     }

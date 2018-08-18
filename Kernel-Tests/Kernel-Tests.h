@@ -12,50 +12,52 @@ public:
     }
 
     KernelTests(LPCWSTR Name) : TestName(Name), Passed(false) {
-        std::wcout << L"[ " << TestName << " ] Test started..." << std::endl;
     }
 
-    ~KernelTests() {
-        std::wcout << L"[ " << (Passed ? L"PASSED" : L"FAILED") << L" ] " << TestName << std::endl; 
-    }
+    ~KernelTests() = default;
 
     void Log(LPCWSTR Text) {
         std::wcout << L"\t[ " << TestName << L" ]: " << Text << std::endl; 
+    }
+
+    void PrintStatus() {
+        if (!Passed) std::wcout << std::endl;
+        std::wcout << L"[ " << (Passed ? L"PASSED" : L"FAILED") << L" ] " << TestName << std::endl; 
     }
 };
 
 class BeeperTest : public KernelTests {
 public:
-    BeeperTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); }
+    BeeperTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); PrintStatus(); }
     bool RunTest() override;
 };
 
 class IoplTest : KernelTests {
 public:
-    IoplTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); }
+    IoplTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); PrintStatus(); }
     bool RunTest() override;
 };
 
 class VirtualMemoryTest : KernelTests {
 public:
-    VirtualMemoryTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); }
+    VirtualMemoryTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); PrintStatus(); }
     bool RunTest() override;
 };
 
 class MdlTest : KernelTests {
 public:
-    MdlTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); }
+    MdlTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); PrintStatus(); }
     bool RunTest() override;
 };
 
 class PhysicalMemoryTest : KernelTests {
 public:
-    PhysicalMemoryTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); }
+    PhysicalMemoryTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); PrintStatus(); }
     bool RunTest() override;
 };
 
 class ProcessesTest : KernelTests {
 public:
-    ProcessesTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); }
+    ProcessesTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); PrintStatus(); }
     bool RunTest() override;
 };

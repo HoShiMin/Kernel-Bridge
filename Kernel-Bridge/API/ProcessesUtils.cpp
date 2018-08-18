@@ -343,7 +343,7 @@ namespace Processes {
             HANDLE hBufferSecure = NULL;
             BOOLEAN IsBufferUsermode = AddressRange::IsUserAddress(Buffer);
             if (IsBufferUsermode) {
-                if (!VirtualMemory::SecureMemory(BaseAddress, Size, PAGE_READWRITE, &hBufferSecure)) {
+                if (!VirtualMemory::SecureMemory(Buffer, Size, PAGE_READWRITE, &hBufferSecure)) {
                     VirtualMemory::UnsecureProcessMemory(Process, hProcessSecure);
                     return STATUS_NOT_LOCKED;
                 }
@@ -372,10 +372,10 @@ namespace Processes {
             // Attempt to map buffer memory:
             Mdl::MAPPING_INFO BufferMapping = {};
             Status = Mdl::MapMemory(
-                &ProcessMapping,
-                Process,
+                &BufferMapping,
                 NULL,
-                BaseAddress,
+                NULL,
+                Buffer,
                 Size,
                 KernelMode,
                 Operation == MemRead ? IoModifyAccess : IoReadAccess,
