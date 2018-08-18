@@ -88,7 +88,116 @@ namespace IO {
     }
 
     namespace RW {
-    
+        BOOL WINAPI KbReadPortByte(USHORT PortNumber, OUT PUCHAR Value) {
+            if (!Value) return FALSE;
+            KB_READ_PORT_IN Input = {};
+            KB_READ_PORT_BYTE_OUT Output = {};
+            Input.PortNumber = PortNumber;
+            BOOLEAN Status = KbSendRequest(Ctls::KbReadPort, &Input, sizeof(Input), &Output, sizeof(Output));
+            *Value = Output.Value;
+            return Status;
+        }
+
+        BOOL WINAPI KbReadPortWord(USHORT PortNumber, OUT PUSHORT Value) {
+            if (!Value) return FALSE;
+            KB_READ_PORT_IN Input = {};
+            KB_READ_PORT_WORD_OUT Output = {};
+            Input.PortNumber = PortNumber;
+            BOOLEAN Status = KbSendRequest(Ctls::KbReadPort, &Input, sizeof(Input), &Output, sizeof(Output));
+            *Value = Output.Value;
+            return Status;
+        }
+
+        BOOL WINAPI KbReadPortDword(USHORT PortNumber, OUT PULONG Value) {
+            if (!Value) return FALSE;
+            KB_READ_PORT_IN Input = {};
+            KB_READ_PORT_DWORD_OUT Output = {};
+            Input.PortNumber = PortNumber;
+            BOOLEAN Status = KbSendRequest(Ctls::KbReadPort, &Input, sizeof(Input), &Output, sizeof(Output));
+            *Value = Output.Value;
+            return Status;
+        }
+
+        BOOL WINAPI KbReadPortByteString(USHORT PortNumber, ULONG Count, OUT PUCHAR ByteString, ULONG ByteStringSizeInBytes) {
+            if (!Count || !ByteString || !ByteStringSizeInBytes) return FALSE;
+            KB_READ_PORT_STRING_IN Input = {};
+            auto Output = reinterpret_cast<PKB_READ_PORT_STRING_OUT>(ByteString);
+            Input.PortNumber = PortNumber;
+            return KbSendRequest(Ctls::KbReadPortString, &Input, sizeof(Input), Output, ByteStringSizeInBytes);
+        }
+
+        BOOL WINAPI KbReadPortWordString(USHORT PortNumber, ULONG Count, OUT PUSHORT WordString, ULONG WordStringSizeInBytes) {
+            if (!Count || !WordString || !WordStringSizeInBytes) return FALSE;
+            KB_READ_PORT_STRING_IN Input = {};
+            auto Output = reinterpret_cast<PKB_READ_PORT_STRING_OUT>(WordString);
+            Input.PortNumber = PortNumber;
+            return KbSendRequest(Ctls::KbReadPortString, &Input, sizeof(Input), Output, WordStringSizeInBytes);
+        }
+
+        BOOL WINAPI KbReadPortDwordString(USHORT PortNumber, ULONG Count, OUT PULONG DwordString, ULONG DwordStringSizeInBytes) {
+            if (!Count || !DwordString || !DwordStringSizeInBytes) return FALSE;
+            KB_READ_PORT_STRING_IN Input = {};
+            auto Output = reinterpret_cast<PKB_READ_PORT_STRING_OUT>(DwordString);
+            Input.PortNumber = PortNumber;
+            return KbSendRequest(Ctls::KbReadPortString, &Input, sizeof(Input), Output, DwordStringSizeInBytes);
+        }
+
+        BOOL WINAPI KbWritePortByte(USHORT PortNumber, UCHAR Value) {
+            KB_WRITE_PORT_IN Input = {};
+            Input.PortNumber = PortNumber;
+            Input.Granularity = sizeof(Value);
+            Input.Byte = Value;
+            return KbSendRequest(Ctls::KbWritePort, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbWritePortWord(USHORT PortNumber, USHORT Value) {
+            KB_WRITE_PORT_IN Input = {};
+            Input.PortNumber = PortNumber;
+            Input.Granularity = sizeof(Value);
+            Input.Word = Value;
+            return KbSendRequest(Ctls::KbWritePort, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbWritePortDword(USHORT PortNumber, ULONG Value) {
+            KB_WRITE_PORT_IN Input = {};
+            Input.PortNumber = PortNumber;
+            Input.Granularity = sizeof(Value);
+            Input.Dword = Value;
+            return KbSendRequest(Ctls::KbWritePort, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbWritePortByteString(USHORT PortNumber, ULONG Count, IN PUCHAR ByteString, ULONG ByteStringSizeInBytes) {
+            if (!ByteString || ByteStringSizeInBytes < Count * sizeof(*ByteString)) return FALSE;
+            KB_WRITE_PORT_STRING_IN Input = {};
+            Input.PortNumber = PortNumber;
+            Input.Granularity = sizeof(*ByteString);
+            Input.Count = Count;
+            Input.BufferSize = ByteStringSizeInBytes;
+            Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(ByteString);
+            return KbSendRequest(Ctls::KbWritePort, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbWritePortWordString(USHORT PortNumber, ULONG Count, IN PUSHORT WordString, ULONG WordStringSizeInBytes) {
+            if (!WordString || WordStringSizeInBytes < Count * sizeof(*WordString)) return FALSE;
+            KB_WRITE_PORT_STRING_IN Input = {};
+            Input.PortNumber = PortNumber;
+            Input.Granularity = sizeof(*WordString);
+            Input.Count = Count;
+            Input.BufferSize = WordStringSizeInBytes;
+            Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(WordString);
+            return KbSendRequest(Ctls::KbWritePort, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbWritePortDwordString(USHORT PortNumber, ULONG Count, IN PULONG DwordString, ULONG DwordStringSizeInBytes) {
+            if (!DwordString || DwordStringSizeInBytes < Count * sizeof(*DwordString)) return FALSE;
+            KB_WRITE_PORT_STRING_IN Input = {};
+            Input.PortNumber = PortNumber;
+            Input.Granularity = sizeof(*DwordString);
+            Input.Count = Count;
+            Input.BufferSize = DwordStringSizeInBytes;
+            Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(DwordString);
+            return KbSendRequest(Ctls::KbWritePort, &Input, sizeof(Input));
+        }
     }
 
     namespace Iopl {
@@ -309,5 +418,179 @@ namespace PhysicalMemory {
         BOOL Status = KbSendRequest(Ctls::KbMapPhysicalMemory, &Input, sizeof(Input), &Output, sizeof(Output));
         *PhysicalAddress = Output.PhysicalAddress;
         return Status;
+    }
+
+    BOOL WINAPI KbReadPhysicalMemory(
+        WdkTypes::PVOID64 PhysicalAddress,
+        OUT PVOID Buffer,
+        ULONG Size
+    ) {
+        if (!Buffer || !Size) return FALSE;
+        KB_READ_PHYSICAL_MEMORY_IN Input = {};
+        Input.PhysicalAddress = PhysicalAddress;
+        auto Output = reinterpret_cast<PKB_READ_PHYSICAL_MEMORY_OUT>(Buffer);
+        return KbSendRequest(Ctls::KbReadPhysicalMemory, &Input, sizeof(Input), Output, Size);
+    }
+
+    BOOL WINAPI KbWritePhysicalMemory(
+        WdkTypes::PVOID64 PhysicalAddress,
+        IN PVOID Buffer,
+        ULONG Size
+    ) {
+        if (!Buffer || !Size) return FALSE;
+        KB_WRITE_PHYSICAL_MEMORY_IN Input = {};
+        Input.PhysicalAddress = PhysicalAddress;
+        Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
+        Input.Size = Size;
+        return KbSendRequest(Ctls::KbWritePhysicalMemory, &Input, sizeof(Input));
+    }
+
+    BOOL WINAPI KbReadDmiMemory(OUT UCHAR DmiMemory[DmiSize], ULONG BufferSize) {
+        if (BufferSize != DmiSize) return FALSE;
+        return KbSendRequest(Ctls::KbReadDmiMemory, NULL, 0, reinterpret_cast<PKB_READ_DMI_MEMORY_OUT>(DmiMemory), BufferSize);
+    }
+}
+
+namespace Processes {
+    namespace Descriptors {
+        BOOL WINAPI KbGetEprocess(ULONG ProcessId, OUT WdkTypes::PEPROCESS* Process) {
+            if (!Process) return FALSE;
+            KB_GET_EPROCESS_IN Input = {};
+            KB_GET_EPROCESS_OUT Output = {};
+            Input.ProcessId = ProcessId;
+            BOOL Status = KbSendRequest(Ctls::KbGetEprocess, &Input, sizeof(Input), &Output, sizeof(Output));
+            *Process = Output.Process;
+            return Status;
+        }
+
+        BOOL WINAPI KbGetEthread(ULONG ThreadId, OUT WdkTypes::PETHREAD* Thread) {
+            if (!Thread) return FALSE;
+            KB_GET_ETHREAD_IN Input = {};
+            KB_GET_ETHREAD_OUT Output = {};
+            Input.ThreadId = ThreadId;
+            BOOL Status = KbSendRequest(Ctls::KbGetEthread, &Input, sizeof(Input), &Output, sizeof(Output));
+            *Thread = Output.Thread;
+            return Status;
+        }
+
+        BOOL WINAPI KbOpenProcess(ULONG ProcessId, OUT WdkTypes::HANDLE* hProcess) {
+            if (!hProcess) return FALSE;
+            KB_OPEN_PROCESS_IN Input = {};
+            KB_OPEN_PROCESS_OUT Output = {};
+            Input.ProcessId = ProcessId;
+            BOOL Status = KbSendRequest(Ctls::KbOpenProcess, &Input, sizeof(Input), &Output, sizeof(Output));
+            *hProcess = Output.hProcess;
+            return Status;
+        }
+
+        BOOL WINAPI KbDereferenceObject(WdkTypes::PVOID Object) {
+            if (!Object) return FALSE;
+            KB_DEREFERENCE_OBJECT_IN Input = {};
+            Input.Object = Object;
+            return KbSendRequest(Ctls::KbDereferenceObject, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbCloseHandle(WdkTypes::HANDLE Handle) {
+            if (!Handle) return FALSE;
+            KB_CLOSE_HANDLE_IN Input = {};
+            Input.Handle = Handle;
+            return KbSendRequest(Ctls::KbCloseHandle, &Input, sizeof(Input));
+        }
+    }
+
+    namespace Threads {
+        BOOL WINAPI KbCreateUserThread(
+            ULONG ProcessId, 
+            WdkTypes::PVOID ThreadRoutine, 
+            WdkTypes::PVOID Argument, 
+            BOOL CreateSuspended,
+            OUT OPTIONAL WdkTypes::CLIENT_ID* ClientId,
+            OUT OPTIONAL WdkTypes::HANDLE* hThread
+        ) {
+            if (!ProcessId) return FALSE;
+            KB_CREATE_USER_THREAD_IN Input = {};
+            KB_CREATE_USER_SYSTEM_THREAD_OUT Output = {};
+            Input.ProcessId = ProcessId;
+            Input.ThreadRoutine = ThreadRoutine;
+            Input.Argument = Argument;
+            Input.CreateSuspended = CreateSuspended;
+            BOOL Status = KbSendRequest(Ctls::KbCreateUserThread, &Input, sizeof(Input), &Output, sizeof(Output));
+            if (ClientId) *ClientId = Output.ClientId;
+            if (*hThread) *hThread = Output.hThread;
+            return Status;
+        }
+
+        BOOL WINAPI KbCreateSystemThread(
+            ULONG ProcessId, 
+            WdkTypes::PVOID ThreadRoutine, 
+            WdkTypes::PVOID Argument,
+            OUT OPTIONAL WdkTypes::CLIENT_ID* ClientId,
+            OUT OPTIONAL WdkTypes::HANDLE* hThread
+        ) {
+            if (!ProcessId) return FALSE;
+            KB_CREATE_SYSTEM_THREAD_IN Input = {};
+            KB_CREATE_USER_SYSTEM_THREAD_OUT Output = {};
+            Input.AssociatedProcessId = ProcessId;
+            Input.ThreadRoutine = ThreadRoutine;
+            Input.Argument = Argument;
+            BOOL Status = KbSendRequest(Ctls::KbCreateSystemThread, &Input, sizeof(Input), &Output, sizeof(Output));
+            if (ClientId) *ClientId = Output.ClientId;
+            if (*hThread) *hThread = Output.hThread;
+            return Status;
+        }
+    }
+
+    namespace MemoryManagement {
+        BOOL WINAPI KbAllocUserMemory(ULONG ProcessId, ULONG Protect, ULONG Size, OUT WdkTypes::PVOID* BaseAddress) {
+            if (!ProcessId || !Size || !BaseAddress) return FALSE;
+            KB_ALLOC_USER_MEMORY_IN Input = {};
+            KB_ALLOC_USER_MEMORY_OUT Output = {};
+            Input.ProcessId = ProcessId;
+            Input.Protect = Protect;
+            Input.Size = Size;
+            BOOL Status = KbSendRequest(Ctls::KbAllocUserMemory, &Input, sizeof(Input), &Output, sizeof(Output));
+            *BaseAddress = Output.BaseAddress;
+            return Status;
+        }
+
+        BOOL WINAPI KbFreeUserMemory(ULONG ProcessId, WdkTypes::PVOID BaseAddress) {
+            if (!ProcessId || !BaseAddress) return FALSE;
+            KB_FREE_USER_MEMORY_IN Input = {};
+            Input.ProcessId = ProcessId;
+            Input.BaseAddress = BaseAddress;
+            return KbSendRequest(Ctls::KbFreeUserMemory, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbReadProcessMemory(ULONG ProcessId, IN WdkTypes::PVOID BaseAddress, OUT PVOID Buffer, ULONG Size) {
+            if (!ProcessId || !BaseAddress || !Buffer || !Size) return FALSE;
+            KB_READ_WRITE_PROCESS_MEMORY_IN Input = {};
+            Input.ProcessId = ProcessId;
+            Input.BaseAddress = BaseAddress;
+            Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
+            Input.Size = Size;
+            return KbSendRequest(Ctls::KbReadProcessMemory, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbWriteProcessMemory(ULONG ProcessId, OUT WdkTypes::PVOID BaseAddress, IN PVOID Buffer, ULONG Size) {
+            if (!ProcessId || !BaseAddress || !Buffer || !Size) return FALSE;
+            KB_READ_WRITE_PROCESS_MEMORY_IN Input = {};
+            Input.ProcessId = ProcessId;
+            Input.BaseAddress = BaseAddress;
+            Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
+            Input.Size = Size;
+            return KbSendRequest(Ctls::KbReadProcessMemory, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbSuspendProcess(ULONG ProcessId) {
+            KB_SUSPEND_RESUME_PROCESS_IN Input = {};
+            Input.ProcessId = ProcessId;
+            return KbSendRequest(Ctls::KbSuspendProcess, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbResumeProcess(ULONG ProcessId) {
+            KB_SUSPEND_RESUME_PROCESS_IN Input = {};
+            Input.ProcessId = ProcessId;
+            return KbSendRequest(Ctls::KbResumeProcess, &Input, sizeof(Input));
+        }
     }
 }

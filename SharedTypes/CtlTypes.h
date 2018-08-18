@@ -111,10 +111,16 @@ namespace WdkTypes {
     // Using universal x64 types for compatibility with x32 and x64:
     using HANDLE    = unsigned long long;
     using PVOID     = unsigned long long;
+    using PVOID64   = unsigned long long;
     using PEPROCESS = PVOID;
     using PETHREAD  = PVOID;
     using PMDL      = PVOID;
     using LPCWSTR   = PVOID;
+    using PBYTE     = PVOID;
+    using PSHORT    = PVOID;
+    using PULONG    = PVOID;
+    using PDWORD    = PVOID;
+    using PUINT64   = PVOID;
 
     using CLIENT_ID = struct {
         UINT64 ProcessId;
@@ -123,9 +129,9 @@ namespace WdkTypes {
 }
 
 #define DECLARE_STRUCT(Name, Fields) \
-    typedef struct _##Name           \
-        Fields                       \
-    Name, *P##Name
+    using Name = struct Fields;      \
+    using P##Name = Name*
+
 
 DECLARE_STRUCT(KB_SET_BEEPER_DIVIDER_IN, { 
     USHORT Divider; 
@@ -139,49 +145,48 @@ DECLARE_STRUCT(KB_READ_PORT_IN, {
     USHORT PortNumber;
 });
 
-DECLARE_STRUCT(KB_READ_PORT_OUT, {
-    union {
-        UCHAR Byte;
-        USHORT Word;
-        ULONG Dword;
-    };
+DECLARE_STRUCT(KB_READ_PORT_BYTE_OUT, {
+    UCHAR Value;
+});
+
+DECLARE_STRUCT(KB_READ_PORT_WORD_OUT, {
+    USHORT Value;
+});
+
+DECLARE_STRUCT(KB_READ_PORT_DWORD_OUT, {
+    ULONG Value;
 });
 
 DECLARE_STRUCT(KB_READ_PORT_STRING_IN, {
     USHORT PortNumber;
     USHORT Granularity; // sizeof(UCHAR/USHORT/ULONG)
-    ULONG Count; // Will be read 'Count' times of 'Granularity' bytes
+    ULONG Count; // Will be write 'Count' times of 'Granularity' bytes
 });
 
 DECLARE_STRUCT(KB_READ_PORT_STRING_OUT, {
-    union { // Arrays of UCHAR/USHORT/ULONG:
+    union {
         UCHAR ByteString[1];
         USHORT WordString[1];
         ULONG DwordString[1];
-    };
+    };    
 });
 
 DECLARE_STRUCT(KB_WRITE_PORT_IN, {
     USHORT PortNumber;
-    USHORT Granularity; // sizeof(UCHAR/USHORT/ULONG)
+    USHORT Granularity;
     union {
         UCHAR Byte;
         USHORT Word;
         ULONG Dword;
-    };
+    };   
 });
 
 DECLARE_STRUCT(KB_WRITE_PORT_STRING_IN, {
-    struct {
-        USHORT PortNumber;
-        USHORT Granularity; // sizeof(UCHAR/USHORT/ULONG)
-        ULONG Count; // Will be write 'Count' times of 'Granularity' bytes
-    } Header;
-    union {
-        UCHAR ByteString[1];
-        USHORT WordString[1];
-        ULONG DwordString[1];
-    } Payload;
+    USHORT PortNumber;
+    USHORT Granularity; // sizeof(UCHAR/USHORT/ULONG)
+    ULONG Count; // Will be write 'Count' times of 'Granularity' bytes
+    ULONG BufferSize;
+    WdkTypes::PVOID Buffer;
 });
 
 DECLARE_STRUCT(KB_READ_MSR_IN, {
@@ -312,7 +317,6 @@ DECLARE_STRUCT(KB_GET_PHYSICAL_ADDRESS_OUT, {
 
 DECLARE_STRUCT(KB_READ_PHYSICAL_MEMORY_IN, {
     WdkTypes::PVOID PhysicalAddress;
-    ULONG Size;
 });
 
 DECLARE_STRUCT(KB_READ_PHYSICAL_MEMORY_OUT, {
@@ -320,11 +324,9 @@ DECLARE_STRUCT(KB_READ_PHYSICAL_MEMORY_OUT, {
 });
 
 DECLARE_STRUCT(KB_WRITE_PHYSICAL_MEMORY_IN, {
-    struct {
-        WdkTypes::PVOID PhysicalAddress;
-        ULONG Size;
-    } Header;
-    UCHAR Buffer[1];
+    WdkTypes::PVOID64 PhysicalAddress;
+    WdkTypes::PVOID Buffer;
+    ULONG Size;
 });
 
 constexpr int DmiSize = 65536;

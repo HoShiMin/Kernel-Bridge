@@ -82,17 +82,17 @@ namespace
 
         switch (RequestInfo->OutputBufferSize) {
         case sizeof(UCHAR): {
-            static_cast<PKB_READ_PORT_OUT>(RequestInfo->OutputBuffer)->Byte =
+            static_cast<PKB_READ_PORT_BYTE_OUT>(RequestInfo->OutputBuffer)->Value =
                 IO::RW::ReadPortByte(static_cast<PKB_READ_PORT_IN>(RequestInfo->InputBuffer)->PortNumber);
             break;
         }
         case sizeof(USHORT): {
-            static_cast<PKB_READ_PORT_OUT>(RequestInfo->OutputBuffer)->Word =
+            static_cast<PKB_READ_PORT_WORD_OUT>(RequestInfo->OutputBuffer)->Value =
                 IO::RW::ReadPortWord(static_cast<PKB_READ_PORT_IN>(RequestInfo->InputBuffer)->PortNumber);
             break;
         }
         case sizeof(ULONG): {
-            static_cast<PKB_READ_PORT_OUT>(RequestInfo->OutputBuffer)->Dword =
+            static_cast<PKB_READ_PORT_DWORD_OUT>(RequestInfo->OutputBuffer)->Value =
                 IO::RW::ReadPortDword(static_cast<PKB_READ_PORT_IN>(RequestInfo->InputBuffer)->PortNumber);
             break;
         }
@@ -109,11 +109,12 @@ namespace
         if (!RequestInfo->InputBuffer || !RequestInfo->OutputBuffer) return STATUS_INVALID_PARAMETER;
 
         auto Input = static_cast<PKB_READ_PORT_STRING_IN>(RequestInfo->InputBuffer);
+        if (RequestInfo->InputBufferSize != sizeof(KB_READ_PORT_STRING_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
         ULONG BytesToReadCount = Input->Count * Input->Granularity;
-        if (
-            RequestInfo->InputBufferSize != sizeof(KB_READ_PORT_STRING_IN) ||
-            RequestInfo->OutputBufferSize < BytesToReadCount
-        ) return STATUS_INFO_LENGTH_MISMATCH;
+        if (RequestInfo->OutputBufferSize < BytesToReadCount) 
+            return STATUS_INFO_LENGTH_MISMATCH;
 
         switch (Input->Granularity) {
         case sizeof(UCHAR): {
@@ -182,26 +183,26 @@ namespace
     {
         UNREFERENCED_PARAMETER(ResponseLength);
 
-        if (RequestInfo->InputBufferSize <= sizeof(KB_WRITE_PORT_STRING_IN::Header))
+        if (RequestInfo->InputBufferSize <= sizeof(KB_WRITE_PORT_STRING_IN))
             return STATUS_INFO_LENGTH_MISMATCH;
 
         auto Input = static_cast<PKB_WRITE_PORT_STRING_IN>(RequestInfo->InputBuffer);
         if (!Input) return STATUS_INVALID_PARAMETER;
 
-        if (RequestInfo->InputBufferSize < sizeof(KB_WRITE_PORT_STRING_IN) + Input->Header.Count * Input->Header.Granularity)
+        if (Input->BufferSize < Input->Count * Input->Granularity)
             return STATUS_INFO_LENGTH_MISMATCH;
 
-        switch (Input->Header.Granularity) {
+        switch (Input->Granularity) {
         case sizeof(UCHAR): {
-            IO::RW::WritePortByteString(Input->Header.PortNumber, Input->Payload.ByteString, Input->Header.Count);
+            IO::RW::WritePortByteString(Input->PortNumber, reinterpret_cast<unsigned char*>(Input->Buffer), Input->Count);
             break;
         }
         case sizeof(USHORT): {
-            IO::RW::WritePortWordString(Input->Header.PortNumber, Input->Payload.WordString, Input->Header.Count);
+            IO::RW::WritePortWordString(Input->PortNumber, reinterpret_cast<unsigned short*>(Input->Buffer), Input->Count);
             break;
         }
         case sizeof(ULONG): {
-            IO::RW::WritePortDwordString(Input->Header.PortNumber, Input->Payload.DwordString, Input->Header.Count);
+            IO::RW::WritePortDwordString(Input->PortNumber, reinterpret_cast<unsigned long*>(Input->Buffer), Input->Count);
             break;
         }
         default:
@@ -604,15 +605,13 @@ namespace
 
         if (!Input || !Output) return STATUS_INVALID_PARAMETER;
 
-        if (
-            RequestInfo->InputBufferSize != sizeof(KB_READ_PHYSICAL_MEMORY_IN) ||
-            RequestInfo->OutputBufferSize != Input->Size
-        ) return STATUS_INFO_LENGTH_MISMATCH;
+        if (RequestInfo->InputBufferSize != sizeof(KB_READ_PHYSICAL_MEMORY_IN)) 
+            return STATUS_INFO_LENGTH_MISMATCH;
 
         return PhysicalMemory::ReadPhysicalMemory(
             reinterpret_cast<PVOID64>(Input->PhysicalAddress),
             reinterpret_cast<PVOID>(&Output->Buffer),
-            Input->Size
+            RequestInfo->OutputBufferSize
         ) ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
     }
 
@@ -624,12 +623,12 @@ namespace
             return STATUS_INFO_LENGTH_MISMATCH;
 
         auto Input = static_cast<PKB_WRITE_PHYSICAL_MEMORY_IN>(RequestInfo->InputBuffer);
-        if (!Input || !Input->Header.Size) return STATUS_INVALID_PARAMETER;
+        if (!Input || !Input->Buffer || !Input->Size) return STATUS_INVALID_PARAMETER;
 
         return PhysicalMemory::WritePhysicalMemory(
-            reinterpret_cast<PVOID64>(Input->Header.PhysicalAddress),
+            reinterpret_cast<PVOID64>(Input->PhysicalAddress),
             reinterpret_cast<PVOID>(Input->Buffer),
-            Input->Header.Size
+            Input->Size
         ) ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
     }
 
