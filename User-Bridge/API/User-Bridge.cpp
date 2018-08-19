@@ -563,6 +563,36 @@ namespace Processes {
             return KbSendRequest(Ctls::KbFreeUserMemory, &Input, sizeof(Input));
         }
 
+        BOOL WINAPI KbSecureVirtualMemory(
+            ULONG ProcessId,
+            WdkTypes::PVOID BaseAddress,
+            ULONG Size,
+            ULONG ProtectRights,
+            OUT WdkTypes::HANDLE* SecureHandle
+        ) {
+            if (!ProcessId || !BaseAddress || !Size || !SecureHandle) return FALSE;
+            KB_SECURE_VIRTUAL_MEMORY_IN Input = {};
+            KB_SECURE_VIRTUAL_MEMORY_OUT Output = {};
+            Input.ProcessId = ProcessId;
+            Input.ProtectRights = ProtectRights;
+            Input.BaseAddress = BaseAddress;
+            Input.Size = Size;
+            BOOL Status = KbSendRequest(Ctls::KbSecureVirtualMemory, &Input, sizeof(Input), &Output, sizeof(Output));
+            *SecureHandle = Output.SecureHandle;
+            return Status;
+        }
+
+        BOOL WINAPI KbUnsecureVirtualMemory(
+            ULONG ProcessId,
+            WdkTypes::HANDLE SecureHandle
+        ) {
+            if (!ProcessId || !SecureHandle) return FALSE;
+            KB_UNSECURE_VIRTUAL_MEMORY_IN Input = {};
+            Input.ProcessId = ProcessId;
+            Input.SecureHandle = SecureHandle;
+            return KbSendRequest(Ctls::KbUnsecureVirtualMemory, &Input, sizeof(Input));
+        }
+
         BOOL WINAPI KbReadProcessMemory(ULONG ProcessId, IN WdkTypes::PVOID BaseAddress, OUT PVOID Buffer, ULONG Size) {
             if (!ProcessId || !BaseAddress || !Buffer || !Size) return FALSE;
             KB_READ_WRITE_PROCESS_MEMORY_IN Input = {};
@@ -594,5 +624,35 @@ namespace Processes {
             Input.ProcessId = ProcessId;
             return KbSendRequest(Ctls::KbResumeProcess, &Input, sizeof(Input));
         }
+    }
+}
+
+namespace Stuff {
+    BOOL WINAPI KbGetKernelProcAddress(LPCWSTR RoutineName, WdkTypes::PVOID* KernelAddress) {
+        if (!RoutineName || !KernelAddress) return FALSE;
+        SIZE_T NameLength = wcslen(RoutineName);
+        if (NameLength > 64) {
+            SetLastError(ERROR_INVALID_NAME);
+            return FALSE; // Very long name, seems like invalid data buffer
+        }
+        KB_GET_KERNEL_PROC_ADDRESS_IN Input = {};
+        KB_GET_KERNEL_PROC_ADDRESS_OUT Output = {};
+        Input.RoutineName = reinterpret_cast<WdkTypes::LPCWSTR>(RoutineName);
+        Input.SizeOfBufferInBytes = static_cast<ULONG>(NameLength) * sizeof(WCHAR); // We're sure that Length <= 64
+        BOOL Status = KbSendRequest(Ctls::KbGetKernelProcAddress, &Input, sizeof(Input), &Output, sizeof(Output));
+        *KernelAddress = Output.Address;
+        return Status;
+    }
+
+    BOOL WINAPI KbStallExecutionProcessor(ULONG Microseconds) {
+        KB_STALL_EXECUTION_PROCESSOR_IN Input = {};
+        Input.Microseconds = Microseconds;
+        return KbSendRequest(Ctls::KbStallExecutionProcessor, &Input, sizeof(Input));
+    }
+
+    BOOL WINAPI KbBugCheck(ULONG Status) {
+        KB_BUG_CHECK_IN Input = {};
+        Input.Status = Status;
+        return KbSendRequest(Ctls::KbBugCheck, &Input, sizeof(Input));
     }
 }

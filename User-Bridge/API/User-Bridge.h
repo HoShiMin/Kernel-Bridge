@@ -188,3 +188,9 @@ namespace Processes {
         BOOL WINAPI KbResumeProcess(ULONG ProcessId);
     }
 }
+
+namespace Stuff {
+    BOOL WINAPI KbGetKernelProcAddress(LPCWSTR RoutineName, WdkTypes::PVOID* KernelAddress);
+    BOOL WINAPI KbStallExecutionProcessor(ULONG Microseconds);
+    BOOL WINAPI KbBugCheck(ULONG Status);
+}

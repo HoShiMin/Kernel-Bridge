@@ -814,6 +814,78 @@ namespace
         return Status;
     }
 
+    NTSTATUS FASTCALL KbSecureVirtualMemory(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        if (
+            RequestInfo->InputBufferSize != sizeof(KB_SECURE_VIRTUAL_MEMORY_IN) || 
+            RequestInfo->OutputBufferSize != sizeof(KB_SECURE_VIRTUAL_MEMORY_OUT)
+        ) return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_SECURE_VIRTUAL_MEMORY_IN>(RequestInfo->InputBuffer);
+        auto Output = static_cast<PKB_SECURE_VIRTUAL_MEMORY_OUT>(RequestInfo->OutputBuffer);
+
+        if (!Input || !Output) return STATUS_INVALID_PARAMETER;
+
+        if (!Input->ProcessId || !Input->BaseAddress || !Input->Size)
+            return STATUS_INVALID_PARAMETER;
+
+        if (AddressRange::IsKernelAddress(reinterpret_cast<PVOID>(Input->BaseAddress)))
+            return STATUS_INVALID_ADDRESS;
+
+        HANDLE SecureHandle = NULL;
+        BOOLEAN Status = FALSE;
+        if (reinterpret_cast<HANDLE>(Input->ProcessId) == PsGetCurrentProcessId()) {
+            Status = VirtualMemory::SecureMemory(
+                reinterpret_cast<PVOID>(Input->BaseAddress),
+                Input->Size,
+                Input->ProtectRights,
+                &SecureHandle
+            );
+        } else {
+            PEPROCESS Process = Processes::Descriptors::GetEPROCESS(reinterpret_cast<HANDLE>(Input->ProcessId));
+            if (!Process) return STATUS_NOT_FOUND;
+            Status = VirtualMemory::SecureProcessMemory(
+                Process,
+                reinterpret_cast<PVOID>(Input->BaseAddress),
+                Input->Size,
+                Input->ProtectRights,
+                &SecureHandle
+            );
+            ObDereferenceObject(Process);
+        }
+
+        if (!Status || !SecureHandle) return STATUS_UNSUCCESSFUL;
+
+        *ResponseLength = RequestInfo->OutputBufferSize;
+        Output->SecureHandle = reinterpret_cast<WdkTypes::HANDLE>(SecureHandle);
+        return STATUS_SUCCESS;
+    }
+
+    NTSTATUS FASTCALL KbUnsecureVirtualMemory(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_UNSECURE_VIRTUAL_MEMORY_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_UNSECURE_VIRTUAL_MEMORY_IN>(RequestInfo->InputBuffer);
+        if (!Input || !Input->ProcessId || !Input->SecureHandle) return STATUS_INVALID_PARAMETER;
+
+        if (reinterpret_cast<HANDLE>(Input->ProcessId) == PsGetCurrentProcessId()) {
+            VirtualMemory::UnsecureMemory(reinterpret_cast<HANDLE>(Input->SecureHandle));
+        } else {
+            PEPROCESS Process = Processes::Descriptors::GetEPROCESS(reinterpret_cast<HANDLE>(Input->ProcessId));
+            if (!Process) return STATUS_NOT_FOUND;
+            VirtualMemory::UnsecureProcessMemory(
+                Process,
+                reinterpret_cast<HANDLE>(Input->SecureHandle)
+            );
+            ObDereferenceObject(Process);
+        }
+
+        return STATUS_SUCCESS;
+    }
+
     NTSTATUS FASTCALL KbReadProcessMemory(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
     {
         UNREFERENCED_PARAMETER(ResponseLength);
@@ -1032,42 +1104,24 @@ namespace
 
         if (!SecureStatus) return STATUS_UNSUCCESSFUL;
 
-        Mdl::MAPPING_INFO Mapping = {};
-        NTSTATUS Status = Mdl::MapMemory(
-            &Mapping,
-            NULL,
-            NULL,
-            reinterpret_cast<PVOID>(Input->RoutineName),
-            Input->SizeOfBufferInBytes,
-            KernelMode,
-            IoReadAccess
-        );
-
-        if (!NT_SUCCESS(Status)) {
-            VirtualMemory::UnsecureMemory(hSecure);
-            return STATUS_NOT_MAPPED_VIEW;
-        }
-
         LPWSTR RoutineNameKernelBuffer = 
             VirtualMemory::AllocWideString(Input->SizeOfBufferInBytes / sizeof(WCHAR));
 
         if (!RoutineNameKernelBuffer) {
-            Mdl::UnmapMemory(&Mapping);
             VirtualMemory::UnsecureMemory(hSecure);
             return STATUS_MEMORY_NOT_ALLOCATED;
         }
 
+        NTSTATUS Status = STATUS_SUCCESS;
         PVOID KernelAddress = NULL;
         __try {
-            RtlCopyMemory(RoutineNameKernelBuffer, Mapping.BaseAddress, Input->SizeOfBufferInBytes);
+            RtlCopyMemory(RoutineNameKernelBuffer, reinterpret_cast<PVOID>(Input->RoutineName), Input->SizeOfBufferInBytes);
             KernelAddress = Importer::GetKernelProcAddress(RoutineNameKernelBuffer);
-            Status = STATUS_SUCCESS;
         } __except (EXCEPTION_EXECUTE_HANDLER) {
             Status = STATUS_UNSUCCESSFUL;
         }
 
         VirtualMemory::FreePoolMemory(RoutineNameKernelBuffer);
-        Mdl::UnmapMemory(&Mapping);
         VirtualMemory::UnsecureMemory(hSecure);
 
         if (NT_SUCCESS(Status)) {
@@ -1171,19 +1225,21 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 38 */ KbCloseHandle,
         /* 39 */ KbAllocUserMemory,
         /* 40 */ KbFreeUserMemory,
-        /* 41 */ KbReadProcessMemory,
-        /* 42 */ KbWriteProcessMemory,
-        /* 43 */ KbSuspendProcess,
-        /* 44 */ KbResumeProcess,
-        /* 45 */ KbCreateUserThread,
-        /* 46 */ KbCreateSystemThread,
-        /* 47 */ KbRaiseIopl,
-        /* 48 */ KbResetIopl,
+        /* 41 */ KbSecureVirtualMemory,
+        /* 42 */ KbUnsecureVirtualMemory,
+        /* 43 */ KbReadProcessMemory,
+        /* 44 */ KbWriteProcessMemory,
+        /* 45 */ KbSuspendProcess,
+        /* 46 */ KbResumeProcess,
+        /* 47 */ KbCreateUserThread,
+        /* 48 */ KbCreateSystemThread,
+        /* 49 */ KbRaiseIopl,
+        /* 50 */ KbResetIopl,
 
         // Stuff u kn0w:
-        /* 49 */ KbGetKernelProcAddress,
-        /* 50 */ KbStallExecutionProcessor,
-        /* 51 */ KbBugCheck,
+        /* 51 */ KbGetKernelProcAddress,
+        /* 52 */ KbStallExecutionProcessor,
+        /* 53 */ KbBugCheck,
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;

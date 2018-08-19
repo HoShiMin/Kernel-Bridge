@@ -61,3 +61,9 @@ public:
     ProcessesTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); PrintStatus(); }
     bool RunTest() override;
 };
+
+class StuffTest : KernelTests {
+public:
+    StuffTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); PrintStatus(); }
+    bool RunTest() override;
+};

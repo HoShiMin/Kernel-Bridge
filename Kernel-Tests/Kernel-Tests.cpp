@@ -222,3 +222,17 @@ bool ProcessesTest::RunTest() {
 
     return static_cast<bool>(TestStatus);
 }
+
+bool StuffTest::RunTest() {
+    using namespace Stuff;
+
+    BOOL TestStatus = TRUE;
+    BOOL Status = FALSE;
+
+    WdkTypes::PVOID KernelAddress = NULL;
+    TestStatus &= Status = KbGetKernelProcAddress(L"KeStallExecutionProcessor", &KernelAddress);
+    if (!Status) Log(L"KbGetKernelProcAddress == FALSE");
+    if (!KernelAddress) Log(L"KernelAddress == NULL");
+
+    return static_cast<bool>(Status);
+}

@@ -62,19 +62,21 @@ namespace Ctls {
         /* 38 */ KbCloseHandle,
         /* 39 */ KbAllocUserMemory,
         /* 40 */ KbFreeUserMemory,
-        /* 41 */ KbReadProcessMemory,
-        /* 42 */ KbWriteProcessMemory,
-        /* 43 */ KbSuspendProcess,
-        /* 44 */ KbResumeProcess,
-        /* 45 */ KbCreateUserThread,
-        /* 46 */ KbCreateSystemThread,
-        /* 47 */ KbRaiseIopl,
-        /* 48 */ KbResetIopl,
+        /* 41 */ KbSecureVirtualMemory,
+        /* 42 */ KbUnsecureVirtualMemory,
+        /* 43 */ KbReadProcessMemory,
+        /* 44 */ KbWriteProcessMemory,
+        /* 45 */ KbSuspendProcess,
+        /* 46 */ KbResumeProcess,
+        /* 47 */ KbCreateUserThread,
+        /* 48 */ KbCreateSystemThread,
+        /* 49 */ KbRaiseIopl,
+        /* 50 */ KbResetIopl,
 
         // Stuff u kn0w:
-        /* 49 */ KbGetKernelProcAddress,
-        /* 50 */ KbStallExecutionProcessor,
-        /* 51 */ KbBugCheck,
+        /* 51 */ KbGetKernelProcAddress,
+        /* 52 */ KbStallExecutionProcessor,
+        /* 53 */ KbBugCheck,
     };
 }
 
@@ -380,6 +382,22 @@ DECLARE_STRUCT(KB_ALLOC_USER_MEMORY_OUT, {
 DECLARE_STRUCT(KB_FREE_USER_MEMORY_IN, {
     UINT64 ProcessId;
     WdkTypes::PVOID BaseAddress;
+});
+
+DECLARE_STRUCT(KB_SECURE_VIRTUAL_MEMORY_IN, {
+    ULONG ProcessId;
+    ULONG ProtectRights;
+    WdkTypes::PVOID BaseAddress;
+    ULONG Size;
+});
+
+DECLARE_STRUCT(KB_SECURE_VIRTUAL_MEMORY_OUT, {
+    WdkTypes::HANDLE SecureHandle;    
+});
+
+DECLARE_STRUCT(KB_UNSECURE_VIRTUAL_MEMORY_IN, {
+    WdkTypes::HANDLE SecureHandle; 
+    ULONG ProcessId;
 });
 
 DECLARE_STRUCT(KB_READ_WRITE_PROCESS_MEMORY_IN, {

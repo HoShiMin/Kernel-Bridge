@@ -55,7 +55,12 @@ EXPORTS
 	KbCreateSystemThread
 	KbAllocUserMemory
 	KbFreeUserMemory
+	KbSecureVirtualMemory
+	KbUnsecureVirtualMemory
 	KbReadProcessMemory
 	KbWriteProcessMemory
 	KbSuspendProcess
 	KbResumeProcess
+	KbGetKernelProcAddress
+	KbStallExecutionProcessor
+	KbBugCheck
