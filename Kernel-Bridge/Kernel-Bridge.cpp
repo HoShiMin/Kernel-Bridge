@@ -226,7 +226,6 @@ _Dispatch_type_(IRP_MJ_DEVICE_CONTROL)
 static NTSTATUS DriverControl(_In_ PDEVICE_OBJECT DeviceObject, _In_ PIRP Irp)
 {
     UNREFERENCED_PARAMETER(DeviceObject);
-    PAGED_CODE();
 
     PIO_STACK_LOCATION IrpStack = IoGetCurrentIrpStackLocation(Irp);
 
