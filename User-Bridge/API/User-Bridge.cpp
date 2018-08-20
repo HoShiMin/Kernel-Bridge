@@ -630,7 +630,12 @@ namespace Processes {
 namespace Stuff {
     BOOL WINAPI KbGetKernelProcAddress(LPCWSTR RoutineName, WdkTypes::PVOID* KernelAddress) {
         if (!RoutineName || !KernelAddress) return FALSE;
-        SIZE_T NameLength = wcslen(RoutineName);
+        SIZE_T NameLength = 0;
+        __try {
+            NameLength = wcslen(RoutineName);
+        } __except(EXCEPTION_EXECUTE_HANDLER) {
+            return FALSE;
+        }
         if (NameLength > 64) {
             SetLastError(ERROR_INVALID_NAME);
             return FALSE; // Very long name, seems like invalid data buffer
