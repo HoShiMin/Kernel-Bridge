@@ -22,6 +22,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="API\PEUtils">
+      <UniqueIdentifier>{3d4daa8d-6ad7-4f20-99ef-5bf36c120bb7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="API\DriversUtils.h">
@@ -33,6 +36,15 @@
     <ClInclude Include="..\SharedTypes\CtlTypes.h">
       <Filter>SharedTypes</Filter>
     </ClInclude>
+    <ClInclude Include="API\PEUtils\PEAnalyzer.h">
+      <Filter>API\PEUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="API\PEUtils\PELoader.h">
+      <Filter>API\PEUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="API\Rtl-Bridge.h">
+      <Filter>API</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="API\DriversUtils.cpp">
@@ -43,6 +55,15 @@
     </ClCompile>
     <ClCompile Include="Main.cpp">
       <Filter>Main\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="API\PEUtils\PEAnalyzer.cpp">
+      <Filter>API\PEUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="API\PEUtils\PELoader.cpp">
+      <Filter>API\PEUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="API\Rtl-Bridge.cpp">
+      <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

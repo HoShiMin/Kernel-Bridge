@@ -1159,6 +1159,98 @@ namespace
 
         KeBugCheck(Input->Status);
     }
+
+    NTSTATUS FASTCALL KbCreateDriver(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_CREATE_DRIVER_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_CREATE_DRIVER_IN>(RequestInfo->InputBuffer);
+        if (!Input) return STATUS_INVALID_PARAMETER;
+
+        using _DriverEntry = NTSTATUS(NTAPI*)(
+            _In_ PDRIVER_OBJECT DriverObject,
+            _In_ PUNICODE_STRING RegistryPath
+        );
+
+        HANDLE hSecure = NULL;
+        BOOLEAN SecureStatus = VirtualMemory::SecureMemory(
+            reinterpret_cast<PVOID>(Input->DriverName),
+            Input->DriverNameSizeInBytes,
+            PAGE_READONLY,
+            &hSecure
+        );
+
+        if (!SecureStatus) return STATUS_UNSUCCESSFUL;
+
+        LPWSTR DriverNameKernelBuffer = 
+            VirtualMemory::AllocWideString(Input->DriverNameSizeInBytes / sizeof(WCHAR));
+
+        if (!DriverNameKernelBuffer) {
+            VirtualMemory::UnsecureMemory(hSecure);
+            return STATUS_MEMORY_NOT_ALLOCATED;
+        }
+
+        NTSTATUS Status = STATUS_SUCCESS;
+        __try {
+            RtlCopyMemory(DriverNameKernelBuffer, reinterpret_cast<PVOID>(Input->DriverName), Input->DriverNameSizeInBytes);
+            
+            using _IoCreateDriver = NTSTATUS(NTAPI*)(PUNICODE_STRING DriverName, _DriverEntry EntryPoint);
+            
+            using SystemThreadParams = struct {
+                LPCWSTR Name;
+                _DriverEntry DriverEntry;
+                _IoCreateDriver IoCreateDriver;
+                NTSTATUS Status;
+                KEVENT Event;
+            };
+
+            SystemThreadParams Args;
+            Args.Name = DriverNameKernelBuffer;
+            Args.DriverEntry = reinterpret_cast<_DriverEntry>(Input->DriverEntry);
+            Args.IoCreateDriver = static_cast<_IoCreateDriver>(Importer::GetKernelProcAddress(L"IoCreateDriver"));
+            if (!Args.IoCreateDriver) {
+                VirtualMemory::FreePoolMemory(DriverNameKernelBuffer);
+                VirtualMemory::UnsecureMemory(hSecure);
+                return STATUS_NOT_IMPLEMENTED;
+            }
+
+            KeInitializeEvent(&Args.Event, NotificationEvent, FALSE);
+
+            HANDLE hThread = NULL;
+            Processes::Threads::CreateSystemThread([](PVOID Argument) -> VOID {
+                    auto Args = reinterpret_cast<SystemThreadParams*>(Argument);
+                    UNICODE_STRING DriverName;
+                    RtlInitUnicodeString(&DriverName, Args->Name);
+                    __try {
+                        Args->Status = Args->IoCreateDriver(&DriverName, Args->DriverEntry);
+                    } __except (EXCEPTION_EXECUTE_HANDLER) {
+                        Args->Status = STATUS_UNSUCCESSFUL;
+                    }
+                    KeSetEvent(&Args->Event, LOW_REALTIME_PRIORITY, FALSE);
+                    PsTerminateSystemThread(Args->Status);
+                }, 
+                &Args,
+                &hThread
+            );
+
+            // Waiting for system thread completes:
+            KeWaitForSingleObject(&Args.Event, UserRequest, KernelMode, FALSE, NULL);
+            ZwClose(hThread);
+
+            Status = Args.Status;
+
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            Status = STATUS_UNSUCCESSFUL;
+        }
+
+        VirtualMemory::FreePoolMemory(DriverNameKernelBuffer);
+        VirtualMemory::UnsecureMemory(hSecure);        
+
+        return Status;
+    }
 }
 
 NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
@@ -1240,6 +1332,7 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 51 */ KbGetKernelProcAddress,
         /* 52 */ KbStallExecutionProcessor,
         /* 53 */ KbBugCheck,
+        /* 54 */ KbCreateDriver,
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;

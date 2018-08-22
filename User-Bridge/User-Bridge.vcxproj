@@ -72,19 +72,19 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>../SharedTypes;$(IncludePath)</IncludePath>
+    <IncludePath>./API/PEUtils;./API;../SharedTypes;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>../SharedTypes;$(IncludePath)</IncludePath>
+    <IncludePath>./API/PEUtils;./API;../SharedTypes;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>../SharedTypes;$(IncludePath)</IncludePath>
+    <IncludePath>./API/PEUtils;./API;../SharedTypes;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>../SharedTypes;$(IncludePath)</IncludePath>
+    <IncludePath>./API/PEUtils;./API;../SharedTypes;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -165,10 +165,16 @@
   <ItemGroup>
     <ClInclude Include="..\SharedTypes\CtlTypes.h" />
     <ClInclude Include="API\DriversUtils.h" />
+    <ClInclude Include="API\PEUtils\PEAnalyzer.h" />
+    <ClInclude Include="API\PEUtils\PELoader.h" />
+    <ClInclude Include="API\Rtl-Bridge.h" />
     <ClInclude Include="API\User-Bridge.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="API\DriversUtils.cpp" />
+    <ClCompile Include="API\PEUtils\PEAnalyzer.cpp" />
+    <ClCompile Include="API\PEUtils\PELoader.cpp" />
+    <ClCompile Include="API\Rtl-Bridge.cpp" />
     <ClCompile Include="API\User-Bridge.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>

@@ -193,4 +193,5 @@ namespace Stuff {
     BOOL WINAPI KbGetKernelProcAddress(LPCWSTR RoutineName, WdkTypes::PVOID* KernelAddress);
     BOOL WINAPI KbStallExecutionProcessor(ULONG Microseconds);
     BOOL WINAPI KbBugCheck(ULONG Status);
+    BOOL WINAPI KbCreateDriver(LPCWSTR DriverName, WdkTypes::PVOID DriverEntry);
 }

@@ -41,5 +41,14 @@
     <ClCompile Include="..\User-Bridge\API\User-Bridge.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="..\User-Bridge\API\Rtl-Bridge.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="..\User-Bridge\API\PEUtils\PELoader.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="..\User-Bridge\API\PEUtils\PEAnalyzer.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

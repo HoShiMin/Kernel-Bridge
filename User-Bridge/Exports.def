@@ -64,3 +64,5 @@ EXPORTS
 	KbGetKernelProcAddress
 	KbStallExecutionProcessor
 	KbBugCheck
+	KbCreateDriver
+	KbMapDriver

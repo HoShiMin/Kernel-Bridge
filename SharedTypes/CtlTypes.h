@@ -77,6 +77,7 @@ namespace Ctls {
         /* 51 */ KbGetKernelProcAddress,
         /* 52 */ KbStallExecutionProcessor,
         /* 53 */ KbBugCheck,
+        /* 54 */ KbCreateDriver
     };
 }
 
@@ -444,4 +445,10 @@ DECLARE_STRUCT(KB_STALL_EXECUTION_PROCESSOR_IN, {
 
 DECLARE_STRUCT(KB_BUG_CHECK_IN, {
     ULONG Status;
+});
+
+DECLARE_STRUCT(KB_CREATE_DRIVER_IN, {
+    WdkTypes::PVOID DriverEntry;
+    WdkTypes::LPCWSTR DriverName;
+    ULONG DriverNameSizeInBytes;
 });

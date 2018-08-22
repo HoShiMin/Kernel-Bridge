@@ -660,4 +660,23 @@ namespace Stuff {
         Input.Status = Status;
         return KbSendRequest(Ctls::KbBugCheck, &Input, sizeof(Input));
     }
+
+    BOOL WINAPI KbCreateDriver(LPCWSTR DriverName, WdkTypes::PVOID DriverEntry)
+    {
+        KB_CREATE_DRIVER_IN Input = {};
+        SIZE_T NameLength = 0;
+        __try {
+            NameLength = wcslen(DriverName);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            return FALSE;
+        }
+        if (NameLength > 64) {
+            SetLastError(ERROR_INVALID_NAME);
+            return FALSE; // Very long name, seems like invalid data buffer
+        }
+        Input.DriverEntry = DriverEntry;
+        Input.DriverName = reinterpret_cast<WdkTypes::PVOID>(DriverName);
+        Input.DriverNameSizeInBytes = static_cast<ULONG>(NameLength) * sizeof(WCHAR); // We're sure that Length <= 64
+        return KbSendRequest(Ctls::KbCreateDriver, &Input, sizeof(Input));
+    }
 }
