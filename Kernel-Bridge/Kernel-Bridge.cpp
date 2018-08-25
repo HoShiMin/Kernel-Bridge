@@ -6,6 +6,8 @@
 #include "Kernel-Bridge/IOCTLHandlers.h"
 #include "Kernel-Bridge/IOCTLs.h"
 
+#include "API/CppSupport.h"
+
 #pragma prefast(disable:__WARNING_ENCODE_MEMBER_FUNCTION_POINTER, "Not valid for kernel mode drivers")
 
 namespace {
@@ -113,6 +115,8 @@ NTSTATUS DriverEntry(
     _In_ PUNICODE_STRING RegistryPath
 ) {
     UNREFERENCED_PARAMETER(RegistryPath);
+
+    __crt_init(); // Global objects initialization
 
     DriverObject->DriverUnload = reinterpret_cast<PDRIVER_UNLOAD>(DriverUnload);
     DriverObject->MajorFunction[IRP_MJ_CREATE]  = DriverStub;
@@ -258,7 +262,7 @@ static NTSTATUS DriverControl(_In_ PDEVICE_OBJECT DeviceObject, _In_ PIRP Irp)
     }
     default: {
         Irp->IoStatus.Status = STATUS_NOT_SUPPORTED;
-        KdPrint(("[Kernel-Bridge] Unknown method of IRP!\r\n"));
+        KdPrint(("[Kernel-Bridge]: Unknown method of IRP!\r\n"));
     }
     }
 
@@ -283,9 +287,14 @@ static NTSTATUS DriverUnload(_In_ PDRIVER_OBJECT DriverObject)
 {
     UNREFERENCED_PARAMETER(DriverObject);
     PAGED_CODE();
+
+    __crt_deinit(); // Global objects destroying
+
     UNICODE_STRING DeviceLink;
     RtlInitUnicodeString(&DeviceLink, DeviceLinkPath);
     IoDeleteSymbolicLink(&DeviceLink);
     IoDeleteDevice(DeviceInstance);
+    
+    KdPrint(("[Kernel-Bridge]: Successfully unloaded!\r\n"));
     return STATUS_SUCCESS;
 }

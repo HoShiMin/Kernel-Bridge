@@ -1,41 +1,37 @@
 using _PVFV = void (__cdecl *)(void); // PVFV = Pointer to Void Func(Void)
 using _PIFV = int  (__cdecl *)(void); // PIFV = Pointer to Int Func(Void)
-using _PVFI = void (__cdecl *)(int);  // PVFI = Pointer to Void Func(Int)
+
+constexpr int max_destructors_count = 64;
+static _PVFV onexitarray[max_destructors_count] = {};
+static _PVFV *onexitbegin = nullptr, *onexitend = nullptr;
 
 // C initializers:
-#pragma data_seg(".CRT$XIA")
+#pragma section(".CRT$XIA", long, read)
 __declspec(allocate(".CRT$XIA")) _PIFV __xi_a[] = { 0 };
-#pragma data_seg(".CRT$XIZ")
+#pragma section(".CRT$XIZ", long, read)
 __declspec(allocate(".CRT$XIZ")) _PIFV __xi_z[] = { 0 };
 
 // C++ initializers:
-#pragma data_seg(".CRT$XCA")
+#pragma section(".CRT$XCA", long, read)
 __declspec(allocate(".CRT$XCA")) _PVFV __xc_a[] = { 0 };
-#pragma data_seg(".CRT$XCZ")
+#pragma section(".CRT$XCZ", long, read)
 __declspec(allocate(".CRT$XCZ")) _PVFV __xc_z[] = { 0 };
 
 // C pre-terminators:
-#pragma data_seg(".CRT$XPA")
+#pragma section(".CRT$XPA", long, read)
 __declspec(allocate(".CRT$XPA")) _PVFV __xp_a[] = { 0 };
-#pragma data_seg(".CRT$XPZ")
+#pragma section(".CRT$XPZ", long, read)
 __declspec(allocate(".CRT$XPZ")) _PVFV __xp_z[] = { 0 };
 
 // C terminators:
-#pragma data_seg(".CRT$XTA")
+#pragma section(".CRT$XTA", long, read)
 __declspec(allocate(".CRT$XTA")) _PVFV __xt_a[] = { 0 };
-#pragma data_seg(".CRT$XTZ")
+#pragma section(".CRT$XTZ", long, read)
 __declspec(allocate(".CRT$XTZ")) _PVFV __xt_z[] = { 0 };
 
 #pragma data_seg()
 
-#ifdef _AMD64_
-#pragma comment(linker, "/merge:.CRT=.data")
-#elif _X86_
 #pragma comment(linker, "/merge:.CRT=.rdata")
-#endif
-
-static _PVFV onexitarray[32];
-static _PVFV *onexitbegin, *onexitend;
 
 extern "C" int __cdecl __init_on_exit_array() {
     onexitend = onexitbegin = onexitarray;
@@ -43,10 +39,14 @@ extern "C" int __cdecl __init_on_exit_array() {
     return 0;
 }
 
-#pragma data_seg(".CRT$XIB")      // run onexitinit automatically
-__declspec(allocate(".CRT$XIB")) static _PIFV pinit = __init_on_exit_array;
-#pragma data_seg()
-
+extern "C" int __cdecl atexit(_PVFV fn) {
+    // ToDo: replace with dynamically allocated list of destructors!
+    if (onexitend > &onexitarray[max_destructors_count - 1]) 
+        return 1; // Not enough space
+    *onexitend = fn;
+    onexitend++;
+    return 0;
+}
 
 int __cdecl _purecall() {
     // It's abnormal execution, so we should to detect it:
@@ -75,6 +75,7 @@ static int execute_pifv_array(_PIFV* begin, _PIFV* end) {
 }
 
 extern "C" int __crt_init() {
+    __init_on_exit_array();
     int result = execute_pifv_array(__xi_a, __xi_z);
     if (result) return result;
     execute_pvfv_array(__xc_a, __xc_z);
