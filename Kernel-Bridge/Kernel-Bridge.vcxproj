@@ -23,6 +23,7 @@
     <ClCompile Include="API\CPU.cpp" />
     <ClCompile Include="API\GetProcAddress.cpp" />
     <ClCompile Include="API\IO.cpp" />
+    <ClCompile Include="API\KernelShells.cpp" />
     <ClCompile Include="API\MemoryUtils.cpp" />
     <ClCompile Include="API\OSVersion.cpp" />
     <ClCompile Include="API\ProcessesUtils.cpp" />
@@ -169,6 +170,7 @@
     <ClInclude Include="API\CPU.h" />
     <ClInclude Include="API\GetProcAddress.h" />
     <ClInclude Include="API\IO.h" />
+    <ClInclude Include="API\KernelShells.h" />
     <ClInclude Include="API\Locks.h" />
     <ClInclude Include="API\MemoryUtils.h" />
     <ClInclude Include="API\OSVersion.h" />

@@ -203,6 +203,7 @@ namespace Processes {
 
         using _KeTestAlertThread = BOOLEAN(NTAPI*)(KPROCESSOR_MODE AlertMode);
 
+        _IRQL_requires_max_(APC_LEVEL)
         NTSTATUS QueueUserApc(PETHREAD Thread, PKNORMAL_ROUTINE NormalRoutine, PVOID Argument);
     }
 }

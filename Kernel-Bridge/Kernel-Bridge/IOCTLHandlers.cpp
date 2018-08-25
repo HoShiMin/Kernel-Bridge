@@ -8,6 +8,7 @@
 #include "../API/IO.h"
 #include "../API/CPU.h"
 #include "../API/GetProcAddress.h"
+#include "../API/KernelShells.h"
 
 #include "IOCTLs.h"
 
@@ -1105,6 +1106,27 @@ namespace
         return STATUS_SUCCESS;
     }
 
+    NTSTATUS FASTCALL KbExecuteShellCode(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        if (
+            RequestInfo->InputBufferSize != sizeof(KB_EXECUTE_SHELL_CODE_IN) || 
+            RequestInfo->OutputBufferSize != sizeof(KB_EXECUTE_SHELL_CODE_OUT)
+        ) return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_EXECUTE_SHELL_CODE_IN>(RequestInfo->InputBuffer);
+        auto Output = static_cast<PKB_EXECUTE_SHELL_CODE_OUT>(RequestInfo->OutputBuffer);
+
+        if (!Input || !Output) return STATUS_INVALID_PARAMETER;
+
+        Output->Result = KernelShells::ExecuteShellCode(
+            reinterpret_cast<KernelShells::_ShellCode>(Input->Address),
+            reinterpret_cast<PVOID>(Input->Argument)
+        );
+
+        *ResponseLength = sizeof(KB_EXECUTE_SHELL_CODE_OUT);
+        return STATUS_SUCCESS;
+    }
+
     NTSTATUS FASTCALL KbGetKernelProcAddress(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
     {
         if (
@@ -1354,10 +1376,11 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 51 */ KbResetIopl,
 
         // Stuff u kn0w:
-        /* 52 */ KbGetKernelProcAddress,
-        /* 53 */ KbStallExecutionProcessor,
-        /* 54 */ KbBugCheck,
-        /* 55 */ KbCreateDriver
+        /* 52 */ KbExecuteShellCode,
+        /* 53 */ KbGetKernelProcAddress,
+        /* 54 */ KbStallExecutionProcessor,
+        /* 55 */ KbBugCheck,
+        /* 56 */ KbCreateDriver
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;

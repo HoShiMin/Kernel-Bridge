@@ -71,6 +71,9 @@
     <ClCompile Include="Kernel-Bridge\IOCTLHandlers.cpp">
       <Filter>Kernel-Bridge</Filter>
     </ClCompile>
+    <ClCompile Include="API\KernelShells.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h">
@@ -111,6 +114,9 @@
     </ClInclude>
     <ClInclude Include="..\SharedTypes\CtlTypes.h">
       <Filter>SharedTypes</Filter>
+    </ClInclude>
+    <ClInclude Include="API\KernelShells.h">
+      <Filter>API</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

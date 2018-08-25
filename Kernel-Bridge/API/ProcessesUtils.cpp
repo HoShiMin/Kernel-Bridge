@@ -433,6 +433,7 @@ namespace Processes {
     }
 
     namespace Apc {
+        _IRQL_requires_max_(APC_LEVEL)
         NTSTATUS QueueUserApc(PETHREAD Thread, PKNORMAL_ROUTINE NormalRoutine, PVOID Argument) {
 
             auto KeInitializeApc  = static_cast<_KeInitializeApc>(Importer::GetKernelProcAddress(L"KeInitializeApc"));

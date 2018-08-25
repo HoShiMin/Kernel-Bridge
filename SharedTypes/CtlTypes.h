@@ -75,10 +75,11 @@ namespace Ctls {
         /* 51 */ KbResetIopl,
 
         // Stuff u kn0w:
-        /* 52 */ KbGetKernelProcAddress,
-        /* 53 */ KbStallExecutionProcessor,
-        /* 54 */ KbBugCheck,
-        /* 55 */ KbCreateDriver
+        /* 52 */ KbExecuteShellCode,
+        /* 53 */ KbGetKernelProcAddress,
+        /* 54 */ KbStallExecutionProcessor,
+        /* 55 */ KbBugCheck,
+        /* 56 */ KbCreateDriver
     };
 }
 
@@ -435,6 +436,15 @@ DECLARE_STRUCT(KB_QUEUE_USER_APC_IN, {
     UINT64 ThreadId;
     WdkTypes::PVOID ApcProc;
     WdkTypes::PVOID Argument;
+});
+
+DECLARE_STRUCT(KB_EXECUTE_SHELL_CODE_IN, {
+    WdkTypes::PVOID Address;
+    WdkTypes::PVOID Argument;
+});
+
+DECLARE_STRUCT(KB_EXECUTE_SHELL_CODE_OUT, {
+    ULONG Result;    
 });
 
 DECLARE_STRUCT(KB_GET_KERNEL_PROC_ADDRESS_IN, {

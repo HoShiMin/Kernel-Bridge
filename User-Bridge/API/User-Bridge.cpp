@@ -637,6 +637,18 @@ namespace Processes {
     }
 }
 
+namespace KernelShells {
+    BOOL WINAPI KbExecuteShellCode(_ShellCode ShellCode, PVOID Argument, OUT OPTIONAL PULONG Result) {
+        KB_EXECUTE_SHELL_CODE_IN Input = {};
+        KB_EXECUTE_SHELL_CODE_OUT Output = {};
+        Input.Address = reinterpret_cast<WdkTypes::PVOID>(ShellCode);
+        Input.Argument = reinterpret_cast<WdkTypes::PVOID>(Argument);
+        BOOL Status = KbSendRequest(Ctls::KbExecuteShellCode, &Input, sizeof(Input), &Output, sizeof(Output));
+        if (Result) *Result = Output.Result;
+        return Status;
+    }
+}
+
 namespace Stuff {
     BOOL WINAPI KbGetKernelProcAddress(LPCWSTR RoutineName, WdkTypes::PVOID* KernelAddress) {
         if (!RoutineName || !KernelAddress) return FALSE;

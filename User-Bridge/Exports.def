@@ -62,6 +62,7 @@ EXPORTS
 	KbWriteProcessMemory
 	KbSuspendProcess
 	KbResumeProcess
+	KbExecuteShellCode
 	KbGetKernelProcAddress
 	KbStallExecutionProcessor
 	KbBugCheck

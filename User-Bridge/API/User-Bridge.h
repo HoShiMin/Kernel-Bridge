@@ -194,6 +194,18 @@ namespace Processes {
     }
 }
 
+namespace KernelShells {
+    using _GetKernelProcAddress = PVOID(WINAPI*)(LPCWSTR RoutineName);
+    using _ShellCode = ULONG(WINAPI*)(
+        _GetKernelProcAddress GetKernelProcAddress, // You can obtain any function address from ntoskrnl.exe/FltMgr.sys
+        OPTIONAL IN OUT PVOID Argument
+    );
+    // Execute specified function in Ring0 
+    // into SEH-section with FPU-safe context 
+    // in context of current process:
+    BOOL WINAPI KbExecuteShellCode(_ShellCode ShellCode, PVOID Argument = NULL, OUT OPTIONAL PULONG Result = NULL);
+}
+
 namespace Stuff {
     BOOL WINAPI KbGetKernelProcAddress(LPCWSTR RoutineName, WdkTypes::PVOID* KernelAddress);
     BOOL WINAPI KbStallExecutionProcessor(ULONG Microseconds);

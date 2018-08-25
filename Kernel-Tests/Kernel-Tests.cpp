@@ -232,6 +232,23 @@ bool ProcessesTest::RunTest() {
     return static_cast<bool>(TestStatus);
 }
 
+bool ShellTest::RunTest() {
+    using namespace KernelShells;
+    ULONG Result = 1337;
+    KbExecuteShellCode(
+        [](KernelShells::_GetKernelProcAddress GetKernelProcAddress, PVOID Argument) -> ULONG {
+            ULONG Value = *static_cast<PULONG>(Argument);
+            using _KeStallExecutionProcessor = VOID(WINAPI*)(ULONG Microseconds);
+            auto Stall = reinterpret_cast<_KeStallExecutionProcessor>(GetKernelProcAddress(L"KeStallExecutionProcessor"));
+            Stall(1000000);
+            return Value == 1337 ? 10 : 0;
+        },
+        &Result,
+        &Result
+    );
+    return Result == 10;
+}
+
 bool StuffTest::RunTest() {
     using namespace Stuff;
 

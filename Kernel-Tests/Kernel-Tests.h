@@ -62,6 +62,12 @@ public:
     bool RunTest() override;
 };
 
+class ShellTest : KernelTests {
+public:
+    ShellTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); PrintStatus(); }
+    bool RunTest() override;
+};
+
 class StuffTest : KernelTests {
 public:
     StuffTest(LPCWSTR Name) : KernelTests(Name) { Passed = RunTest(); PrintStatus(); }
