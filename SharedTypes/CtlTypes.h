@@ -70,14 +70,15 @@ namespace Ctls {
         /* 46 */ KbResumeProcess,
         /* 47 */ KbCreateUserThread,
         /* 48 */ KbCreateSystemThread,
-        /* 49 */ KbRaiseIopl,
-        /* 50 */ KbResetIopl,
+        /* 49 */ KbQueueUserApc,
+        /* 50 */ KbRaiseIopl,
+        /* 51 */ KbResetIopl,
 
         // Stuff u kn0w:
-        /* 51 */ KbGetKernelProcAddress,
-        /* 52 */ KbStallExecutionProcessor,
-        /* 53 */ KbBugCheck,
-        /* 54 */ KbCreateDriver
+        /* 52 */ KbGetKernelProcAddress,
+        /* 53 */ KbStallExecutionProcessor,
+        /* 54 */ KbBugCheck,
+        /* 55 */ KbCreateDriver
     };
 }
 
@@ -428,6 +429,12 @@ DECLARE_STRUCT(KB_CREATE_SYSTEM_THREAD_IN, {
 DECLARE_STRUCT(KB_CREATE_USER_SYSTEM_THREAD_OUT, {
     WdkTypes::HANDLE hThread;
     WdkTypes::CLIENT_ID ClientId;
+});
+
+DECLARE_STRUCT(KB_QUEUE_USER_APC_IN, {
+    UINT64 ThreadId;
+    WdkTypes::PVOID ApcProc;
+    WdkTypes::PVOID Argument;
 });
 
 DECLARE_STRUCT(KB_GET_KERNEL_PROC_ADDRESS_IN, {

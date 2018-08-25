@@ -431,5 +431,90 @@ namespace Processes {
             return OperateProcessMemory(Process, BaseAddress, Buffer, Size, MemWrite);
         }
     }
+
+    namespace Apc {
+        NTSTATUS QueueUserApc(PETHREAD Thread, PKNORMAL_ROUTINE NormalRoutine, PVOID Argument) {
+
+            auto KeInitializeApc  = static_cast<_KeInitializeApc>(Importer::GetKernelProcAddress(L"KeInitializeApc"));
+            auto KeInsertQueueApc = static_cast<_KeInsertQueueApc>(Importer::GetKernelProcAddress(L"KeInsertQueueApc"));
+
+            if (!KeInitializeApc || !KeInsertQueueApc) return STATUS_NOT_IMPLEMENTED;
+
+            // Initializing user APC:
+            auto UserApc = static_cast<PKAPC>(VirtualMemory::AllocFromPool(sizeof(KAPC)));
+            KeInitializeApc(
+                UserApc, 
+                Thread, 
+                OriginalApcEnvironment, 
+                [](
+                    PRKAPC Apc,
+                    PKNORMAL_ROUTINE NormalRoutine,
+                    PVOID NormalContext,
+                    PVOID SystemArgument1,
+                    PVOID SystemArgument2                    
+                ) -> VOID {
+                    UNREFERENCED_PARAMETER(SystemArgument1);
+                    UNREFERENCED_PARAMETER(SystemArgument2);
+
+                    if (PsIsThreadTerminating(PsGetCurrentThread())) return;
+                    
+                    // Fixing APC to Wow64-processes:
+                    using _PsGetCurrentProcessWow64Process = PEPROCESS(NTAPI*)();
+                    auto GetWow64Process = static_cast<_PsGetCurrentProcessWow64Process>(Importer::GetKernelProcAddress(L"PsGetCurrentProcessWow64Process"));
+                    if (!GetWow64Process || GetWow64Process()) {
+                        PsWrapApcWow64Thread(static_cast<PVOID*>(NormalContext), reinterpret_cast<PVOID*>(NormalRoutine));
+                    }
+
+                    VirtualMemory::FreePoolMemory(Apc);
+                },
+                NULL,
+                NormalRoutine,
+                UserMode,
+                Argument
+            );
+
+            // Enforcing delivery of user APCs:
+            auto KernelApc = static_cast<PKAPC>(VirtualMemory::AllocFromPool(sizeof(KAPC)));
+            KeInitializeApc(
+                KernelApc,
+                Thread,
+                OriginalApcEnvironment,
+                [](
+                    PRKAPC Apc,
+                    PKNORMAL_ROUTINE NormalRoutine,
+                    PVOID NormalContext,
+                    PVOID SystemArgument1,
+                    PVOID SystemArgument2  
+                ) -> VOID {
+                    UNREFERENCED_PARAMETER(NormalRoutine);
+                    UNREFERENCED_PARAMETER(NormalContext);
+                    UNREFERENCED_PARAMETER(SystemArgument1);
+                    UNREFERENCED_PARAMETER(SystemArgument2);
+
+                    // Enforcing all user APCs delivery:
+                    auto KeTestAlertThread = static_cast<_KeTestAlertThread>(Importer::GetKernelProcAddress(L"KeTestAlertThread"));
+                    if (KeTestAlertThread) KeTestAlertThread(UserMode);
+
+                    VirtualMemory::FreePoolMemory(Apc);
+                },
+                NULL,
+                NULL,
+                KernelMode,
+                NULL
+            );
+
+            if (KeInsertQueueApc(UserApc, NULL, NULL, KernelMode)) {
+                if (!KeInsertQueueApc(KernelApc, NULL, NULL, KernelMode)) {
+                    VirtualMemory::FreePoolMemory(KernelApc);
+                    return STATUS_UNSUCCESSFUL;
+                }
+            } else {
+                VirtualMemory::FreePoolMemory(UserApc);
+                return STATUS_UNSUCCESSFUL;
+            }
+
+            return STATUS_SUCCESS;
+        }
+    }
 }
 

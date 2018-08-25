@@ -1065,6 +1065,30 @@ namespace
         return Status;
     }
 
+    NTSTATUS FASTCALL KbQueueUserApc(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_QUEUE_USER_APC_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_QUEUE_USER_APC_IN>(RequestInfo->InputBuffer);
+        if (!Input) return STATUS_INVALID_PARAMETER;
+
+        PETHREAD Thread = Processes::Descriptors::GetETHREAD(reinterpret_cast<HANDLE>(Input->ThreadId));
+        if (!Thread) return STATUS_NOT_FOUND;
+
+        NTSTATUS Status = Processes::Apc::QueueUserApc(
+            Thread,
+            reinterpret_cast<Processes::Apc::PKNORMAL_ROUTINE>(Input->ApcProc),
+            reinterpret_cast<PVOID>(Input->Argument)
+        );
+
+        ObDereferenceObject(Thread);
+
+        return Status;
+    }
+
     NTSTATUS FASTCALL KbRaiseIopl(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
     {
         UNREFERENCED_PARAMETER(RequestInfo);
@@ -1325,14 +1349,15 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 46 */ KbResumeProcess,
         /* 47 */ KbCreateUserThread,
         /* 48 */ KbCreateSystemThread,
-        /* 49 */ KbRaiseIopl,
-        /* 50 */ KbResetIopl,
+        /* 49 */ KbQueueUserApc,
+        /* 50 */ KbRaiseIopl,
+        /* 51 */ KbResetIopl,
 
         // Stuff u kn0w:
-        /* 51 */ KbGetKernelProcAddress,
-        /* 52 */ KbStallExecutionProcessor,
-        /* 53 */ KbBugCheck,
-        /* 54 */ KbCreateDriver,
+        /* 52 */ KbGetKernelProcAddress,
+        /* 53 */ KbStallExecutionProcessor,
+        /* 54 */ KbBugCheck,
+        /* 55 */ KbCreateDriver
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;

@@ -625,6 +625,16 @@ namespace Processes {
             return KbSendRequest(Ctls::KbResumeProcess, &Input, sizeof(Input));
         }
     }
+
+    namespace Apc {
+        BOOL WINAPI KbQueueUserApc(ULONG ThreadId, _ApcProc ApcProc, PVOID Argument) {
+            KB_QUEUE_USER_APC_IN Input = {};
+            Input.ThreadId = ThreadId;
+            Input.ApcProc = reinterpret_cast<WdkTypes::PVOID>(ApcProc);
+            Input.Argument = reinterpret_cast<WdkTypes::PVOID>(Argument);
+            return KbSendRequest(Ctls::KbQueueUserApc, &Input, sizeof(Input));
+        }
+    }
 }
 
 namespace Stuff {

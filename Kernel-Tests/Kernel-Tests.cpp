@@ -169,6 +169,7 @@ bool ProcessesTest::RunTest() {
     using namespace Descriptors;
     using namespace Threads;
     using namespace MemoryManagement;
+    using namespace Apc;
 
     BOOL TestStatus = true;
 
@@ -220,6 +221,14 @@ bool ProcessesTest::RunTest() {
         if (!Status) Log(L"KbFreeUserMemory == FALSE");
     }
 
+    TestStatus &= KbQueueUserApc(
+        ThreadId, 
+        [](PVOID Argument) -> VOID {
+            std::cout << "Called from APC: " << Argument << std::endl;
+        }, 
+        reinterpret_cast<PVOID>(0x12345)
+    );
+
     return static_cast<bool>(TestStatus);
 }
 
@@ -229,6 +238,7 @@ bool StuffTest::RunTest() {
     BOOL TestStatus = TRUE;
     BOOL Status = FALSE;
 
+    std::cout << "GKPA Testing" << std::endl;
     WdkTypes::PVOID KernelAddress = NULL;
     TestStatus &= Status = KbGetKernelProcAddress(L"KeStallExecutionProcessor", &KernelAddress);
     if (!Status) Log(L"KbGetKernelProcAddress == FALSE");

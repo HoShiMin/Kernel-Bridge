@@ -159,4 +159,50 @@ namespace Processes {
             ULONG Size
         );
     }
+
+    namespace Apc {
+        enum KAPC_ENVIRONMENT {
+            OriginalApcEnvironment,
+            AttachedApcEnvironment,
+            CurrentApcEnvironment,
+            InsertApcEnvironment
+        };
+
+        using PKRUNDOWN_ROUTINE = VOID(NTAPI*)(PRKAPC Apc);
+
+        using PKNORMAL_ROUTINE = VOID(NTAPI*)(
+            PVOID NormalContext,
+            PVOID SyatemArgument1,
+            PVOID SystemArgument2
+        );
+        using PKKERNEL_ROUTINE = VOID(NTAPI*)(
+            PRKAPC Apc,
+            PKNORMAL_ROUTINE NormalRoutine,
+            PVOID NormalContext,
+            PVOID SystemArgument1,
+            PVOID SystemArgument2
+        );
+
+        using _KeInitializeApc = VOID(NTAPI*)(
+            IN PRKAPC Apc,
+            IN PRKTHREAD Thread,
+            IN KAPC_ENVIRONMENT Environment,
+            IN PKKERNEL_ROUTINE KernelRoutine,
+            IN PKRUNDOWN_ROUTINE RundownRoutine OPTIONAL,
+            IN PKNORMAL_ROUTINE NormalRoutine OPTIONAL,
+            IN KPROCESSOR_MODE ApcMode OPTIONAL,
+            IN PVOID NormalContext OPTIONAL
+        );
+
+        using _KeInsertQueueApc = BOOLEAN(NTAPI*)(
+            PRKAPC Apc,
+            PVOID SystemArgument1,
+            PVOID SystemArgument2,
+            KPRIORITY PriorityBoost
+        );
+
+        using _KeTestAlertThread = BOOLEAN(NTAPI*)(KPROCESSOR_MODE AlertMode);
+
+        NTSTATUS QueueUserApc(PETHREAD Thread, PKNORMAL_ROUTINE NormalRoutine, PVOID Argument);
+    }
 }

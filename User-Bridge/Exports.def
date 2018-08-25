@@ -53,6 +53,7 @@ EXPORTS
 	KbCloseHandle
 	KbCreateUserThread
 	KbCreateSystemThread
+	KbQueueUserApc
 	KbAllocUserMemory
 	KbFreeUserMemory
 	KbSecureVirtualMemory

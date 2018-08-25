@@ -187,6 +187,11 @@ namespace Processes {
         BOOL WINAPI KbSuspendProcess(ULONG ProcessId);
         BOOL WINAPI KbResumeProcess(ULONG ProcessId);
     }
+
+    namespace Apc {
+        using _ApcProc = VOID(WINAPI*)(PVOID Argument);
+        BOOL WINAPI KbQueueUserApc(ULONG ThreadId, _ApcProc ApcProc, PVOID Argument);
+    }
 }
 
 namespace Stuff {
