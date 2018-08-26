@@ -151,6 +151,7 @@ namespace Processes {
         BOOL WINAPI KbGetEprocess(ULONG ProcessId, OUT WdkTypes::PEPROCESS* Process);
         BOOL WINAPI KbGetEthread(ULONG ThreadId, OUT WdkTypes::PETHREAD* Thread);
         BOOL WINAPI KbOpenProcess(ULONG ProcessId, OUT WdkTypes::HANDLE* hProcess);
+        BOOL WINAPI KbOpenThread(ULONG ThreadId, OUT WdkTypes::HANDLE* hThread);
         BOOL WINAPI KbDereferenceObject(WdkTypes::PVOID Object);
         BOOL WINAPI KbCloseHandle(WdkTypes::HANDLE Handle);
     }

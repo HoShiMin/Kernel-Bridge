@@ -720,6 +720,32 @@ namespace
         return STATUS_SUCCESS;
     }
 
+    NTSTATUS FASTCALL KbOpenThread(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        if (
+            RequestInfo->InputBufferSize != sizeof(KB_OPEN_THREAD_IN) || 
+            RequestInfo->OutputBufferSize != sizeof(KB_OPEN_THREAD_OUT)
+        ) return STATUS_INFO_LENGTH_MISMATCH;
+
+        if (!RequestInfo->InputBuffer || !RequestInfo->OutputBuffer)
+            return STATUS_INVALID_PARAMETER;
+
+        auto Input = static_cast<PKB_OPEN_THREAD_IN>(RequestInfo->InputBuffer);
+        auto Output = static_cast<PKB_OPEN_THREAD_OUT>(RequestInfo->OutputBuffer);
+
+        HANDLE hThread = NULL;
+        NTSTATUS Status = Processes::Descriptors::OpenThread(
+            reinterpret_cast<HANDLE>(Input->ThreadId),
+            &hThread
+        );
+
+        if (!NT_SUCCESS(Status)) return Status;
+
+        Output->hThread = reinterpret_cast<WdkTypes::HANDLE>(hThread);
+        *ResponseLength = RequestInfo->OutputBufferSize;
+        return STATUS_SUCCESS;
+    }
+
     NTSTATUS FASTCALL KbDereferenceObject(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
     {
         UNREFERENCED_PARAMETER(ResponseLength);
@@ -999,7 +1025,7 @@ namespace
             &hProcess
         );
 
-        if (!NT_SUCCESS(Status)) return STATUS_NOT_IMPLEMENTED;
+        if (!NT_SUCCESS(Status)) return STATUS_NOT_FOUND;
 
         HANDLE hThread = NULL;
         CLIENT_ID ClientId = {};
@@ -1036,23 +1062,53 @@ namespace
 
         if (!Input || !Output) return STATUS_INVALID_PARAMETER;
 
-        HANDLE hProcess;
-        NTSTATUS Status = Processes::Descriptors::OpenProcess(
-            reinterpret_cast<HANDLE>(Input->AssociatedProcessId),
-            &hProcess
-        );
+        NTSTATUS Status = STATUS_SUCCESS;
+        HANDLE hProcess = NULL;
+        if (Input->AssociatedProcessId && Input->AssociatedProcessId != 4) {
+            // Open process if process was specified and PID != System PID:
+            Status = Processes::Descriptors::OpenProcess(
+                reinterpret_cast<HANDLE>(Input->AssociatedProcessId),
+                &hProcess
+            );
+            if (!NT_SUCCESS(Status)) return STATUS_NOT_FOUND;
+        }
 
-        if (!NT_SUCCESS(Status)) return STATUS_NOT_IMPLEMENTED;
+        using ThreadParams = struct {
+            PVOID ThreadRoutine;
+            PVOID Argument;
+            KEVENT Event;
+        };
+        ThreadParams Params = {};
+        Params.ThreadRoutine = reinterpret_cast<PVOID>(Input->ThreadRoutine);
+        Params.Argument = reinterpret_cast<PVOID>(Input->Argument);
+        KeInitializeEvent(&Params.Event, NotificationEvent, FALSE);
 
         HANDLE hThread = NULL;
         CLIENT_ID ClientId = {};
         Status = Processes::Threads::CreateSystemThread(
             hProcess,
-            reinterpret_cast<PKSTART_ROUTINE>(Input->ThreadRoutine),
+            [](PVOID Argument) -> VOID {
+                auto Params = static_cast<ThreadParams*>(Argument);
+                
+                auto ThreadRoutine = static_cast<PKSTART_ROUTINE>(Params->ThreadRoutine);
+                PVOID ThreadArgument = Params->Argument;
+                KeSetEvent(&Params->Event, LOW_REALTIME_PRIORITY, FALSE);
+
+                NTSTATUS Status = STATUS_SUCCESS;
+                __try {
+                    ThreadRoutine(ThreadArgument);
+                } __except (EXCEPTION_EXECUTE_HANDLER) {
+                    Status = STATUS_UNSUCCESSFUL;
+                }
+
+                PsTerminateSystemThread(Status);
+            },
             reinterpret_cast<PVOID>(Input->Argument),
             &hThread,
             &ClientId
         );
+
+        KeWaitForSingleObject(&Params.Event, UserRequest, KernelMode, FALSE, NULL);
 
         if (NT_SUCCESS(Status)) {
             Output->hThread = reinterpret_cast<WdkTypes::HANDLE>(hThread);
@@ -1061,7 +1117,7 @@ namespace
             *ResponseLength = RequestInfo->OutputBufferSize;
         }
 
-        ZwClose(hProcess);
+        if (hProcess) ZwClose(hProcess);
 
         return Status;
     }
@@ -1359,28 +1415,29 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 34 */ KbGetEprocess,
         /* 35 */ KbGetEthread,
         /* 36 */ KbOpenProcess,
-        /* 37 */ KbDereferenceObject,
-        /* 38 */ KbCloseHandle,
-        /* 39 */ KbAllocUserMemory,
-        /* 40 */ KbFreeUserMemory,
-        /* 41 */ KbSecureVirtualMemory,
-        /* 42 */ KbUnsecureVirtualMemory,
-        /* 43 */ KbReadProcessMemory,
-        /* 44 */ KbWriteProcessMemory,
-        /* 45 */ KbSuspendProcess,
-        /* 46 */ KbResumeProcess,
-        /* 47 */ KbCreateUserThread,
-        /* 48 */ KbCreateSystemThread,
-        /* 49 */ KbQueueUserApc,
-        /* 50 */ KbRaiseIopl,
-        /* 51 */ KbResetIopl,
+        /* 37 */ KbOpenThread,
+        /* 38 */ KbDereferenceObject,
+        /* 39 */ KbCloseHandle,
+        /* 40 */ KbAllocUserMemory,
+        /* 41 */ KbFreeUserMemory,
+        /* 42 */ KbSecureVirtualMemory,
+        /* 43 */ KbUnsecureVirtualMemory,
+        /* 44 */ KbReadProcessMemory,
+        /* 45 */ KbWriteProcessMemory,
+        /* 46 */ KbSuspendProcess,
+        /* 47 */ KbResumeProcess,
+        /* 48 */ KbCreateUserThread,
+        /* 49 */ KbCreateSystemThread,
+        /* 50 */ KbQueueUserApc,
+        /* 51 */ KbRaiseIopl,
+        /* 52 */ KbResetIopl,
 
         // Stuff u kn0w:
-        /* 52 */ KbExecuteShellCode,
-        /* 53 */ KbGetKernelProcAddress,
-        /* 54 */ KbStallExecutionProcessor,
-        /* 55 */ KbBugCheck,
-        /* 56 */ KbCreateDriver
+        /* 53 */ KbExecuteShellCode,
+        /* 54 */ KbGetKernelProcAddress,
+        /* 55 */ KbStallExecutionProcessor,
+        /* 56 */ KbBugCheck,
+        /* 57 */ KbCreateDriver
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;

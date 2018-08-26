@@ -37,6 +37,33 @@ namespace Processes {
 
             return ZwOpenProcess(hProcess, AccessMask, &ObjectAttributes, &ClientId);
         }
+
+        _IRQL_requires_max_(PASSIVE_LEVEL)
+        NTSTATUS OpenThread(
+            HANDLE ThreadId, 
+            OUT PHANDLE hThread, 
+            ACCESS_MASK AccessMask, 
+            ULONG Attributes
+        ) {
+            CLIENT_ID ClientId;
+            ClientId.UniqueProcess = 0;
+            ClientId.UniqueThread  = ThreadId;
+
+            OBJECT_ATTRIBUTES ObjectAttributes;
+            InitializeObjectAttributes(&ObjectAttributes, NULL, Attributes, NULL, NULL);
+
+            using _ZwOpenThread = NTSTATUS(NTAPI*)(
+                OUT PHANDLE hThread,
+                IN ACCESS_MASK AccessMask,
+                IN POBJECT_ATTRIBUTES ObjectAttributes,
+                IN PCLIENT_ID ClientId
+            );
+
+            auto ZwOpenThread = static_cast<_ZwOpenThread>(Importer::GetKernelProcAddress(L"ZwOpenThread"));
+            if (!ZwOpenThread) return STATUS_NOT_IMPLEMENTED;
+
+            return ZwOpenThread(hThread, AccessMask, &ObjectAttributes, &ClientId);
+        }
     }
 
     namespace AddressSpace {

@@ -485,6 +485,16 @@ namespace Processes {
             return Status;
         }
 
+        BOOL WINAPI KbOpenThread(ULONG ThreadId, OUT WdkTypes::HANDLE* hThread) {
+            if (!hThread) return FALSE;
+            KB_OPEN_THREAD_IN Input = {};
+            KB_OPEN_THREAD_OUT Output = {};
+            Input.ThreadId = ThreadId;
+            BOOL Status = KbSendRequest(Ctls::KbOpenThread, &Input, sizeof(Input), &Output, sizeof(Output));
+            *hThread = Output.hThread;
+            return Status;
+        }
+
         BOOL WINAPI KbDereferenceObject(WdkTypes::PVOID Object) {
             if (!Object) return FALSE;
             KB_DEREFERENCE_OBJECT_IN Input = {};
@@ -518,7 +528,10 @@ namespace Processes {
             Input.CreateSuspended = CreateSuspended;
             BOOL Status = KbSendRequest(Ctls::KbCreateUserThread, &Input, sizeof(Input), &Output, sizeof(Output));
             if (ClientId) *ClientId = Output.ClientId;
-            if (*hThread) *hThread = Output.hThread;
+            if (*hThread) 
+                *hThread = Output.hThread;
+            else
+                Descriptors::KbCloseHandle(Output.hThread);
             return Status;
         }
 
@@ -537,7 +550,10 @@ namespace Processes {
             Input.Argument = Argument;
             BOOL Status = KbSendRequest(Ctls::KbCreateSystemThread, &Input, sizeof(Input), &Output, sizeof(Output));
             if (ClientId) *ClientId = Output.ClientId;
-            if (*hThread) *hThread = Output.hThread;
+            if (*hThread) 
+                *hThread = Output.hThread;
+            else
+                Descriptors::KbCloseHandle(Output.hThread);
             return Status;
         }
     }

@@ -18,6 +18,15 @@ namespace Processes {
             ACCESS_MASK AccessMask = PROCESS_ALL_ACCESS, 
             ULONG Attributes = OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE
         );
+
+        // Queried hThread must be closed by ZwClose:
+        _IRQL_requires_max_(PASSIVE_LEVEL)
+        NTSTATUS OpenThread(
+            HANDLE ThreadId, 
+            OUT PHANDLE hThread, 
+            ACCESS_MASK AccessMask = PROCESS_ALL_ACCESS, 
+            ULONG Attributes = OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE
+        );
     }
 
     namespace AddressSpace {

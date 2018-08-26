@@ -58,28 +58,29 @@ namespace Ctls {
         /* 34 */ KbGetEprocess,
         /* 35 */ KbGetEthread,
         /* 36 */ KbOpenProcess,
-        /* 37 */ KbDereferenceObject,
-        /* 38 */ KbCloseHandle,
-        /* 39 */ KbAllocUserMemory,
-        /* 40 */ KbFreeUserMemory,
-        /* 41 */ KbSecureVirtualMemory,
-        /* 42 */ KbUnsecureVirtualMemory,
-        /* 43 */ KbReadProcessMemory,
-        /* 44 */ KbWriteProcessMemory,
-        /* 45 */ KbSuspendProcess,
-        /* 46 */ KbResumeProcess,
-        /* 47 */ KbCreateUserThread,
-        /* 48 */ KbCreateSystemThread,
-        /* 49 */ KbQueueUserApc,
-        /* 50 */ KbRaiseIopl,
-        /* 51 */ KbResetIopl,
+        /* 37 */ KbOpenThread,
+        /* 38 */ KbDereferenceObject,
+        /* 39 */ KbCloseHandle,
+        /* 40 */ KbAllocUserMemory,
+        /* 41 */ KbFreeUserMemory,
+        /* 42 */ KbSecureVirtualMemory,
+        /* 43 */ KbUnsecureVirtualMemory,
+        /* 44 */ KbReadProcessMemory,
+        /* 45 */ KbWriteProcessMemory,
+        /* 46 */ KbSuspendProcess,
+        /* 47 */ KbResumeProcess,
+        /* 48 */ KbCreateUserThread,
+        /* 49 */ KbCreateSystemThread,
+        /* 50 */ KbQueueUserApc,
+        /* 51 */ KbRaiseIopl,
+        /* 52 */ KbResetIopl,
 
         // Stuff u kn0w:
-        /* 52 */ KbExecuteShellCode,
-        /* 53 */ KbGetKernelProcAddress,
-        /* 54 */ KbStallExecutionProcessor,
-        /* 55 */ KbBugCheck,
-        /* 56 */ KbCreateDriver
+        /* 53 */ KbExecuteShellCode,
+        /* 54 */ KbGetKernelProcAddress,
+        /* 55 */ KbStallExecutionProcessor,
+        /* 56 */ KbBugCheck,
+        /* 57 */ KbCreateDriver
     };
 }
 
@@ -362,6 +363,14 @@ DECLARE_STRUCT(KB_OPEN_PROCESS_IN, {
 
 DECLARE_STRUCT(KB_OPEN_PROCESS_OUT, {
     WdkTypes::HANDLE hProcess;
+});
+
+DECLARE_STRUCT(KB_OPEN_THREAD_IN, {
+    UINT64 ThreadId;
+});
+
+DECLARE_STRUCT(KB_OPEN_THREAD_OUT, {
+    WdkTypes::HANDLE hThread;
 });
 
 DECLARE_STRUCT(KB_DEREFERENCE_OBJECT_IN, {
