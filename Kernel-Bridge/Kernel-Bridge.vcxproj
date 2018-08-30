@@ -25,6 +25,7 @@
     <ClCompile Include="API\IO.cpp" />
     <ClCompile Include="API\KernelShells.cpp" />
     <ClCompile Include="API\MemoryUtils.cpp" />
+    <ClCompile Include="API\ObCallbacks.cpp" />
     <ClCompile Include="API\OSVersion.cpp" />
     <ClCompile Include="API\ProcessesUtils.cpp" />
     <ClCompile Include="Kernel-Bridge\FilterCallbacks.cpp" />
@@ -171,8 +172,10 @@
     <ClInclude Include="API\GetProcAddress.h" />
     <ClInclude Include="API\IO.h" />
     <ClInclude Include="API\KernelShells.h" />
+    <ClInclude Include="API\LinkedList.h" />
     <ClInclude Include="API\Locks.h" />
     <ClInclude Include="API\MemoryUtils.h" />
+    <ClInclude Include="API\ObCallbacks.h" />
     <ClInclude Include="API\OSVersion.h" />
     <ClInclude Include="API\ProcessesUtils.h" />
     <ClInclude Include="API\RAII.h" />

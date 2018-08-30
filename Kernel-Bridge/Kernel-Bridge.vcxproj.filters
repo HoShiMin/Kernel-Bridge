@@ -74,6 +74,9 @@
     <ClCompile Include="API\KernelShells.cpp">
       <Filter>API</Filter>
     </ClCompile>
+    <ClCompile Include="API\ObCallbacks.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h">
@@ -116,6 +119,12 @@
       <Filter>SharedTypes</Filter>
     </ClInclude>
     <ClInclude Include="API\KernelShells.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\ObCallbacks.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\LinkedList.h">
       <Filter>API</Filter>
     </ClInclude>
   </ItemGroup>

@@ -375,14 +375,13 @@ public:
     _IRQL_raises_(APC_LEVEL)
     _IRQL_saves_global_(OldIrql, Mutex)
     void Enter() {
-
-        HANDLE CurrentThreadId = 0; // PsGetCurrentThreadId();
-        if (Owner == CurrentThreadId) {
+        PETHREAD CurrentThread = PsGetCurrentThread();
+        if (Owner == CurrentThread) {
             LocksCount++;
             return;
         }
         Mutex.Lock();
-        Owner = CurrentThreadId;
+        Owner = CurrentThread;
         LocksCount = 1;
     }
 
@@ -422,13 +421,13 @@ public:
     _IRQL_raises_(DISPATCH_LEVEL)
     _IRQL_saves_global_(QueuedSpinLock,SpinMutex)
     void Enter() {
-        HANDLE CurrentThreadId = PsGetCurrentThreadId();
-        if (Owner == CurrentThreadId) {
+        PETHREAD CurrentThread = PsGetCurrentThread();
+        if (Owner == CurrentThread) {
             LocksCount++;
             return;
         }
         SpinMutex.Lock();
-        Owner = CurrentThreadId;
+        Owner = CurrentThread;
         LocksCount = 1;
     }
 
