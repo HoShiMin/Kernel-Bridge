@@ -2,29 +2,29 @@
 The "Kernel-Bridge" project is a Windows kernel driver template, development framework and
 kernel-mode API and wrappers written on C++17.  
   
-### ✔ It support work with:
+### ✔ It supports work with:
 * IO-ports (+ 'in/out/cli/sti' usermode forwarding by IOPL)
 * System beeper
-* MSRs (CPU Model Specific Registers)
-* CPUID, TSC and performance counters (RDPMC)
+* MSRs, CPUID, TSC and performance counters (RDPMC)
 * DMI/SMBIOS memory reading
-* Physical memory (RW, allocations and mappings)
+* Physical memory (RW, mappings)
 * Kernel memory management (allocations, mappings, transitions)
 * Usermode memory management (allocations in processes etc.)
 * Direct UM->KM and KM->UM memory transitions
-* Obtaining processes handles from kernel
+* Obtaining processes/threads handles from kernel
 * Reading and writing memory of another processes
 * Suspending/resuming/termination processes
 * Creating kernel and usermode threads
 * Memory mappings between usermode and kernel
+* Remote code execution (APCs delivery)
+* Execution of custom usermode shellcodes
+* Unsigned drivers mapping  
 
 ### ➰ In development and coming soon:
 * PCI configuration
 * Processes protection using ObRegisterCallbacks
 * Minifilter with usermode callbacks
 * Processes and modules usermode callbacks
-* Execution of custom usermode shellcodes
-* Unsigned drivers, kernel and usermode libraries mapping  
   
 Driver template has full support of C++ static and global initializers and all of C++17 features (without C++ exceptions). All of API modules are easy-to-use and have no external dependiencies, so you can include them to your own C++ drivers. All of API functions are grouped into a logical categories into namespaces, so you can quickly find all functions you want.
   
@@ -54,7 +54,20 @@ bcdedit.exe /debug off  -  disable it
 ```
   
 #### Communication with usermode apps:  
-For communication with usermode you can use a `DriversUtils.h` from "DriversUtils" folder that have a functions to install a driver and communicate with it using DeviceIoControl. You can directly include `CtlTypes.h` from "Kernel-Bridge/Kernel-Bridge/" folder to your usermode app for using Kernel-Bridge data types for requests.
+For communication with usermode you should use "User-Bridge" wrappers as standalone \*.cpp/\*.h modules or as \*.dll.  
+All required headers are `CtlTypes.h` and `User-Bridge.h`:
+```
+#include <Windows.h>
+ 
+#include "CtlTypes.h"
+#include "User-Bridge.h"
+
+KbLoader::KbLoad(L"N:\\Folder\\Kernel-Bridge.sys");
+
+// ... Do what you want ...
+
+KbLoader::KbUnload();
+```
   
 #### Files hierarchy:
 `/User-Bridge/API` - usermode API and wrappers for all functions of KB  
@@ -73,9 +86,7 @@ For communication with usermode you can use a `DriversUtils.h` from "DriversUtil
 using namespace Processes::MemoryManagement;
 
 ...
- 
-KbLoader::KbLoad(L"N:\\Folder\\Kernel-Bridge.sys");
- 
+
 constexpr int Size = 64;
 UCHAR Buffer[Size] = {};
  
@@ -85,11 +96,4 @@ BOOL Status = KbReadProcessMemory(
     &Buffer,
     Size
 );
- 
-if (Status)
-    printf("All good!\r\n");
- 
-...
- 
-KbLoader::KbUnload();
 ```
