@@ -392,7 +392,7 @@ namespace Processes {
 
             if (!NT_SUCCESS(Status)) { 
                 VirtualMemory::UnsecureProcessMemory(Process, hProcessSecure);
-                if (IsBufferUsermode) VirtualMemory::UnsecureProcessMemory(Process, hBufferSecure);
+                if (IsBufferUsermode) VirtualMemory::UnsecureMemory(hBufferSecure);
                 return STATUS_NOT_MAPPED_VIEW;
             }
 
@@ -413,7 +413,7 @@ namespace Processes {
             if (!NT_SUCCESS(Status)) {
                 Mdl::UnmapMemory(&ProcessMapping);
                 VirtualMemory::UnsecureProcessMemory(Process, hProcessSecure);
-                if (IsBufferUsermode) VirtualMemory::UnsecureProcessMemory(Process, hBufferSecure);
+                if (IsBufferUsermode) VirtualMemory::UnsecureMemory(hBufferSecure);
                 return STATUS_NOT_MAPPED_VIEW;
             }
 
@@ -432,7 +432,7 @@ namespace Processes {
                 Mdl::UnmapMemory(&BufferMapping);
                 Mdl::UnmapMemory(&ProcessMapping);
                 VirtualMemory::UnsecureProcessMemory(Process, hProcessSecure);
-                if (IsBufferUsermode) VirtualMemory::UnsecureProcessMemory(Process, hBufferSecure);
+                if (IsBufferUsermode) VirtualMemory::UnsecureMemory(hBufferSecure);
             }
 
             return Status;
