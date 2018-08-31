@@ -140,6 +140,9 @@ namespace Processes {
             IN PVOID ProcessInformation,
             ULONG ProcessInformationLength
         );
+
+        _IRQL_requires_max_(PASSIVE_LEVEL)
+        BOOLEAN Is32BitProcess(HANDLE hProcess = ZwCurrentProcess());
     }
 
     namespace MemoryManagement {

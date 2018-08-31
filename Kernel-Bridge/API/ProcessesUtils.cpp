@@ -321,6 +321,20 @@ namespace Processes {
                   )
                 : STATUS_NOT_IMPLEMENTED;
         }
+
+        _IRQL_requires_max_(PASSIVE_LEVEL)
+        BOOLEAN Is32BitProcess(HANDLE hProcess) {
+#ifdef _AMD64_
+            UINT64 IsWow64Process = 0;
+            ULONG ReturnLength = 0;
+            NTSTATUS Status = QueryInformationProcess(hProcess, ProcessWow64Information, &IsWow64Process, sizeof(IsWow64Process), &ReturnLength);
+            if (!NT_SUCCESS(Status) || !ReturnLength) return FALSE;
+            return IsWow64Process != 0;
+#else
+            UNREFERENCED_PARAMETER(hProcess);
+            return TRUE;
+#endif
+        }
     }
 
     namespace MemoryManagement {
