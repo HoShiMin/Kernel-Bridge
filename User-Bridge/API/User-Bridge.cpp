@@ -34,6 +34,28 @@ namespace KbLoader {
         return TRUE;
     }
 
+    BOOL WINAPI KbLoadAsFilter(
+        LPCWSTR DriverPath,
+        LPCWSTR Altitude
+    ) {
+        // Check whether the Kernel-Bridge is already loaded:
+        if (hDriver != INVALID_HANDLE_VALUE) return TRUE;
+        hDriver = OpenDevice(KbDeviceName);
+        if (hDriver != INVALID_HANDLE_VALUE) return TRUE;
+
+        BOOL Status = InstallMinifilter(DriverPath, KbDriverName, Altitude);
+        if (!Status) return FALSE;
+
+        // Obtaining it's handle:
+        hDriver = OpenDevice(KbDeviceName);
+        if (hDriver == INVALID_HANDLE_VALUE) {
+            DeleteDriver(KbDriverName);
+            return FALSE;
+        }
+
+        return TRUE;
+    }
+
     BOOL WINAPI KbUnload()
     {
         if (hDriver == INVALID_HANDLE_VALUE) return TRUE;

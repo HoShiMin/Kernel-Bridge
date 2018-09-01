@@ -500,12 +500,14 @@ namespace Processes {
 
                     if (PsIsThreadTerminating(PsGetCurrentThread())) return;
                     
+#ifdef _AMD64_
                     // Fixing APC to Wow64-processes:
                     using _PsGetCurrentProcessWow64Process = PEPROCESS(NTAPI*)();
                     auto GetWow64Process = static_cast<_PsGetCurrentProcessWow64Process>(Importer::GetKernelProcAddress(L"PsGetCurrentProcessWow64Process"));
                     if (!GetWow64Process || GetWow64Process()) {
                         PsWrapApcWow64Thread(static_cast<PVOID*>(NormalContext), reinterpret_cast<PVOID*>(NormalRoutine));
                     }
+#endif
 
                     VirtualMemory::FreePoolMemory(Apc);
                 },

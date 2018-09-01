@@ -7,6 +7,7 @@
 #define CTL_BASE (0x800)
 
 BOOL InstallDriver(LPCWSTR FilePath, LPCWSTR DriverName, DWORD DriverType = SERVICE_KERNEL_DRIVER);
+BOOL InstallMinifilter(LPCWSTR FilePath, LPCWSTR DriverName, LPCWSTR Altitude);
 BOOL DeleteDriver(LPCWSTR DriverName);
 
 HANDLE OpenDevice(LPCWSTR DeviceName);
