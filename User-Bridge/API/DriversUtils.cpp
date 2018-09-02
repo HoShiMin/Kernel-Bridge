@@ -109,7 +109,7 @@ BOOL InstallMinifilter(LPCWSTR FilePath, LPCWSTR DriverName, LPCWSTR Altitude)
         FilePath, 
         L"FSFilter Activity Monitor", 
         NULL, 
-        NULL, //L"+FltMgr\0\0", // Double null-terminated dependency name prefixed by SC_GROUP_IDENTIFIER 
+        NULL,
         NULL, 
         NULL
     );

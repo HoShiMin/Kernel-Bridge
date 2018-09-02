@@ -1,5 +1,36 @@
 #include <fltKernel.h>
+
+#include "../API/Locks.h"
+#include "../API/LinkedList.h"
+#include "../API/CommunicationPort.h"
+
 #include "FilterCallbacks.h"
+
+namespace Communication {
+    CommunicationPort Server;
+
+    NTSTATUS StartServer(PFLT_FILTER FilterHandle) {
+        return Server.StartServer(
+            FilterHandle, 
+            L"\\Kernel-Bridge",
+            []( // OnMessage received:
+                CommunicationPort::CLIENT_INFO& Client,
+                CommunicationPort::CLIENT_REQUEST& Request,
+                OUT PULONG ReturnLength
+            ) -> NTSTATUS {
+                UNREFERENCED_PARAMETER(Client);
+                UNREFERENCED_PARAMETER(Request);
+                UNREFERENCED_PARAMETER(ReturnLength);
+                KdPrint(("[Kernel-Bridge]: Message received!\r\n"));
+                return STATUS_SUCCESS;
+            }
+        );
+    }
+
+    VOID StopServer() {
+        Server.StopServer();
+    }
+}
 
 FLT_PREOP_CALLBACK_STATUS
 FilterPreOperation(

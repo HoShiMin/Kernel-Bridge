@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="API\CommunicationPort.cpp" />
     <ClCompile Include="API\CppSupport.cpp" />
     <ClCompile Include="API\CPU.cpp" />
     <ClCompile Include="API\GetProcAddress.cpp" />
@@ -28,6 +29,7 @@
     <ClCompile Include="API\ObCallbacks.cpp" />
     <ClCompile Include="API\OSVersion.cpp" />
     <ClCompile Include="API\ProcessesUtils.cpp" />
+    <ClCompile Include="Kernel-Bridge\DriverEvents.cpp" />
     <ClCompile Include="Kernel-Bridge\FilterCallbacks.cpp" />
     <ClCompile Include="Kernel-Bridge\IOCTLHandlers.cpp" />
     <ResourceCompile Include="Kernel-Bridge.rc" />
@@ -167,6 +169,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\SharedTypes\CtlTypes.h" />
+    <ClInclude Include="API\CommunicationPort.h" />
     <ClInclude Include="API\CppSupport.h" />
     <ClInclude Include="API\CPU.h" />
     <ClInclude Include="API\GetProcAddress.h" />
@@ -179,6 +182,7 @@
     <ClInclude Include="API\OSVersion.h" />
     <ClInclude Include="API\ProcessesUtils.h" />
     <ClInclude Include="API\RAII.h" />
+    <ClInclude Include="Kernel-Bridge\DriverEvents.h" />
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h" />
     <ClInclude Include="Kernel-Bridge\IOCTLHandlers.h" />
     <ClInclude Include="Kernel-Bridge\IOCTLs.h" />

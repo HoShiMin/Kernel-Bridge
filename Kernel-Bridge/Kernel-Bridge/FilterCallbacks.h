@@ -1,5 +1,10 @@
 #pragma once
 
+namespace Communication {
+    NTSTATUS StartServer(PFLT_FILTER FilterHandle);
+    VOID StopServer();
+}
+
 EXTERN_C_START
 
 FLT_PREOP_CALLBACK_STATUS

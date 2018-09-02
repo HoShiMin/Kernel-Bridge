@@ -2,6 +2,7 @@
 #include <dontuse.h>
 #include <suppress.h>
 
+#include "Kernel-Bridge/DriverEvents.h"
 #include "Kernel-Bridge/FilterCallbacks.h"
 #include "Kernel-Bridge/IOCTLHandlers.h"
 #include "Kernel-Bridge/IOCTLs.h"
@@ -163,6 +164,8 @@ NTSTATUS DriverEntry(
         KdPrint(("[Kernel-Bridge]: Unable to register as filter: 0x%X\r\n", Status));
     }
 
+    OnDriverLoad(DriverObject, DeviceInstance, FilterHandle, RegistryPath);
+
     KdPrint(("[Kernel-Bridge]: Successfully loaded!\r\n"));
     return STATUS_SUCCESS;
 }
@@ -187,9 +190,10 @@ static NTSTATUS SEC_ENTRY FilterInstanceSetup(
 static NTSTATUS SEC_ENTRY FilterUnload(
     _In_ FLT_FILTER_UNLOAD_FLAGS Flags
 ) {
-    UNREFERENCED_PARAMETER(Flags);
     PAGED_CODE();
 
+    OnFilterUnload(DeviceInstance, FilterHandle, Flags);
+    
     if (FilterHandle) FltUnregisterFilter(FilterHandle);
 
     return STATUS_SUCCESS;
@@ -275,8 +279,19 @@ _Dispatch_type_(IRP_MJ_CLOSE)
 _Dispatch_type_(IRP_MJ_CLEANUP)
 static NTSTATUS DriverStub(_In_ PDEVICE_OBJECT DeviceObject, _In_ PIRP Irp)
 {
-    UNREFERENCED_PARAMETER(DeviceObject);
     PAGED_CODE();
+    PIO_STACK_LOCATION IrpStack = IoGetCurrentIrpStackLocation(Irp);
+    switch (IrpStack->MajorFunction) {
+    case IRP_MJ_CREATE:
+        OnDriverCreate(DeviceObject, FilterHandle, Irp, IrpStack);
+        break;
+    case IRP_MJ_CLEANUP:
+        OnDriverCleanup(DeviceObject, FilterHandle, Irp, IrpStack);
+        break;
+    case IRP_MJ_CLOSE:
+        OnDriverClose(DeviceObject, FilterHandle, Irp, IrpStack);
+        break;
+    }
     Irp->IoStatus.Status = STATUS_SUCCESS;
     Irp->IoStatus.Information = 0;
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
@@ -285,8 +300,9 @@ static NTSTATUS DriverStub(_In_ PDEVICE_OBJECT DeviceObject, _In_ PIRP Irp)
 
 static NTSTATUS DriverUnload(_In_ PDRIVER_OBJECT DriverObject)
 {
-    UNREFERENCED_PARAMETER(DriverObject);
     PAGED_CODE();
+
+    OnDriverUnload(DriverObject, DeviceInstance);
 
     __crt_deinit(); // Global objects destroying
 

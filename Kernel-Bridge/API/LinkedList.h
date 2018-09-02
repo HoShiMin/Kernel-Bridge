@@ -2,14 +2,16 @@
 
 template <typename T>
 class LinkedList {
-private:
-    EResource Lock;
-    __declspec(align(MEMORY_ALLOCATION_ALIGNMENT)) KSPIN_LOCK SpinLock;
-    __declspec(align(MEMORY_ALLOCATION_ALIGNMENT)) LIST_ENTRY Head;
+public:
     using _Entry = struct {
         LIST_ENTRY Entry;
         T Value;
     };
+private:
+    EResource Lock;
+    __declspec(align(MEMORY_ALLOCATION_ALIGNMENT)) KSPIN_LOCK SpinLock;
+    __declspec(align(MEMORY_ALLOCATION_ALIGNMENT)) LIST_ENTRY Head;
+
     _Entry* AllocEntry(const T& Value) const {
         auto Entry = static_cast<_Entry*>(VirtualMemory::AllocFromPool(sizeof(_Entry)));
         InitializeListHead(&Entry->Entry);
@@ -23,9 +25,9 @@ public:
     }
 
     ~LinkedList() {
-        ForEachWriteRemove([](T& Value) -> WriteRemoveAction { 
+        ForEachExclusive([](T& Value) -> ExclusiveAction { 
             UNREFERENCED_PARAMETER(Value);
-            return wrRemoveContinue;
+            return exRemoveContinue;
         });
     }
 
@@ -52,17 +54,26 @@ public:
         Lock.Unlock();
     }
 
-    void InsertTail(const T& Value) {
+    _Entry* InsertTail(const T& Value) {
         Lock.LockExclusive();
         auto Entry = AllocEntry(Value);
         InsertTailList(&Head, &Entry->Entry);
         Lock.Unlock();
+        return Entry;
     }
 
-    void InsertHead(const T& Value) {
+    _Entry* InsertHead(const T& Value) {
         Lock.LockExclusive();
         auto Entry = AllocEntry(Value);
         InsertTailList(&Head, &Entry->Entry);
+        Lock.Unlock();
+        return Entry;
+    }
+
+    void Remove(_Entry* Entry) {
+        Lock.LockExclusive();
+        RemoveEntryList(&Entry->Entry);
+        VirtualMemory::FreePoolMemory(Entry);
         Lock.Unlock();
     }
 
@@ -78,13 +89,15 @@ public:
         Lock.Unlock();
     }
 
-    enum ReadAction {
-        rdContinue,
-        rdBreak
+
+
+    enum SharedAction {
+        shContinue,
+        shBreak
     };
 
-    using _ReadCallback = ReadAction(*)(const T& Value);
-    void ForEachRead(_ReadCallback Callback) {
+    using _SharedCallback = SharedAction(*)(const T& Value);
+    void ForEachShared(_SharedCallback Callback) {
         if (!Callback) return;
 
         Lock.LockShared();
@@ -97,23 +110,23 @@ public:
         do {
             auto Action = Callback(Entry->Value);
             switch (Action) {
-            case rdContinue: continue;
-            case rdBreak: break;
+            case shContinue: continue;
+            case shBreak: break;
             }
         } while (Entry->Entry.Flink != Entry->Entry.Blink);
 
         Lock.Unlock();
     }
 
-    enum WriteRemoveAction {
-        wrContinue,
-        wrBreak,
-        wrRemoveContinue,
-        wrRemoveBreak
+    enum ExclusiveAction {
+        exContinue,
+        exBreak,
+        exRemoveContinue,
+        exRemoveBreak
     };
 
-    using _WriteRemoveCallback = WriteRemoveAction(*)(T& Value);
-    void ForEachWriteRemove(_WriteRemoveCallback Callback) {
+    using _ExclusiveCallback = ExclusiveAction(*)(T& Value);
+    void ForEachExclusive(_ExclusiveCallback Callback) {
         if (!Callback) return;
 
         Lock.LockExclusive();
@@ -126,14 +139,14 @@ public:
         if (&Entry->Entry != &Head) do {
             auto Action = Callback(Entry->Value);
             switch (Action) {
-            case wrContinue: continue;
-            case wrBreak: break;
-            case wrRemoveContinue: {
+            case exContinue: continue;
+            case exBreak: break;
+            case exRemoveContinue: {
                 RemoveEntryList(&Entry->Entry);
                 VirtualMemory::FreePoolMemory(Entry);
                 continue;
             }
-            case wrRemoveBreak: {
+            case exRemoveBreak: {
                 RemoveEntryList(&Entry->Entry);
                 VirtualMemory::FreePoolMemory(Entry);
                 break;            
