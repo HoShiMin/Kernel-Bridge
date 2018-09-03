@@ -2,20 +2,20 @@
 
 #include "../API/Locks.h"
 #include "../API/LinkedList.h"
-#include "../API/CommunicationPort.h"
+#include "../API/CommPort.h"
 
 #include "FilterCallbacks.h"
 
 namespace Communication {
-    CommunicationPort Server;
+    CommPort Server;
 
     NTSTATUS StartServer(PFLT_FILTER FilterHandle) {
         return Server.StartServer(
             FilterHandle, 
             L"\\Kernel-Bridge",
             []( // OnMessage received:
-                CommunicationPort::CLIENT_INFO& Client,
-                CommunicationPort::CLIENT_REQUEST& Request,
+                CommPort::CLIENT_INFO& Client,
+                CommPort::CLIENT_REQUEST& Request,
                 OUT PULONG ReturnLength
             ) -> NTSTATUS {
                 UNREFERENCED_PARAMETER(Client);

@@ -77,11 +77,11 @@
     <ClCompile Include="API\ObCallbacks.cpp">
       <Filter>API</Filter>
     </ClCompile>
-    <ClCompile Include="API\CommunicationPort.cpp">
-      <Filter>API</Filter>
-    </ClCompile>
     <ClCompile Include="Kernel-Bridge\DriverEvents.cpp">
       <Filter>Kernel-Bridge</Filter>
+    </ClCompile>
+    <ClCompile Include="API\CommPort.cpp">
+      <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -133,11 +133,11 @@
     <ClInclude Include="API\LinkedList.h">
       <Filter>API</Filter>
     </ClInclude>
-    <ClInclude Include="API\CommunicationPort.h">
-      <Filter>API</Filter>
-    </ClInclude>
     <ClInclude Include="Kernel-Bridge\DriverEvents.h">
       <Filter>Kernel-Bridge</Filter>
+    </ClInclude>
+    <ClInclude Include="API\CommPort.h">
+      <Filter>API</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

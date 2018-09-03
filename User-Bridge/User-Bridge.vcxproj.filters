@@ -45,6 +45,9 @@
     <ClInclude Include="API\Rtl-Bridge.h">
       <Filter>API</Filter>
     </ClInclude>
+    <ClInclude Include="API\CommPort.h">
+      <Filter>API</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="API\DriversUtils.cpp">
@@ -63,6 +66,9 @@
       <Filter>API\PEUtils</Filter>
     </ClCompile>
     <ClCompile Include="API\Rtl-Bridge.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\CommPort.cpp">
       <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>

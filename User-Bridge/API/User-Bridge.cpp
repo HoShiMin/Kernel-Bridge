@@ -13,7 +13,7 @@ namespace KbLoader {
 
     static HANDLE hDriver = INVALID_HANDLE_VALUE;
 
-    BOOL WINAPI KbLoad(LPCWSTR DriverPath)
+    BOOL WINAPI KbLoadAsDriver(LPCWSTR DriverPath)
     {
         // Check whether the Kernel-Bridge is already loaded:
         if (hDriver != INVALID_HANDLE_VALUE) return TRUE;

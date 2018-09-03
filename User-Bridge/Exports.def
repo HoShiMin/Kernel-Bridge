@@ -1,6 +1,7 @@
 LIBRARY User-Bridge
 EXPORTS
-	KbLoad
+	KbLoadAsDriver
+	KbLoadAsFilter
 	KbUnload
 	KbSetBeeperRegime
 	KbStartBeeper

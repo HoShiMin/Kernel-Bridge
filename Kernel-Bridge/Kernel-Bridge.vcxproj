@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="API\CommunicationPort.cpp" />
+    <ClCompile Include="API\CommPort.cpp" />
     <ClCompile Include="API\CppSupport.cpp" />
     <ClCompile Include="API\CPU.cpp" />
     <ClCompile Include="API\GetProcAddress.cpp" />
@@ -169,7 +169,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\SharedTypes\CtlTypes.h" />
-    <ClInclude Include="API\CommunicationPort.h" />
+    <ClInclude Include="API\CommPort.h" />
     <ClInclude Include="API\CppSupport.h" />
     <ClInclude Include="API\CPU.h" />
     <ClInclude Include="API\GetProcAddress.h" />

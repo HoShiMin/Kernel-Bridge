@@ -4,18 +4,18 @@
 
 #include "Locks.h"
 #include "LinkedList.h"
-#include "CommunicationPort.h"
+#include "CommPort.h"
 
-CommunicationPort::CommunicationPort() 
+CommPort::CommPort() 
 : ParentFilter(NULL), ServerCookie({}), ServerPort(NULL), Clients(), OnMessageCallback(NULL) {}
 
-CommunicationPort::~CommunicationPort() {
+CommPort::~CommPort() {
     StopServer();
 }
 
 
 
-NTSTATUS CommunicationPort::StartServer(
+NTSTATUS CommPort::StartServer(
     PFLT_FILTER Filter, 
     LPCWSTR PortName,
     _OnMessage OnMessage,
@@ -62,7 +62,7 @@ NTSTATUS CommunicationPort::StartServer(
     return Status;
 }
 
-VOID CommunicationPort::StopServer() {
+VOID CommPort::StopServer() {
     if (ServerPort) FltCloseCommunicationPort(ServerPort);
     // Disconnecting all connected clients:
     Clients.ForEachExclusive([](CLIENT_INFO& Value) -> ClientsList::ExclusiveAction {
@@ -73,7 +73,7 @@ VOID CommunicationPort::StopServer() {
 
 
 
-NTSTATUS CommunicationPort::OnConnectInternal(
+NTSTATUS CommPort::OnConnectInternal(
     IN PFLT_PORT ClientPort,
     IN PVOID ServerPortCookie,
     IN PVOID ConnectionContext,
@@ -99,7 +99,7 @@ NTSTATUS CommunicationPort::OnConnectInternal(
     return STATUS_SUCCESS;
 }
 
-VOID CommunicationPort::OnDisconnectInternal(
+VOID CommPort::OnDisconnectInternal(
     IN PVOID ConnectionContext
 ) {
     KdPrint(("[Kernel-Bridge]: Comm.Port OnDisconnect\r\n"));
@@ -110,11 +110,11 @@ VOID CommunicationPort::OnDisconnectInternal(
     if (ClientEntry->Value.ConnectionContext && ClientEntry->Value.SizeOfContext) {
         VirtualMemory::FreePoolMemory(ClientEntry->Value.ConnectionContext);
     }
-    CommunicationPort* Instance = ClientEntry->Value.ServerInstance;
+    CommPort* Instance = ClientEntry->Value.ServerInstance;
     Instance->Clients.Remove(ClientEntry);
 }
 
-NTSTATUS CommunicationPort::OnMessageInternal(
+NTSTATUS CommPort::OnMessageInternal(
     IN PVOID PortCookie,
     IN PVOID InputBuffer OPTIONAL,
     IN ULONG InputBufferLength,
@@ -135,7 +135,7 @@ NTSTATUS CommunicationPort::OnMessageInternal(
     return STATUS_SUCCESS;
 }
 
-NTSTATUS CommunicationPort::Send(
+NTSTATUS CommPort::Send(
     PFLT_PORT Client, 
     IN PVOID Buffer, 
     ULONG Size, 

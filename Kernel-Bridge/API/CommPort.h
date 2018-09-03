@@ -1,9 +1,9 @@
 #pragma once
 
-class CommunicationPort {
+class CommPort {
 public:
     using CLIENT_INFO = struct {
-        CommunicationPort* ServerInstance;
+        CommPort* ServerInstance;
         PFLT_PORT ClientPort;
         PVOID ConnectionContext;
         ULONG SizeOfContext;
@@ -20,7 +20,7 @@ private:
     PFLT_FILTER ParentFilter;
 
     using SERVER_COOKIE = struct {
-        CommunicationPort* ServerInstance;
+        CommPort* ServerInstance;
         PVOID UserCookie;
     };
     SERVER_COOKIE ServerCookie;
@@ -53,8 +53,8 @@ private:
     );
 
 public:
-    CommunicationPort();
-    ~CommunicationPort();
+    CommPort();
+    ~CommPort();
 
     NTSTATUS StartServer(
         PFLT_FILTER Filter, 

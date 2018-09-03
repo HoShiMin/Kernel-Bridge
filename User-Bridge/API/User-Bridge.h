@@ -1,7 +1,7 @@
 #pragma once
 
 namespace KbLoader {
-    BOOL WINAPI KbLoad(LPCWSTR DriverPath);
+    BOOL WINAPI KbLoadAsDriver(LPCWSTR DriverPath);
     BOOL WINAPI KbLoadAsFilter(LPCWSTR DriverPath, LPCWSTR Altitude);
     BOOL WINAPI KbUnload();
 }
