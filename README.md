@@ -33,7 +33,7 @@ Driver template has full support of C++ static and global initializers and all o
 * Minifilter loading and filtering routines templates
 * SAL-annotations and well-documented API
 * Ready-to-use IOCTLs handling routine
-* HLK tests passing
+* Static Driver Verifier tests passing
   
 ### 💨 Building and using:  
 Download [Microsoft Visual Studio Community](https://visualstudio.microsoft.com/downloads/) and [Windows Driver Kit](https://docs.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk).  
@@ -62,7 +62,8 @@ All required headers are `CtlTypes.h` and `User-Bridge.h`:
 #include "CtlTypes.h"
 #include "User-Bridge.h"
 
-KbLoader::KbLoad(L"N:\\Folder\\Kernel-Bridge.sys");
+// Loading as minifilter (it allows to use extended features):
+KbLoader::KbLoadAsFilter(L"N:\\Folder\\Kernel-Bridge.sys", L"260000");
 
 // ... Do what you want ...
 
