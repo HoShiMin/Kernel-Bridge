@@ -1,3 +1,5 @@
+#include <wdm.h>
+
 using _PVFV = void (__cdecl *)(void); // PVFV = Pointer to Void Func(Void)
 using _PIFV = int  (__cdecl *)(void); // PIFV = Pointer to Int Func(Void)
 
@@ -89,4 +91,38 @@ extern "C" void __crt_deinit() {
     }
     execute_pvfv_array(__xp_a, __xp_z);
     execute_pvfv_array(__xt_a, __xt_z);
+}
+
+constexpr unsigned long CrtPoolTag = 'TRC_';
+
+void* operator new(SIZE_T Size) {
+    void* Pointer = ExAllocatePoolWithTag(NonPagedPool, Size, CrtPoolTag);
+    if (Pointer) RtlZeroMemory(Pointer, Size);
+    return Pointer;
+}
+ 
+void* operator new(SIZE_T Size, POOL_TYPE PoolType) {
+    void* Pointer = ExAllocatePoolWithTag(PoolType, Size, CrtPoolTag);
+    if (Pointer) RtlZeroMemory(Pointer, Size);
+    return Pointer;
+}
+
+void* operator new[](SIZE_T Size) {
+    void* Pointer = ExAllocatePoolWithTag(NonPagedPool, Size, CrtPoolTag);
+    if (Pointer) RtlZeroMemory(Pointer, Size);
+    return Pointer;
+}
+ 
+void* operator new[](SIZE_T Size, POOL_TYPE PoolType) {
+    void* Pointer = ExAllocatePoolWithTag(PoolType, Size, CrtPoolTag);
+    if (Pointer) RtlZeroMemory(Pointer, Size);
+    return Pointer;
+}
+ 
+void operator delete(void* Pointer) {
+    ExFreePoolWithTag(Pointer, CrtPoolTag);
+}
+ 
+void operator delete[](void* Pointer) {
+    ExFreePoolWithTag(Pointer, CrtPoolTag);
 }
