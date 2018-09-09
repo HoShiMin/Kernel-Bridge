@@ -1,159 +1,146 @@
 #pragma once
 
+/* 
+  Depends on:
+   - wdm.h
+*/
+
 template <typename T>
 class LinkedList {
-public:
+private:
     using _Entry = struct {
-        LIST_ENTRY Entry;
+        LIST_ENTRY ChainEntry;
+        PVOID EntryObject;
         T Value;
     };
+public:
+    class ListEntry {
+    private:
+        _Entry Entry;
+    public:
+        ListEntry(const T& Value) : Entry({}) {
+            InitializeListHead(&Entry.ChainEntry);
+            Entry.EntryObject = this;
+            Entry.Value = Value;
+        }
+
+        ~ListEntry() = default;
+
+        PLIST_ENTRY GetChainEntry() { return &Entry.ChainEntry; }
+        T* GetValue() { return &Entry.Value; }
+        ListEntry* GetInstance() { return static_cast<ListEntry*>(Entry.EntryObject); }
+        _Entry* GetEntry() { return &Entry; }
+    };
+
+    class ListIterator {
+    private:
+        PLIST_ENTRY ListHead;
+        _Entry* Current;
+    public:
+        ListIterator() : Current(NULL) {}
+        ListIterator(PLIST_ENTRY Head, ListEntry* Entry) : ListHead(Head), Current(Entry->GetEntry()) {}
+        ~ListIterator() = default;
+
+        ListEntry* GetEntry() { return static_cast<ListEntry*>(Current->EntryObject); }
+
+        ListIterator& operator ++ () {
+            Current = Current->ChainEntry.Flink != ListHead
+                ? reinterpret_cast<_Entry*>(Current->ChainEntry.Flink)
+                : NULL;
+            return *this;
+        }
+
+        ListIterator& operator -- () {
+            Current = Current->ChainEntry.Flink != ListHead
+                ? reinterpret_cast<_Entry*>(Current->ChainEntry.Blink)
+                : NULL;
+            return *this;
+        }
+
+        T& operator * () { return Current->Value; }
+
+        bool operator == (const ListIterator& Iterator) const {
+            return !Iterator.Current || !Current
+                ? Iterator.Current == Current
+                : Iterator.Current->EntryObject == Current->EntryObject;
+        }
+
+        bool operator != (const ListIterator& Iterator) const {
+            return !Iterator.Current || !Current
+                ? Iterator.Current != Current
+                : Iterator.Current->EntryObject != Current->EntryObject;
+        }
+    };
 private:
-    EResource Lock;
     __declspec(align(MEMORY_ALLOCATION_ALIGNMENT)) KSPIN_LOCK SpinLock;
     __declspec(align(MEMORY_ALLOCATION_ALIGNMENT)) LIST_ENTRY Head;
 
-    _Entry* AllocEntry(const T& Value) const {
-        auto Entry = static_cast<_Entry*>(VirtualMemory::AllocFromPool(sizeof(_Entry)));
-        InitializeListHead(&Entry->Entry);
-        Entry->Value = Value;
-        return Entry;
-    }
+    ListIterator Finalizer;
 public:
-    LinkedList() : Head({}) {
+    LinkedList() : Head({}), Finalizer() {
         KeInitializeSpinLock(&SpinLock);
         InitializeListHead(&Head);
     }
 
     ~LinkedList() {
-        ForEachExclusive([](T& Value) -> ExclusiveAction { 
-            UNREFERENCED_PARAMETER(Value);
-            return exRemoveContinue;
-        });
+        ListIterator it = begin();
+        while (it != end()) {
+            auto Entry = it.GetEntry();
+            KdPrint(("Removing %i\r\n", *it));
+            ++it;
+            Remove(Entry);
+        }
     }
 
     void InterlockedInsertTail(const T& Value) {
-        Lock.LockExclusive();
-        auto Entry = static_cast<_Entry*>(VirtualMemory::AllocFromPool(sizeof(_Entry)));
-        InitializeListHead(&Entry->Entry);
-        Entry->Value = Value;
-        ExInterlockedInsertTailList(&Head, &Entry->Entry, &SpinLock);
-        Lock.Unlock();
+        auto Entry = new ListEntry(Value);
+        ExInterlockedInsertTailList(&Head, Entry->GetChainEntry(), &SpinLock);
     }
 
     void InterlockedInsertHead(const T& Value) {
-        Lock.LockExclusive();
-        auto Entry = AllocEntry(Value);
-        ExInterlockedInsertHeadList(&Head, &Entry->Entry, &SpinLock);
-        Lock.Unlock();
+        auto Entry = new ListEntry(Value);
+        ExInterlockedInsertHeadList(&Head, Entry->GetChainEntry(), &SpinLock);
     }
 
     void InterlockedRemoveHead() {
-        Lock.LockExclusive();
         auto Entry = ExInterlockedRemoveHeadList(&Head, &SpinLock);
-        VirtualMemory::FreePoolMemory(Entry);
-        Lock.Unlock();
+        delete Entry;
     }
 
-    _Entry* InsertTail(const T& Value) {
-        Lock.LockExclusive();
-        auto Entry = AllocEntry(Value);
-        InsertTailList(&Head, &Entry->Entry);
-        Lock.Unlock();
+    ListEntry* InsertTail(const T& Value) {
+        auto Entry = new ListEntry(Value);
+        InsertTailList(&Head, Entry->GetChainEntry());
         return Entry;
     }
 
-    _Entry* InsertHead(const T& Value) {
-        Lock.LockExclusive();
-        auto Entry = AllocEntry(Value);
-        InsertTailList(&Head, &Entry->Entry);
-        Lock.Unlock();
+    ListEntry* InsertHead(const T& Value) {
+        auto Entry = new ListEntry(Value);
+        InsertTailList(&Head, Entry->GetChainEntry());
         return Entry;
     }
 
-    void Remove(_Entry* Entry) {
-        Lock.LockExclusive();
-        RemoveEntryList(&Entry->Entry);
-        VirtualMemory::FreePoolMemory(Entry);
-        Lock.Unlock();
+    void Remove(ListEntry* Entry) {
+        RemoveEntryList(Entry->GetChainEntry());
+        delete Entry->GetInstance();
     }
 
     void RemoveHead() {
-        Lock.LockExclusive();
         RemoveHeadList(&Head);
-        Lock.Unlock();
     }
 
     void RemoveTail() {
-        Lock.LockExclusive();
         RemoveTailList(&Head);
-        Lock.Unlock();
     }
 
-
-
-    enum SharedAction {
-        shContinue,
-        shBreak
-    };
-
-    using _SharedCallback = SharedAction(*)(const T& Value);
-    void ForEachShared(_SharedCallback Callback) {
-        if (!Callback) return;
-
-        Lock.LockShared();
-        if (IsListEmpty(&Head)) { 
-            Lock.Unlock();
-            return;
-        }
-
-        auto Entry = reinterpret_cast<_Entry*>(Head.Flink);
-        do {
-            auto Action = Callback(Entry->Value);
-            switch (Action) {
-            case shContinue: continue;
-            case shBreak: break;
-            }
-        } while (Entry->Entry.Flink != Entry->Entry.Blink);
-
-        Lock.Unlock();
+    bool IsEmpty() const {
+        return IsListEmpty(&Head);
     }
 
-    enum ExclusiveAction {
-        exContinue,
-        exBreak,
-        exRemoveContinue,
-        exRemoveBreak
-    };
+    ListIterator begin() {
+        return ListIterator(&Head, static_cast<ListEntry*>((reinterpret_cast<_Entry*>(Head.Flink))->EntryObject));
+    }
 
-    using _ExclusiveCallback = ExclusiveAction(*)(T& Value);
-    void ForEachExclusive(_ExclusiveCallback Callback) {
-        if (!Callback) return;
-
-        Lock.LockExclusive();
-        if (IsListEmpty(&Head)) { 
-            Lock.Unlock();
-            return;
-        }
-
-        auto Entry = reinterpret_cast<_Entry*>(Head.Flink);
-        if (&Entry->Entry != &Head) do {
-            auto Action = Callback(Entry->Value);
-            switch (Action) {
-            case exContinue: continue;
-            case exBreak: break;
-            case exRemoveContinue: {
-                RemoveEntryList(&Entry->Entry);
-                VirtualMemory::FreePoolMemory(Entry);
-                continue;
-            }
-            case exRemoveBreak: {
-                RemoveEntryList(&Entry->Entry);
-                VirtualMemory::FreePoolMemory(Entry);
-                break;            
-            }
-            }
-        } while (Entry->Entry.Flink != Entry->Entry.Blink);
-
-        Lock.Unlock();
+    ListIterator end() {
+        return Finalizer;
     }
 };
