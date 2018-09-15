@@ -139,6 +139,12 @@
     <ClInclude Include="API\CommPort.h">
       <Filter>API</Filter>
     </ClInclude>
+    <ClInclude Include="..\SharedTypes\FltTypes.h">
+      <Filter>SharedTypes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SharedTypes\WdkTypes.h">
+      <Filter>SharedTypes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Exports.def">

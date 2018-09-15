@@ -8,14 +8,22 @@ public:
         PVOID ConnectionContext;
         ULONG SizeOfContext;
     };
-    using ClientsList = LinkedList<CLIENT_INFO>;
+
+    class ClientsList : public EResource, public LinkedList<CLIENT_INFO> {
+    public:
+        ClientsList() : EResource(), LinkedList<CLIENT_INFO>() {}
+        ~ClientsList() = default;
+    };
+    
     using CLIENT_REQUEST = struct {
         IN PVOID InputBuffer;
         ULONG InputSize;
         OUT PVOID OutputBuffer;
         ULONG OutputSize;
     };
+    
     using _OnMessage = NTSTATUS(NTAPI*)(CLIENT_INFO& Client, CLIENT_REQUEST& Request, OUT PULONG ReturnLength);
+
 private:
     PFLT_FILTER ParentFilter;
 
@@ -55,6 +63,11 @@ private:
 public:
     CommPort();
     ~CommPort();
+
+    CommPort(const CommPort&) = delete;
+    CommPort(CommPort&&) = delete;
+    CommPort& operator = (const CommPort&) = delete;
+    CommPort& operator = (CommPort&&) = delete;
 
     NTSTATUS StartServer(
         PFLT_FILTER Filter, 

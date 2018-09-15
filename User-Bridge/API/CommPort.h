@@ -1,50 +1,53 @@
 #pragma once
 
-class CommPortPackage {
+class CommPortPacket {
 public:
-    CommPortPackage() = default;
-    ~CommPortPackage() = default;
-    virtual PVOID GetHeader() const = 0;
-    virtual PVOID GetData() const = 0;
+    CommPortPacket() = default;
+    ~CommPortPacket() = default;
+    virtual PVOID GetHeader() = 0;
+    virtual PVOID GetData() = 0;
     virtual ULONG GetSize() const = 0;
 };
 
 template <typename T>
-class MessagePackage : public CommPortPackage {
+class MessagePacket : public CommPortPacket {
 private:
     struct {
         FILTER_MESSAGE_HEADER Header;
         T Data;
-    } Package;
+    } Packet;
 public:
-    MessagePackage() : CommPortPackage(), Package({}) {}
-    ~MessagePackage() {}
+    MessagePacket() : Packet({}) {}
+    ~MessagePacket() {}
 
-    PFILTER_MESSAGE_HEADER GetHeader() const override { return &Package.Header; }
-    T* GetData() const override { return &Package.Data; }
-    ULONG GetSize() const override { return sizeof(Package); }
+    PVOID GetHeader() override { return static_cast<PVOID>(&Packet.Header); }
+    PVOID GetData() override { return static_cast<PVOID>(&Packet.Data); }
+    ULONG GetSize() const override { return sizeof(Packet); }
 
-    ULONG GetReplyLength() const { return Package.Header.ReplyLength; }
-    ULONGLONG GetMessageId() const { return Package.Header.MessageId; }
+    ULONG GetReplyLength() const { return Packet.Header.ReplyLength; }
+    ULONGLONG GetMessageId() const { return Packet.Header.MessageId; }
 };
 
 template <typename T>
-class ReplyPackage : public CommPortPackage {
+class ReplyPacket : public CommPortPacket {
 private:
     struct {
         FILTER_REPLY_HEADER Header;
         T Data;
-    } Package;
+    } Packet;
 public:
-    ReplyPackage() : CommPortPackage(), Package({}) {}
-    ~ReplyPackage() {}
+    ReplyPacket() : CommPortPacket(), Packet({}) {}
+    ReplyPacket(const MessagePacket<T>& Message) : ReplyPacket() {
+        Packet.Data = *Message.GetData;
+    }
+    ~ReplyPacket() {}
     
-    T* GetData() const override { return &Package.Data; }
-    PFILTER_REPLY_HEADER GetHeader() const override { return &Package.Header; }
-    ULONG GetSize() const override { return sizeof(Package); }
+    PVOID GetData() override { return static_cast<PVOID>(&Packet.Data); }
+    PVOID GetHeader() override { return static_cast<PVOID>(&Packet.Header); }
+    ULONG GetSize() const override { return sizeof(Packet); }
     
-    VOID SetReplyLength(NTSTATUS Status) { Package.Header.Status = Status; }
-    VOID SetMessageId(ULONGLONG MessageId) { Package.Header.MessageId = MessageId; }
+    VOID SetReplyStatus(NTSTATUS Status) { Packet.Header.Status = Status; }
+    VOID SetMessageId(ULONGLONG MessageId) { Packet.Header.MessageId = MessageId; }
 };
 
 class CommPort {
@@ -65,6 +68,6 @@ public:
         DWORD OutputSize, 
         OUT OPTIONAL PULONG ReturnLength = NULL
     );
-    HRESULT Recv(_Out_ CommPortPackage& ReceivedMessage);
-    HRESULT Reply(const _In_ CommPortPackage& ReplyMessage);
+    HRESULT Recv(_Out_ CommPortPacket& ReceivedMessage);
+    HRESULT Reply(_In_ CommPortPacket& ReplyMessage);
 };

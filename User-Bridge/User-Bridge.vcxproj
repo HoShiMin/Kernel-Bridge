@@ -23,7 +23,7 @@
     <ProjectGuid>{09805AB7-6E91-46A3-B501-A420E56458AB}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>UserBridge</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17754.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -164,8 +164,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\SharedTypes\CtlTypes.h" />
+    <ClInclude Include="..\SharedTypes\FltTypes.h" />
+    <ClInclude Include="..\SharedTypes\WdkTypes.h" />
     <ClInclude Include="API\CommPort.h" />
     <ClInclude Include="API\DriversUtils.h" />
+    <ClInclude Include="API\Flt-Bridge.h" />
     <ClInclude Include="API\PEUtils\PEAnalyzer.h" />
     <ClInclude Include="API\PEUtils\PELoader.h" />
     <ClInclude Include="API\Rtl-Bridge.h" />
@@ -174,6 +177,7 @@
   <ItemGroup>
     <ClCompile Include="API\CommPort.cpp" />
     <ClCompile Include="API\DriversUtils.cpp" />
+    <ClCompile Include="API\Flt-Bridge.cpp" />
     <ClCompile Include="API\PEUtils\PEAnalyzer.cpp" />
     <ClCompile Include="API\PEUtils\PELoader.cpp" />
     <ClCompile Include="API\Rtl-Bridge.cpp" />

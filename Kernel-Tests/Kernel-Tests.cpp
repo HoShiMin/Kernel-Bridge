@@ -1,5 +1,6 @@
 #include "pch.h"
 
+#include "WdkTypes.h"
 #include "CtlTypes.h"
 #include "User-Bridge.h"
 

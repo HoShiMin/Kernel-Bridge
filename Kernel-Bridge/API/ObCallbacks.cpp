@@ -3,7 +3,15 @@
 #include "ObCallbacks.h"
 #include "GetProcAddress.h"
 
-#include "Locks.h"
+ObCallbacks::ObCallbacks() : RegistrationHandle(NULL) {
+    // For the WinXP support we should import them dynamically:
+    DynObRegisterCallbacks = static_cast<_ObRegisterCallbacks>(
+        Importer::GetKernelProcAddress(L"ObRegisterCallbacks")
+    );
+    DynObUnRegisterCallbacks = static_cast<_ObUnRegisterCallbacks>(
+        Importer::GetKernelProcAddress(L"ObUnRegisterCallbacks")
+    );
+}
 
 ObCallbacks::ObCallbacks(
     OPTIONAL OB_PREOP_CALLBACK_STATUS(NTAPI *PreCallback)(
@@ -17,21 +25,37 @@ ObCallbacks::ObCallbacks(
     OPTIONAL PVOID RegistrationContext,
     ObCallbackType CallbackType,
     OB_OPERATION OperationType
-) 
-: RegistrationHandle(NULL), Status(STATUS_NOT_SUPPORTED)
-{
+) : ObCallbacks() {
+    SetupCallbacks(PreCallback, PostCallback, RegistrationContext, CallbackType, OperationType);
+}
+
+ObCallbacks::~ObCallbacks() {
+    RemoveCallbacks();
+}
+
+NTSTATUS ObCallbacks::SetupCallbacks(
+    OPTIONAL OB_PREOP_CALLBACK_STATUS(NTAPI *PreCallback)(
+        PVOID RegistrationContext, 
+        POB_PRE_OPERATION_INFORMATION OperationInformation
+    ),
+    OPTIONAL VOID (NTAPI *PostCallback)(
+        PVOID RegistrationContext,
+        POB_POST_OPERATION_INFORMATION OperationInformation
+    ),
+    OPTIONAL PVOID RegistrationContext,
+    ObCallbackType CallbackType,
+    OB_OPERATION OperationType
+) {
+    if (RegistrationHandle) RemoveCallbacks();
+
+    if (!DynObRegisterCallbacks || !DynObUnRegisterCallbacks) 
+        return STATUS_NOT_SUPPORTED;
+
     if ((CallbackType == (ctProcesses | ctThreads)) || (CallbackType == ctMaxValue)) 
         CallbackType = ctAll;
 
-    if (!PreCallback && !PostCallback) {
-        Status = STATUS_INVALID_PARAMETER;
-        return;
-    }
-
-    // For the WinXP support we should import them dynamically:
-    DynObRegisterCallbacks = static_cast<_ObRegisterCallbacks>(Importer::GetKernelProcAddress(L"ObRegisterCallbacks"));
-    DynObUnRegisterCallbacks = static_cast<_ObUnRegisterCallbacks>(Importer::GetKernelProcAddress(L"ObUnRegisterCallbacks"));
-    if (!DynObRegisterCallbacks || !DynObUnRegisterCallbacks) return;
+    if (!PreCallback && !PostCallback) 
+        return STATUS_INVALID_PARAMETER;
 
     OB_OPERATION_REGISTRATION Operations[ctMaxValue - 1] = {};
     
@@ -56,14 +80,11 @@ ObCallbacks::ObCallbacks(
         ? reinterpret_cast<POB_OPERATION_REGISTRATION>(&Operations)
         : reinterpret_cast<POB_OPERATION_REGISTRATION>(&Operations[CallbackType - 1]);
 
-    Status = DynObRegisterCallbacks(&Registration, &RegistrationHandle);
+    return DynObRegisterCallbacks(&Registration, &RegistrationHandle);
 }
 
-ObCallbacks::~ObCallbacks() {
+VOID ObCallbacks::RemoveCallbacks() {
     if (RegistrationHandle)
         DynObUnRegisterCallbacks(RegistrationHandle);
-}
-
-NTSTATUS ObCallbacks::GetStatus() const { 
-    return Status; 
+    RegistrationHandle = NULL;
 }

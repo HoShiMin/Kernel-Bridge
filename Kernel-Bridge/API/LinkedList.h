@@ -77,16 +77,25 @@ private:
 
     ListIterator Finalizer;
 public:
+    LinkedList(const LinkedList&) = delete;
+    LinkedList(LinkedList&&) = delete;
+    LinkedList& operator = (const LinkedList&) = delete;
+    LinkedList& operator = (LinkedList&&) = delete;
+
     LinkedList() : Head({}), Finalizer() {
         KeInitializeSpinLock(&SpinLock);
         InitializeListHead(&Head);
     }
 
     ~LinkedList() {
+        Clear();
+    }
+
+    void Clear() {
+        if (IsEmpty()) return;
         ListIterator it = begin();
         while (it != end()) {
             auto Entry = it.GetEntry();
-            KdPrint(("Removing %i\r\n", *it));
             ++it;
             Remove(Entry);
         }

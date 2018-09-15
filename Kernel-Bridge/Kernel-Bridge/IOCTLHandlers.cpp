@@ -1,5 +1,6 @@
 #include <fltKernel.h>
 
+#include "WdkTypes.h"
 #include "CtlTypes.h"
 #include "IOCTLHandlers.h"
 

@@ -5,6 +5,11 @@ namespace Communication {
     VOID StopServer();
 }
 
+namespace KbCallbacks {
+    NTSTATUS StartObFilter();
+    VOID StopObFilter();
+}
+
 EXTERN_C_START
 
 FLT_PREOP_CALLBACK_STATUS

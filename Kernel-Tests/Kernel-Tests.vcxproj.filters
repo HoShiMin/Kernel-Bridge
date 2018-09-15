@@ -50,5 +50,11 @@
     <ClCompile Include="..\User-Bridge\API\PEUtils\PEAnalyzer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\User-Bridge\API\Flt-Bridge.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\User-Bridge\API\CommPort.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

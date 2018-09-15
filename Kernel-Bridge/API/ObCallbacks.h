@@ -11,7 +11,6 @@ private:
     );
 
     PVOID RegistrationHandle;
-    NTSTATUS Status;
     _ObRegisterCallbacks DynObRegisterCallbacks;
     _ObUnRegisterCallbacks DynObUnRegisterCallbacks;
 
@@ -28,6 +27,7 @@ public:
         ctMaxValue // Same as ctAll
     };
 
+    ObCallbacks();
     ObCallbacks(
         OPTIONAL OB_PREOP_CALLBACK_STATUS(NTAPI *PreCallback)(
             PVOID RegistrationContext, 
@@ -36,13 +36,25 @@ public:
         OPTIONAL VOID (NTAPI *PostCallback)(
             PVOID RegistrationContext,
             POB_POST_OPERATION_INFORMATION OperationInformation
+        ) = NULL,
+        OPTIONAL PVOID RegistrationContext = NULL,
+        ObCallbackType ObjectType = ObCallbackType::ctAll,
+        OB_OPERATION OperationType = OB_OPERATION_HANDLE_CREATE | OB_OPERATION_HANDLE_DUPLICATE    
+    );
+    ~ObCallbacks();
+
+    NTSTATUS SetupCallbacks(
+        OPTIONAL OB_PREOP_CALLBACK_STATUS(NTAPI *PreCallback)(
+            PVOID RegistrationContext, 
+            POB_PRE_OPERATION_INFORMATION OperationInformation
         ),
+        OPTIONAL VOID (NTAPI *PostCallback)(
+            PVOID RegistrationContext,
+            POB_POST_OPERATION_INFORMATION OperationInformation
+        ) = NULL,
         OPTIONAL PVOID RegistrationContext = NULL,
         ObCallbackType ObjectType = ObCallbackType::ctAll,
         OB_OPERATION OperationType = OB_OPERATION_HANDLE_CREATE | OB_OPERATION_HANDLE_DUPLICATE
     );
-
-    ~ObCallbacks();
-
-    NTSTATUS GetStatus() const;
+    VOID RemoveCallbacks();
 };

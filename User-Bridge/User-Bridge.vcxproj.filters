@@ -48,6 +48,15 @@
     <ClInclude Include="API\CommPort.h">
       <Filter>API</Filter>
     </ClInclude>
+    <ClInclude Include="..\SharedTypes\FltTypes.h">
+      <Filter>SharedTypes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SharedTypes\WdkTypes.h">
+      <Filter>SharedTypes</Filter>
+    </ClInclude>
+    <ClInclude Include="API\Flt-Bridge.h">
+      <Filter>API</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="API\DriversUtils.cpp">
@@ -69,6 +78,9 @@
       <Filter>API</Filter>
     </ClCompile>
     <ClCompile Include="API\CommPort.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\Flt-Bridge.cpp">
       <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>

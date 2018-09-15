@@ -14,6 +14,8 @@
 #define ENTER_GUARDED_REGION() KeEnterGuardedRegion()
 #define LEAVE_GUARDED_REGION() KeLeaveGuardedRegion()
 
+#define ALIGNED __declspec(align(MEMORY_ALLOCATION_ALIGNMENT))
+
 // Lock() and Unlock() raises IRQL to APC_LEVEL and acquires the mutex,
 // LockAtApc() and UnlockAtApc() not raises an IRQL and assumes that thread
 // is already in APC_LEVEL or in critical region or in call of FsRtlEnterFileSystem.
@@ -21,7 +23,7 @@
 
 class FastMutex final {
 private:
-    __declspec(align(8)) FAST_MUTEX Mutex;
+    ALIGNED FAST_MUTEX Mutex;
 public:
     FastMutex(const FastMutex&) = delete;
     FastMutex(FastMutex&&) = delete;
@@ -66,7 +68,7 @@ public:
 
 class GuardedMutex final {
 private:
-    __declspec(align(8)) KGUARDED_MUTEX Mutex;
+    ALIGNED KGUARDED_MUTEX Mutex;
 public:
     GuardedMutex(const GuardedMutex&) = delete;
     GuardedMutex(GuardedMutex&&) = delete;
@@ -111,7 +113,7 @@ public:
 // If thread is already at DISPATCH_LEVEL, you can use LockAtDpc()/UnlockFromDpc():
 class SpinLock final {
 private:
-    __declspec(align(8)) KSPIN_LOCK Spinlock;
+    ALIGNED KSPIN_LOCK Spinlock;
     KLOCK_QUEUE_HANDLE LockHandle;
 public:
     SpinLock(const SpinLock&) = delete;
@@ -150,7 +152,7 @@ public:
 };
 
 
-class EResource final {
+class EResource {
 private:
     ERESOURCE Resource;
 public:
@@ -237,7 +239,7 @@ public:
 
 class Atomic32 final {
 private:
-    __declspec(align(8)) volatile LONG AtomicValue;
+    volatile ALIGNED LONG AtomicValue;
 public:
     Atomic32(const Atomic32&) = delete;
     Atomic32(Atomic32&&) = delete;
@@ -285,7 +287,7 @@ public:
 
 class Atomic64 final {
 private:
-    __declspec(align(8)) volatile LONG64 AtomicValue;
+    volatile ALIGNED LONG64 AtomicValue;
 public:
     Atomic64(const Atomic64&) = delete;
     Atomic64(Atomic64&&) = delete;
@@ -335,7 +337,7 @@ public:
 
 class AtomicPointer final {
 private:
-    __declspec(align(8)) volatile PVOID AtomicValue;
+    volatile ALIGNED PVOID AtomicValue;
 public:
     AtomicPointer(const AtomicPointer&) = delete;
     AtomicPointer(AtomicPointer&&) = delete;

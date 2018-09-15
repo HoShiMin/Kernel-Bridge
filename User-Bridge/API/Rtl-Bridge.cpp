@@ -3,6 +3,7 @@
 #include "Rtl-Bridge.h"
 
 // User-Bridge types:
+#include <WdkTypes.h>
 #include <CtlTypes.h>
 #include <User-Bridge.h>
 

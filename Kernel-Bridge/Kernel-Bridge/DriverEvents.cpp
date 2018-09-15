@@ -12,8 +12,10 @@ VOID OnDriverLoad(
     UNREFERENCED_PARAMETER(DeviceObject);
     UNREFERENCED_PARAMETER(RegistryPath);
 
-    if (FilterHandle)
+    if (FilterHandle) {
         Communication::StartServer(FilterHandle);
+        KdPrint(("[Kernel-Bridge]: ObCallbacks status: 0x%X\r\n", KbCallbacks::StartObFilter()));
+    }
 }
 
 VOID OnDriverUnload(
@@ -33,6 +35,7 @@ VOID OnFilterUnload(
     UNREFERENCED_PARAMETER(FilterHandle);
     UNREFERENCED_PARAMETER(Flags);
 
+    KbCallbacks::StopObFilter();
     Communication::StopServer();
 }
 

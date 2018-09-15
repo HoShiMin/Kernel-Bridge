@@ -123,6 +123,16 @@ void operator delete(void* Pointer) {
     ExFreePoolWithTag(Pointer, CrtPoolTag);
 }
  
+void operator delete(void* Pointer, SIZE_T Size) {
+    UNREFERENCED_PARAMETER(Size);
+    ExFreePoolWithTag(Pointer, CrtPoolTag);
+}
+
 void operator delete[](void* Pointer) {
+    ExFreePoolWithTag(Pointer, CrtPoolTag);
+}
+
+void operator delete[](void* Pointer, SIZE_T Size) {
+    UNREFERENCED_PARAMETER(Size);
     ExFreePoolWithTag(Pointer, CrtPoolTag);
 }

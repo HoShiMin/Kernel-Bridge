@@ -22,6 +22,8 @@ NTSTATUS CommPort::StartServer(
     LONG MaxConnections,
     OPTIONAL PVOID Cookie
 )  {
+    if (ServerPort) StopServer();
+
     ParentFilter = Filter;
     OnMessageCallback = OnMessage;
 
@@ -57,7 +59,7 @@ NTSTATUS CommPort::StartServer(
     if (NT_SUCCESS(Status))
         KdPrint(("[Kernel-Bridge]: Comm.Port created!\r\n"));
     else
-        KdPrint(("[Kernel-Bridge]: Comm.Port failure (0x%X)\r\n", Status));
+        KdPrint(("[Kernel-Bridge]: Comm.Port failure: 0x%X\r\n", Status));
     
     return Status;
 }
@@ -65,10 +67,12 @@ NTSTATUS CommPort::StartServer(
 VOID CommPort::StopServer() {
     if (ServerPort) FltCloseCommunicationPort(ServerPort);
     // Disconnecting all connected clients:
-    Clients.ForEachExclusive([](CLIENT_INFO& Value) -> ClientsList::ExclusiveAction {
-        FltCloseClientPort(Value.ServerInstance->ParentFilter, &Value.ClientPort);
-        return ClientsList::exContinue;
-    });
+    Clients.LockExclusive();
+    for (auto& Client : Clients) {
+        FltCloseClientPort(ParentFilter, &Client.ClientPort);
+    }
+    Clients.Clear();
+    Clients.Unlock();
 }
 
 
@@ -95,7 +99,12 @@ NTSTATUS CommPort::OnConnectInternal(
         Client.SizeOfContext = SizeOfContext;
     }
 
-    *ConnectionPortCookie = static_cast<PVOID>(ServerCookie->ServerInstance->Clients.InsertTail(Client));
+    // Add 'Client' to clients list:
+    auto ServerInstance = static_cast<CommPort*>(ServerCookie->ServerInstance);
+    ServerInstance->Clients.LockExclusive();
+    *ConnectionPortCookie = static_cast<PVOID>(ServerInstance->Clients.InsertTail(Client));
+    ServerInstance->Clients.Unlock();
+
     return STATUS_SUCCESS;
 }
 
@@ -104,14 +113,19 @@ VOID CommPort::OnDisconnectInternal(
 ) {
     KdPrint(("[Kernel-Bridge]: Comm.Port OnDisconnect\r\n"));
 
-    auto ClientEntry = static_cast<ClientsList::_Entry*>(ConnectionContext);
-    if (ClientEntry->Value.ClientPort) 
-        FltCloseClientPort(ClientEntry->Value.ServerInstance->ParentFilter, &ClientEntry->Value.ClientPort);
-    if (ClientEntry->Value.ConnectionContext && ClientEntry->Value.SizeOfContext) {
-        VirtualMemory::FreePoolMemory(ClientEntry->Value.ConnectionContext);
+    // Free client-specific info:
+    auto ClientEntry = static_cast<ClientsList::ListEntry*>(ConnectionContext);
+    if (ClientEntry->GetValue()->ClientPort) 
+        FltCloseClientPort(ClientEntry->GetValue()->ServerInstance->ParentFilter, &ClientEntry->GetValue()->ClientPort);
+    if (ClientEntry->GetValue()->ConnectionContext && ClientEntry->GetValue()->SizeOfContext) {
+        VirtualMemory::FreePoolMemory(ClientEntry->GetValue()->ConnectionContext);
     }
-    CommPort* Instance = ClientEntry->Value.ServerInstance;
-    Instance->Clients.Remove(ClientEntry);
+
+    // Unlink client from clients list:
+    CommPort* ServerInstance = ClientEntry->GetValue()->ServerInstance;
+    ServerInstance->Clients.LockExclusive();
+    ServerInstance->Clients.Remove(ClientEntry);
+    ServerInstance->Clients.Unlock();
 }
 
 NTSTATUS CommPort::OnMessageInternal(
@@ -122,15 +136,15 @@ NTSTATUS CommPort::OnMessageInternal(
     IN ULONG OutputBufferLength,
     OUT PULONG ReturnOutputBufferLength
 ) {
-    auto ClientEntry = static_cast<ClientsList::_Entry*>(PortCookie);
-    _OnMessage Handler = ClientEntry->Value.ServerInstance->OnMessageCallback;
+    auto ClientEntry = static_cast<ClientsList::ListEntry*>(PortCookie);
+    _OnMessage Handler = ClientEntry->GetValue()->ServerInstance->OnMessageCallback;
     if (Handler) { 
         CLIENT_REQUEST Request = {};
         Request.InputBuffer = InputBuffer;
         Request.InputSize = InputBufferLength;
         Request.OutputBuffer = OutputBuffer;
         Request.OutputSize = OutputBufferLength;
-        return Handler(ClientEntry->Value, Request, ReturnOutputBufferLength);
+        return Handler(*ClientEntry->GetValue(), Request, ReturnOutputBufferLength);
     }
     return STATUS_SUCCESS;
 }
@@ -147,6 +161,6 @@ NTSTATUS CommPort::Send(
         return FltSendMessage(ParentFilter, &Client, Buffer, Size, Response, &ResponseSize, NULL);
 
     LARGE_INTEGER _Timeout; // In 100-ns units
-    _Timeout.QuadPart = static_cast<UINT64>(MsecTimeout) * 10 * 1000;
+    _Timeout.QuadPart = - static_cast<INT64>(MsecTimeout) * 10 * 1000; // Relative time is negative!
     return FltSendMessage(ParentFilter, &Client, Buffer, Size, Response, &ResponseSize, &_Timeout);
 }

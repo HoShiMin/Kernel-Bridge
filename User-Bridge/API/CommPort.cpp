@@ -41,7 +41,7 @@ HRESULT CommPort::Send(
     return Status;
 }
 
-HRESULT CommPort::Recv(_Out_ CommPortPackage& ReceivedMessage) {
+HRESULT CommPort::Recv(_Out_ CommPortPacket& ReceivedMessage) {
     return FilterGetMessage(
         hPort,
         static_cast<PFILTER_MESSAGE_HEADER>(ReceivedMessage.GetHeader()),
@@ -50,6 +50,6 @@ HRESULT CommPort::Recv(_Out_ CommPortPackage& ReceivedMessage) {
     );
 }
 
-HRESULT CommPort::Reply(const _In_ CommPortPackage& ReplyMessage) {
+HRESULT CommPort::Reply(_In_ CommPortPacket& ReplyMessage) {
     return FilterReplyMessage(hPort, static_cast<PFILTER_REPLY_HEADER>(ReplyMessage.GetHeader()), ReplyMessage.GetSize());
 }
