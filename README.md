@@ -55,8 +55,8 @@ bcdedit.exe /debug off  -  disable it
   
 #### Communication with usermode apps:  
 For communication with usermode you should use "User-Bridge" wrappers as standalone \*.cpp/\*.h modules or as \*.dll.  
-All required headers are `CtlTypes.h` and `User-Bridge.h`:
-```
+All required headers are `WdkTypes.h`, `CtlTypes.h` and `User-Bridge.h`:
+```cpp
 #include <Windows.h>
  
 #include "CtlTypes.h"
