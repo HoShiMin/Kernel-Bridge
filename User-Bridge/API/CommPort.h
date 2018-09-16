@@ -37,8 +37,12 @@ private:
     } Packet;
 public:
     ReplyPacket() : CommPortPacket(), Packet({}) {}
-    ReplyPacket(const MessagePacket<T>& Message) : ReplyPacket() {
-        Packet.Data = *Message.GetData;
+    ReplyPacket(CommPortPacket& Message, ULONG Status) : ReplyPacket() {
+        SetMessageId(static_cast<PFILTER_MESSAGE_HEADER>(Message.GetHeader())->MessageId);
+        SetReplyStatus(Status);
+    }
+    ReplyPacket(CommPortPacket& Message, ULONG Status, const T& Data) : ReplyPacket(Message, Status) {
+        SetData(Data);
     }
     ~ReplyPacket() {}
     
@@ -46,6 +50,7 @@ public:
     PVOID GetHeader() override { return static_cast<PVOID>(&Packet.Header); }
     ULONG GetSize() const override { return sizeof(Packet); }
     
+    VOID SetData(const T& Data) { Packet.Data = Data; }
     VOID SetReplyStatus(NTSTATUS Status) { Packet.Header.Status = Status; }
     VOID SetMessageId(ULONGLONG MessageId) { Packet.Header.MessageId = MessageId; }
 };

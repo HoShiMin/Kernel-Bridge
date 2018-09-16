@@ -174,7 +174,6 @@
   <ItemGroup>
     <ClCompile Include="..\User-Bridge\API\CommPort.cpp" />
     <ClCompile Include="..\User-Bridge\API\DriversUtils.cpp" />
-    <ClCompile Include="..\User-Bridge\API\Flt-Bridge.cpp" />
     <ClCompile Include="..\User-Bridge\API\PEUtils\PEAnalyzer.cpp" />
     <ClCompile Include="..\User-Bridge\API\PEUtils\PELoader.cpp" />
     <ClCompile Include="..\User-Bridge\API\Rtl-Bridge.cpp" />

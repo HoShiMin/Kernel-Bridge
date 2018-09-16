@@ -5,6 +5,7 @@
 #include "../API/LinkedList.h"
 #include "../API/CommPort.h"
 #include "../API/ObCallbacks.h"
+#include "../API/PsCallbacks.h"
 
 #include "FilterCallbacks.h"
 
@@ -40,10 +41,13 @@ namespace Communication {
 }
 
 namespace KbCallbacks {
-    static ObCallbacks ObFilter;
+    static ObCallbacks ObHandlesFilter;
+    static PsProcessCallback PsProcessFilter;
+    static PsThreadCallback PsThreadFilter;
+    static PsImageCallback PsImageFilter;
 
-    NTSTATUS StartObFilter() {
-        return ObFilter.SetupCallbacks(
+    NTSTATUS StartObHandlesFilter() {
+        return ObHandlesFilter.SetupCallbacks(
             [](PVOID Context, POB_PRE_OPERATION_INFORMATION Info) -> OB_PREOP_CALLBACK_STATUS {
                 UNREFERENCED_PARAMETER(Context);
                 KB_FLT_OB_CALLBACK_INFO FltInfo = {};
@@ -108,8 +112,110 @@ namespace KbCallbacks {
         );
     }
 
-    VOID StopObFilter() {
-        ObFilter.RemoveCallbacks();
+    VOID StopObHandlesFilter() {
+        ObHandlesFilter.RemoveCallbacks();
+    }
+
+    NTSTATUS StartPsProcessFilter() {
+        return PsProcessFilter.SetupCallback(
+            [](HANDLE ParentId, HANDLE ProcessId, BOOLEAN Created) -> VOID {
+                KB_FLT_PS_PROCESS_INFO Info = {};
+                Info.ParentId = reinterpret_cast<WdkTypes::HANDLE>(ParentId);
+                Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
+                Info.Created = Created;
+
+                using namespace Communication;
+                auto& Clients = Server.GetClients();
+
+                HANDLE CurrentThreadId = PsGetCurrentThreadId();
+
+                Clients.LockShared();
+                for (auto& Client : Clients) {
+                    if (Client.SizeOfContext != sizeof(KB_FLT_CONTEXT)) continue;
+                    auto ClientContext = static_cast<PKB_FLT_CONTEXT>(Client.ConnectionContext);
+                    if (ClientContext->Type != KbPsProcess) continue;
+                    if (reinterpret_cast<HANDLE>(ClientContext->Client.ThreadId) == CurrentThreadId) continue;
+
+                    // We're not waiting for response:
+                    Server.Send(Client.ClientPort, &Info, sizeof(Info));
+                }
+                Clients.Unlock();
+            }
+        );
+    }
+
+    VOID StopPsProcessFilter() {
+        PsProcessFilter.RemoveCallback();
+    }
+
+    NTSTATUS StartPsThreadFilter() {
+        return PsThreadFilter.SetupCallback(
+            [](HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Created) -> VOID {
+                KB_FLT_PS_THREAD_INFO Info = {};
+                Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
+                Info.ThreadId = reinterpret_cast<WdkTypes::HANDLE>(ThreadId);
+                Info.Created = Created;
+
+                using namespace Communication;
+                auto& Clients = Server.GetClients();
+
+                HANDLE CurrentThreadId = PsGetCurrentThreadId();
+
+                Clients.LockShared();
+                for (auto& Client : Clients) {
+                    if (Client.SizeOfContext != sizeof(KB_FLT_CONTEXT)) continue;
+                    auto ClientContext = static_cast<PKB_FLT_CONTEXT>(Client.ConnectionContext);
+                    if (ClientContext->Type != KbPsThread) continue;
+                    if (reinterpret_cast<HANDLE>(ClientContext->Client.ThreadId) == CurrentThreadId) continue;
+
+                    // We're not waiting for response:
+                    Server.Send(Client.ClientPort, &Info, sizeof(Info));
+                }
+                Clients.Unlock();
+            }
+        );
+    }
+
+    VOID StopPsThreadFilter() {
+        PsThreadFilter.RemoveCallback();
+    }
+
+    NTSTATUS StartPsImageFilter() {
+        return PsImageFilter.SetupCallback(
+            [](PUNICODE_STRING FullImageName, HANDLE ProcessId, PIMAGE_INFO ImageInfo) -> VOID {
+                KB_FLT_PS_IMAGE_INFO Info = {};
+                Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
+                Info.BaseAddress = reinterpret_cast<WdkTypes::PVOID>(ImageInfo->ImageBase);
+                Info.ImageSize = ImageInfo->ImageSize;
+                if (FullImageName && FullImageName->Buffer && FullImageName->Length && FullImageName->MaximumLength) {
+                    RtlCopyMemory(
+                        Info.FullImageName, 
+                        FullImageName->Buffer, 
+                        FullImageName->Length >= sizeof(Info.FullImageName) 
+                            ? sizeof(Info.FullImageName) - 1
+                            : FullImageName->Length
+                    );
+                }
+
+                using namespace Communication;
+                auto& Clients = Server.GetClients();
+
+                Clients.LockShared();
+                for (auto& Client : Clients) {
+                    if (Client.SizeOfContext != sizeof(KB_FLT_CONTEXT)) continue;
+                    auto ClientContext = static_cast<PKB_FLT_CONTEXT>(Client.ConnectionContext);
+                    if (ClientContext->Type != KbPsImage) continue;
+
+                    // We're not waiting for response:
+                    Server.Send(Client.ClientPort, &Info, sizeof(Info));
+                }
+                Clients.Unlock();
+            }
+        );
+    }
+
+    VOID StopPsImageFilter() {
+        PsImageFilter.RemoveCallback();
     }
 }
 

@@ -6,8 +6,21 @@ namespace Communication {
 }
 
 namespace KbCallbacks {
-    NTSTATUS StartObFilter();
-    VOID StopObFilter();
+    // Handles callbacks:
+    NTSTATUS StartObHandlesFilter();
+    VOID StopObHandlesFilter();
+    
+    // Processes callbacks:
+    NTSTATUS StartPsProcessFilter();
+    VOID StopPsProcessFilter();
+    
+    // Threads callbacks:
+    NTSTATUS StartPsThreadFilter();
+    VOID StopPsThreadFilter();
+    
+    // Images callbacks:
+    NTSTATUS StartPsImageFilter();
+    VOID StopPsImageFilter();
 }
 
 EXTERN_C_START

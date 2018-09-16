@@ -14,7 +14,10 @@ VOID OnDriverLoad(
 
     if (FilterHandle) {
         Communication::StartServer(FilterHandle);
-        KdPrint(("[Kernel-Bridge]: ObCallbacks status: 0x%X\r\n", KbCallbacks::StartObFilter()));
+        KdPrint(("[Kernel-Bridge]: ObHandlesFilter status: 0x%X\r\n", KbCallbacks::StartObHandlesFilter()));
+        KdPrint(("[Kernel-Bridge]: PsProcessFilter status: 0x%X\r\n", KbCallbacks::StartPsProcessFilter()));
+        KdPrint(("[Kernel-Bridge]: PsThreadFilter status: 0x%X\r\n", KbCallbacks::StartPsThreadFilter()));
+        KdPrint(("[Kernel-Bridge]: PsImageFilter status: 0x%X\r\n", KbCallbacks::StartPsImageFilter()));
     }
 }
 
@@ -35,7 +38,11 @@ VOID OnFilterUnload(
     UNREFERENCED_PARAMETER(FilterHandle);
     UNREFERENCED_PARAMETER(Flags);
 
-    KbCallbacks::StopObFilter();
+    KbCallbacks::StopObHandlesFilter();
+    KbCallbacks::StopPsProcessFilter();
+    KbCallbacks::StopPsThreadFilter();
+    KbCallbacks::StopPsImageFilter();
+
     Communication::StopServer();
 }
 

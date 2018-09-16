@@ -85,8 +85,8 @@ public:
         PFLT_PORT Client, 
         IN PVOID Buffer, 
         ULONG Size, 
-        OUT PVOID Response, 
-        ULONG ResponseSize,
-        ULONG Timeout
+        OUT PVOID Response = NULL, 
+        ULONG ResponseSize = 0,
+        ULONG Timeout = 0
     );
 };

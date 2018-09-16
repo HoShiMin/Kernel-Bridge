@@ -29,6 +29,7 @@
     <ClCompile Include="API\ObCallbacks.cpp" />
     <ClCompile Include="API\OSVersion.cpp" />
     <ClCompile Include="API\ProcessesUtils.cpp" />
+    <ClCompile Include="API\PsCallbacks.cpp" />
     <ClCompile Include="Kernel-Bridge\DriverEvents.cpp" />
     <ClCompile Include="Kernel-Bridge\FilterCallbacks.cpp" />
     <ClCompile Include="Kernel-Bridge\IOCTLHandlers.cpp" />
@@ -187,6 +188,7 @@
     <ClInclude Include="API\ObCallbacks.h" />
     <ClInclude Include="API\OSVersion.h" />
     <ClInclude Include="API\ProcessesUtils.h" />
+    <ClInclude Include="API\PsCallbacks.h" />
     <ClInclude Include="API\RAII.h" />
     <ClInclude Include="Kernel-Bridge\DriverEvents.h" />
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h" />

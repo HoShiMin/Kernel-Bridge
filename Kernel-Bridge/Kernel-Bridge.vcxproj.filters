@@ -83,6 +83,9 @@
     <ClCompile Include="API\CommPort.cpp">
       <Filter>API</Filter>
     </ClCompile>
+    <ClCompile Include="API\PsCallbacks.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h">
@@ -144,6 +147,9 @@
     </ClInclude>
     <ClInclude Include="..\SharedTypes\WdkTypes.h">
       <Filter>SharedTypes</Filter>
+    </ClInclude>
+    <ClInclude Include="API\PsCallbacks.h">
+      <Filter>API</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
