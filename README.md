@@ -18,13 +18,13 @@ kernel-mode API and wrappers written on C++17.
 * Memory mappings between usermode and kernel
 * Remote code execution (APCs delivery)
 * Execution of custom usermode shellcodes
-* Unsigned drivers mapping  
-
+* Unsigned drivers mapping
+* Processes, threads, handles and modules usermode callbacks (`ObRegisterCallbacks` & `PsSet***NotifyRoutine`)
+  
 ### ➰ In development and coming soon:
-* PCI configuration
-* Processes protection using ObRegisterCallbacks
+* PCI configuration (is it really necessary?)
 * Minifilter with usermode callbacks
-* Processes and modules usermode callbacks
+* PDB parsing and AsmJIT integration
   
 Driver template has full support of C++ static and global initializers and all of C++17 features (without C++ exceptions). All of API modules are easy-to-use and have no external dependiencies, so you can include them to your own C++ drivers. All of API functions are grouped into a logical categories into namespaces, so you can quickly find all functions you want.
   
@@ -71,16 +71,17 @@ KbLoader::KbUnload();
 ```
   
 #### Files hierarchy:
-`/User-Bridge/API` - usermode API and wrappers for all functions of KB  
-`/Kernel-Bridge/API` - standalone kernel API for using in C++ drivers  
-`/Kernel-Bridge/Kernel-Bridge` - driver template files  
-`/SharedTypes/CtlTypes` - shared types header required for UM and KM modules  
-`/Kernel-Tests` - unit-tests for UM and KM modules and common functions  
+`/User-Bridge/API/` - usermode API and wrappers for all functions of KB  
+`/Kernel-Bridge/API/` - standalone kernel API for using in C++ drivers  
+`/Kernel-Bridge/Kernel-Bridge/` - driver template files  
+`/SharedTypes/` - shared types headers required for UM and KM modules  
+`/Kernel-Tests/` - unit-tests for UM and KM modules and common functions  
   
 #### Example (using of KbReadProcessMemory):
-```
+```cpp
 #include <Windows.h>
- 
+
+#include "WdkTypes.h"
 #include "CtlTypes.h"
 #include "User-Bridge.h"
 
