@@ -711,7 +711,9 @@ namespace
         HANDLE hProcess = NULL;
         NTSTATUS Status = Processes::Descriptors::OpenProcess(
             reinterpret_cast<HANDLE>(Input->ProcessId),
-            &hProcess
+            &hProcess,
+            Input->Access,
+            Input->Attributes
         );
 
         if (!NT_SUCCESS(Status)) return Status;
@@ -737,7 +739,9 @@ namespace
         HANDLE hThread = NULL;
         NTSTATUS Status = Processes::Descriptors::OpenThread(
             reinterpret_cast<HANDLE>(Input->ThreadId),
-            &hThread
+            &hThread,
+            Input->Access,
+            Input->Attributes
         );
 
         if (!NT_SUCCESS(Status)) return Status;

@@ -151,8 +151,18 @@ namespace Processes {
         // HANDLE must be closed by KbCloseHandle:
         BOOL WINAPI KbGetEprocess(ULONG ProcessId, OUT WdkTypes::PEPROCESS* Process);
         BOOL WINAPI KbGetEthread(ULONG ThreadId, OUT WdkTypes::PETHREAD* Thread);
-        BOOL WINAPI KbOpenProcess(ULONG ProcessId, OUT WdkTypes::HANDLE* hProcess);
-        BOOL WINAPI KbOpenThread(ULONG ThreadId, OUT WdkTypes::HANDLE* hThread);
+        BOOL WINAPI KbOpenProcess(
+            ULONG ProcessId, 
+            OUT WdkTypes::HANDLE* hProcess, 
+            OPTIONAL ACCESS_MASK Access = PROCESS_ALL_ACCESS, 
+            OPTIONAL ULONG Attributes = ObjFlags::_OBJ_CASE_INSENSITIVE | ObjFlags::_OBJ_KERNEL_HANDLE
+        );
+        BOOL WINAPI KbOpenThread(
+            ULONG ThreadId, 
+            OUT WdkTypes::HANDLE* hThread, 
+            OPTIONAL ACCESS_MASK Access = PROCESS_ALL_ACCESS, 
+            OPTIONAL ULONG Attributes = ObjFlags::_OBJ_CASE_INSENSITIVE | ObjFlags::_OBJ_KERNEL_HANDLE
+        );
         BOOL WINAPI KbDereferenceObject(WdkTypes::PVOID Object);
         BOOL WINAPI KbCloseHandle(WdkTypes::HANDLE Handle);
     }

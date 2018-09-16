@@ -52,3 +52,19 @@ namespace WdkTypes {
         UINT64 ThreadId;
     };
 }
+
+namespace ObjFlags {
+    enum ObjFlags {
+        _OBJ_INHERIT                        = 0x00000002L,
+        _OBJ_PERMANENT                      = 0x00000010L,
+        _OBJ_EXCLUSIVE                      = 0x00000020L,
+        _OBJ_CASE_INSENSITIVE               = 0x00000040L,
+        _OBJ_OPENIF                         = 0x00000080L,
+        _OBJ_OPENLINK                       = 0x00000100L,
+        _OBJ_KERNEL_HANDLE                  = 0x00000200L,
+        _OBJ_FORCE_ACCESS_CHECK             = 0x00000400L,
+        _OBJ_IGNORE_IMPERSONATED_DEVICEMAP  = 0x00000800L,
+        _OBJ_DONT_REPARSE                   = 0x00001000L,
+        _OBJ_VALID_ATTRIBUTES               = 0x00001FF2L,
+    };
+}

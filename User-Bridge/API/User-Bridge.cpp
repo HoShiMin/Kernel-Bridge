@@ -498,21 +498,25 @@ namespace Processes {
             return Status;
         }
 
-        BOOL WINAPI KbOpenProcess(ULONG ProcessId, OUT WdkTypes::HANDLE* hProcess) {
+        BOOL WINAPI KbOpenProcess(ULONG ProcessId, OUT WdkTypes::HANDLE* hProcess, OPTIONAL ACCESS_MASK Access, OPTIONAL ULONG Attributes) {
             if (!hProcess) return FALSE;
             KB_OPEN_PROCESS_IN Input = {};
             KB_OPEN_PROCESS_OUT Output = {};
             Input.ProcessId = ProcessId;
+            Input.Access = Access;
+            Input.Attributes = Attributes;
             BOOL Status = KbSendRequest(Ctls::KbOpenProcess, &Input, sizeof(Input), &Output, sizeof(Output));
             *hProcess = Output.hProcess;
             return Status;
         }
 
-        BOOL WINAPI KbOpenThread(ULONG ThreadId, OUT WdkTypes::HANDLE* hThread) {
+        BOOL WINAPI KbOpenThread(ULONG ThreadId, OUT WdkTypes::HANDLE* hThread, OPTIONAL ACCESS_MASK Access, OPTIONAL ULONG Attributes) {
             if (!hThread) return FALSE;
             KB_OPEN_THREAD_IN Input = {};
             KB_OPEN_THREAD_OUT Output = {};
             Input.ThreadId = ThreadId;
+            Input.Access = Access;
+            Input.Attributes = Attributes;
             BOOL Status = KbSendRequest(Ctls::KbOpenThread, &Input, sizeof(Input), &Output, sizeof(Output));
             *hThread = Output.hThread;
             return Status;
