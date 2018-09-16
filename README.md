@@ -55,20 +55,7 @@ bcdedit.exe /debug off  -  disable it
   
 #### Communication with usermode apps:  
 For communication with usermode you should use "User-Bridge" wrappers as standalone \*.cpp/\*.h modules or as \*.dll.  
-All required headers are `WdkTypes.h`, `CtlTypes.h` and `User-Bridge.h`:
-```cpp
-#include <Windows.h>
- 
-#include "CtlTypes.h"
-#include "User-Bridge.h"
-
-// Loading as minifilter (it allows to use extended features):
-KbLoader::KbLoadAsFilter(L"N:\\Folder\\Kernel-Bridge.sys", L"260000");
-
-// ... Do what you want ...
-
-KbLoader::KbUnload();
-```
+All required headers are `WdkTypes.h`, `CtlTypes.h` and `User-Bridge.h`. For using an extended features like minifilter callbacks, you should also use `FltTypes.h`, `CommPort.h` and `Flt-Bridge.h`. Some of ready-to-use RTL-functions (like an unsigned drivers mapping) you can find in `Rtl-Bridge.h`.
   
 #### Files hierarchy:
 `/User-Bridge/API/` - usermode API and wrappers for all functions of KB  
@@ -89,6 +76,9 @@ using namespace Processes::MemoryManagement;
 
 ...
 
+// Loading as minifilter (it allows to use extended features):
+KbLoader::KbLoadAsFilter(L"N:\\Folder\\Kernel-Bridge.sys", L"260000");
+
 constexpr int Size = 64;
 UCHAR Buffer[Size] = {};
  
@@ -98,4 +88,6 @@ BOOL Status = KbReadProcessMemory(
     &Buffer,
     Size
 );
+
+KbLoader::KbUnload();
 ```
