@@ -157,11 +157,25 @@ namespace Processes {
             OPTIONAL ACCESS_MASK Access = PROCESS_ALL_ACCESS, 
             OPTIONAL ULONG Attributes = ObjFlags::_OBJ_CASE_INSENSITIVE | ObjFlags::_OBJ_KERNEL_HANDLE
         );
+        BOOL WINAPI KbOpenProcessByPointer(
+            WdkTypes::PEPROCESS Process, 
+            OUT WdkTypes::HANDLE* hProcess, 
+            OPTIONAL ACCESS_MASK Access = PROCESS_ALL_ACCESS, 
+            OPTIONAL ULONG Attributes = ObjFlags::_OBJ_CASE_INSENSITIVE | ObjFlags::_OBJ_KERNEL_HANDLE,
+            OPTIONAL WdkTypes::KPROCESSOR_MODE ProcessorMode = WdkTypes::KernelMode
+        );
         BOOL WINAPI KbOpenThread(
             ULONG ThreadId, 
             OUT WdkTypes::HANDLE* hThread, 
             OPTIONAL ACCESS_MASK Access = PROCESS_ALL_ACCESS, 
             OPTIONAL ULONG Attributes = ObjFlags::_OBJ_CASE_INSENSITIVE | ObjFlags::_OBJ_KERNEL_HANDLE
+        );
+        BOOL WINAPI KbOpenThreadByPointer(
+            WdkTypes::PETHREAD Thread, 
+            OUT WdkTypes::HANDLE* hThread, 
+            OPTIONAL ACCESS_MASK Access = PROCESS_ALL_ACCESS, 
+            OPTIONAL ULONG Attributes = ObjFlags::_OBJ_CASE_INSENSITIVE | ObjFlags::_OBJ_KERNEL_HANDLE,
+            OPTIONAL WdkTypes::KPROCESSOR_MODE ProcessorMode = WdkTypes::KernelMode
         );
         BOOL WINAPI KbDereferenceObject(WdkTypes::PVOID Object);
         BOOL WINAPI KbCloseHandle(WdkTypes::HANDLE Handle);
@@ -187,6 +201,12 @@ namespace Processes {
             OUT OPTIONAL WdkTypes::CLIENT_ID* ClientId,
             OUT OPTIONAL WdkTypes::HANDLE* hThread
         );
+
+        BOOL WINAPI KbSuspendProcess(ULONG ProcessId);
+        BOOL WINAPI KbResumeProcess(ULONG ProcessId);
+
+        BOOL WINAPI KbGetThreadContext(ULONG ThreadId, OUT PCONTEXT Context, ULONG ContextSize, OPTIONAL WdkTypes::KPROCESSOR_MODE ProcessorMode = WdkTypes::UserMode);
+        BOOL WINAPI KbSetThreadContext(ULONG ThreadId, IN PCONTEXT Context, ULONG ContextSize, OPTIONAL WdkTypes::KPROCESSOR_MODE ProcessorMode = WdkTypes::UserMode);
     }
 
     namespace MemoryManagement {
@@ -195,9 +215,6 @@ namespace Processes {
         
         BOOL WINAPI KbReadProcessMemory(ULONG ProcessId, IN WdkTypes::PVOID BaseAddress, OUT PVOID Buffer, ULONG Size);
         BOOL WINAPI KbWriteProcessMemory(ULONG ProcessId, OUT WdkTypes::PVOID BaseAddress, IN PVOID Buffer, ULONG Size);
-        
-        BOOL WINAPI KbSuspendProcess(ULONG ProcessId);
-        BOOL WINAPI KbResumeProcess(ULONG ProcessId);
     }
 
     namespace Apc {

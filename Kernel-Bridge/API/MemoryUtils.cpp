@@ -144,6 +144,15 @@ namespace VirtualMemory {
     }
 
     _IRQL_requires_max_(APC_LEVEL)
+    BOOLEAN CheckUserMemoryReadable(PEPROCESS Process, __in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size) {
+        KAPC_STATE ApcState;
+        KeStackAttachProcess(Process, &ApcState);
+        BOOLEAN Status = CheckUserMemoryReadable(UserAddress, Size);
+        KeUnstackDetachProcess(&ApcState);
+        return Status;
+    }
+
+    _IRQL_requires_max_(APC_LEVEL)
     BOOLEAN CheckUserMemoryWriteable(__in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size) {
         __try {
             ProbeForWrite(UserAddress, Size, 1);
@@ -151,6 +160,15 @@ namespace VirtualMemory {
         } __except (EXCEPTION_EXECUTE_HANDLER) {
             return FALSE;
         }
+    }
+
+    _IRQL_requires_max_(APC_LEVEL)
+    BOOLEAN CheckUserMemoryWriteable(PEPROCESS Process, __in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size) {
+        KAPC_STATE ApcState;
+        KeStackAttachProcess(Process, &ApcState);
+        BOOLEAN Status = CheckUserMemoryWriteable(UserAddress, Size);
+        KeUnstackDetachProcess(&ApcState);
+        return Status;
     }
 }
 

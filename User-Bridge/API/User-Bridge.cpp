@@ -510,6 +510,25 @@ namespace Processes {
             return Status;
         }
 
+        BOOL WINAPI KbOpenProcessByPointer(
+            WdkTypes::PEPROCESS Process, 
+            OUT WdkTypes::HANDLE* hProcess, 
+            OPTIONAL ACCESS_MASK Access, 
+            OPTIONAL ULONG Attributes,
+            OPTIONAL WdkTypes::KPROCESSOR_MODE ProcessorMode
+        ) {
+            if (!hProcess) return FALSE;
+            KB_OPEN_PROCESS_BY_POINTER_IN Input = {};
+            KB_OPEN_PROCESS_OUT Output = {};
+            Input.Process = Process;
+            Input.Access = Access;
+            Input.Attributes = Attributes;
+            Input.ProcessorMode = ProcessorMode;
+            BOOL Status = KbSendRequest(Ctls::KbOpenProcessByPointer, &Input, sizeof(Input), &Output, sizeof(Output));
+            *hProcess = Output.hProcess;
+            return Status;
+        }
+
         BOOL WINAPI KbOpenThread(ULONG ThreadId, OUT WdkTypes::HANDLE* hThread, OPTIONAL ACCESS_MASK Access, OPTIONAL ULONG Attributes) {
             if (!hThread) return FALSE;
             KB_OPEN_THREAD_IN Input = {};
@@ -518,6 +537,25 @@ namespace Processes {
             Input.Access = Access;
             Input.Attributes = Attributes;
             BOOL Status = KbSendRequest(Ctls::KbOpenThread, &Input, sizeof(Input), &Output, sizeof(Output));
+            *hThread = Output.hThread;
+            return Status;
+        }
+
+        BOOL WINAPI KbOpenThreadByPointer(
+            WdkTypes::PETHREAD Thread, 
+            OUT WdkTypes::HANDLE* hThread, 
+            OPTIONAL ACCESS_MASK Access, 
+            OPTIONAL ULONG Attributes,
+            OPTIONAL WdkTypes::KPROCESSOR_MODE ProcessorMode
+        ) {
+            if (!hThread) return FALSE;
+            KB_OPEN_THREAD_BY_POINTER_IN Input = {};
+            KB_OPEN_THREAD_OUT Output = {};
+            Input.Thread = Thread;
+            Input.Access = Access;
+            Input.Attributes = Attributes;
+            Input.ProcessorMode = ProcessorMode;
+            BOOL Status = KbSendRequest(Ctls::KbOpenThreadByPointer, &Input, sizeof(Input), &Output, sizeof(Output));
             *hThread = Output.hThread;
             return Status;
         }
@@ -582,6 +620,36 @@ namespace Processes {
             else
                 Descriptors::KbCloseHandle(Output.hThread);
             return Status;
+        }
+
+        BOOL WINAPI KbSuspendProcess(ULONG ProcessId) {
+            KB_SUSPEND_RESUME_PROCESS_IN Input = {};
+            Input.ProcessId = ProcessId;
+            return KbSendRequest(Ctls::KbSuspendProcess, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbResumeProcess(ULONG ProcessId) {
+            KB_SUSPEND_RESUME_PROCESS_IN Input = {};
+            Input.ProcessId = ProcessId;
+            return KbSendRequest(Ctls::KbResumeProcess, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbGetThreadContext(ULONG ThreadId, OUT PCONTEXT Context, ULONG ContextSize, OPTIONAL WdkTypes::KPROCESSOR_MODE ProcessorMode) {
+            KB_GET_SET_THREAD_CONTEXT_IN Input = {};
+            Input.ThreadId = ThreadId;
+            Input.ContextSize = ContextSize;
+            Input.ProcessorMode = ProcessorMode;
+            Input.Context = reinterpret_cast<WdkTypes::PVOID>(Context);
+            return KbSendRequest(Ctls::KbGetThreadContext, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbSetThreadContext(ULONG ThreadId, IN PCONTEXT Context, ULONG ContextSize, OPTIONAL WdkTypes::KPROCESSOR_MODE ProcessorMode) {
+            KB_GET_SET_THREAD_CONTEXT_IN Input = {};
+            Input.ThreadId = ThreadId;
+            Input.ContextSize = ContextSize;
+            Input.ProcessorMode = ProcessorMode;
+            Input.Context = reinterpret_cast<WdkTypes::PVOID>(Context);
+            return KbSendRequest(Ctls::KbSetThreadContext, &Input, sizeof(Input));
         }
     }
 
@@ -654,18 +722,6 @@ namespace Processes {
             Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
             Input.Size = Size;
             return KbSendRequest(Ctls::KbWriteProcessMemory, &Input, sizeof(Input));
-        }
-
-        BOOL WINAPI KbSuspendProcess(ULONG ProcessId) {
-            KB_SUSPEND_RESUME_PROCESS_IN Input = {};
-            Input.ProcessId = ProcessId;
-            return KbSendRequest(Ctls::KbSuspendProcess, &Input, sizeof(Input));
-        }
-
-        BOOL WINAPI KbResumeProcess(ULONG ProcessId) {
-            KB_SUSPEND_RESUME_PROCESS_IN Input = {};
-            Input.ProcessId = ProcessId;
-            return KbSendRequest(Ctls::KbResumeProcess, &Input, sizeof(Input));
         }
     }
 

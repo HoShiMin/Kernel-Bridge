@@ -50,10 +50,17 @@ EXPORTS
 	KbGetEprocess
 	KbGetEthread
 	KbOpenProcess
+	KbOpenProcessByPointer
+	KbOpenThread
+	KbOpenThreadByPointer
 	KbDereferenceObject
 	KbCloseHandle
 	KbCreateUserThread
 	KbCreateSystemThread
+	KbSuspendProcess
+	KbResumeProcess
+	KbGetThreadContext
+	KbSetThreadContext
 	KbQueueUserApc
 	KbAllocUserMemory
 	KbFreeUserMemory
@@ -61,8 +68,6 @@ EXPORTS
 	KbUnsecureVirtualMemory
 	KbReadProcessMemory
 	KbWriteProcessMemory
-	KbSuspendProcess
-	KbResumeProcess
 	KbExecuteShellCode
 	KbGetKernelProcAddress
 	KbStallExecutionProcessor

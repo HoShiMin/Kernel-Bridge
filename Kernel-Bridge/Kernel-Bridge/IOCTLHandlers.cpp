@@ -723,6 +723,35 @@ namespace
         return STATUS_SUCCESS;
     }
 
+    NTSTATUS FASTCALL KbOpenProcessByPointer(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        if (
+            RequestInfo->InputBufferSize != sizeof(KB_OPEN_PROCESS_BY_POINTER_IN) || 
+            RequestInfo->OutputBufferSize != sizeof(KB_OPEN_PROCESS_OUT)
+        ) return STATUS_INFO_LENGTH_MISMATCH;
+
+        if (!RequestInfo->InputBuffer || !RequestInfo->OutputBuffer)
+            return STATUS_INVALID_PARAMETER;
+
+        auto Input = static_cast<PKB_OPEN_PROCESS_BY_POINTER_IN>(RequestInfo->InputBuffer);
+        auto Output = static_cast<PKB_OPEN_PROCESS_OUT>(RequestInfo->OutputBuffer);
+
+        HANDLE hProcess = NULL;
+        NTSTATUS Status = Processes::Descriptors::OpenProcessByPointer(
+            reinterpret_cast<PEPROCESS>(Input->Process),
+            &hProcess,
+            Input->Access,
+            Input->Attributes,
+            static_cast<KPROCESSOR_MODE>(Input->ProcessorMode)
+        );
+
+        if (!NT_SUCCESS(Status)) return Status;
+
+        Output->hProcess = reinterpret_cast<WdkTypes::HANDLE>(hProcess);
+        *ResponseLength = RequestInfo->OutputBufferSize;
+        return STATUS_SUCCESS;
+    }
+
     NTSTATUS FASTCALL KbOpenThread(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
     {
         if (
@@ -742,6 +771,35 @@ namespace
             &hThread,
             Input->Access,
             Input->Attributes
+        );
+
+        if (!NT_SUCCESS(Status)) return Status;
+
+        Output->hThread = reinterpret_cast<WdkTypes::HANDLE>(hThread);
+        *ResponseLength = RequestInfo->OutputBufferSize;
+        return STATUS_SUCCESS;
+    }
+
+    NTSTATUS FASTCALL KbOpenThreadByPointer(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        if (
+            RequestInfo->InputBufferSize != sizeof(KB_OPEN_THREAD_BY_POINTER_IN) || 
+            RequestInfo->OutputBufferSize != sizeof(KB_OPEN_THREAD_OUT)
+        ) return STATUS_INFO_LENGTH_MISMATCH;
+
+        if (!RequestInfo->InputBuffer || !RequestInfo->OutputBuffer)
+            return STATUS_INVALID_PARAMETER;
+
+        auto Input = static_cast<PKB_OPEN_THREAD_BY_POINTER_IN>(RequestInfo->InputBuffer);
+        auto Output = static_cast<PKB_OPEN_THREAD_OUT>(RequestInfo->OutputBuffer);
+
+        HANDLE hThread = NULL;
+        NTSTATUS Status = Processes::Descriptors::OpenThreadByPointer(
+            reinterpret_cast<PETHREAD>(Input->Thread),
+            &hThread,
+            Input->Access,
+            Input->Attributes,
+            static_cast<KPROCESSOR_MODE>(Input->ProcessorMode)
         );
 
         if (!NT_SUCCESS(Status)) return Status;
@@ -1008,6 +1066,142 @@ namespace
         if (!Process) return STATUS_UNSUCCESSFUL;
         NTSTATUS Status = Processes::Threads::ResumeProcess(Process);
         ObDereferenceObject(Process);
+
+        return Status;
+    }
+
+    NTSTATUS FASTCALL KbGetThreadContext(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_GET_SET_THREAD_CONTEXT_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_GET_SET_THREAD_CONTEXT_IN>(RequestInfo->InputBuffer);
+        if (!Input || !Input->Context) return STATUS_INVALID_PARAMETER;
+
+        if (Input->ContextSize != sizeof(CONTEXT)) return STATUS_INFO_LENGTH_MISMATCH;
+
+        PETHREAD Thread = Processes::Descriptors::GetETHREAD(reinterpret_cast<HANDLE>(Input->ThreadId));
+        if (!Thread) return STATUS_NOT_FOUND;
+
+        NTSTATUS Status = STATUS_SUCCESS;
+        switch (Input->ProcessorMode) {
+        case KernelMode: {
+            PCONTEXT Context = static_cast<PCONTEXT>(VirtualMemory::AllocFromPool(sizeof(CONTEXT)));
+            if (Context) {
+                Status = Processes::Threads::GetContextThread(Thread, Context, KernelMode);
+                if (NT_SUCCESS(Status)) {
+                    Status = Processes::MemoryManagement::WriteProcessMemory(PsGetCurrentProcess(), reinterpret_cast<PVOID>(Input->Context), Context, sizeof(CONTEXT));
+                }
+                VirtualMemory::FreePoolMemory(Context);
+            } else {
+                Status = STATUS_MEMORY_NOT_ALLOCATED;
+            }
+            break;
+        }
+        case UserMode: {
+            PEPROCESS Process = IoThreadToProcess(Thread); // It doesn't requires dereferencing!
+            HANDLE hProcess = NULL;
+            Status = ObOpenObjectByPointer(
+                Process,
+                OBJ_KERNEL_HANDLE,
+                NULL,
+                PROCESS_ALL_ACCESS,
+                *PsProcessType,
+                KernelMode,
+                &hProcess
+            );
+            if (NT_SUCCESS(Status) && hProcess) {
+                PCONTEXT Context = static_cast<PCONTEXT>(Processes::MemoryManagement::AllocateVirtualMemory(hProcess, sizeof(CONTEXT), PAGE_READWRITE));
+                if (Context) {
+                    HANDLE SecureHandle = NULL;
+                    if (VirtualMemory::SecureProcessMemory(Process, Context, sizeof(CONTEXT), PAGE_READWRITE, &SecureHandle) && SecureHandle) {
+                        Status = Processes::Threads::GetContextThread(Thread, Context, UserMode);
+                        if (NT_SUCCESS(Status)) {
+                            Status = Processes::MemoryManagement::ReadProcessMemory(Process, Context, reinterpret_cast<PVOID>(Input->Context), sizeof(CONTEXT));
+                        }
+                        VirtualMemory::UnsecureProcessMemory(Process, SecureHandle);
+                    }
+                    Processes::MemoryManagement::FreeVirtualMemory(hProcess, Context);
+                } else {
+                    Status = STATUS_MEMORY_NOT_ALLOCATED;
+                }
+                ZwClose(hProcess);
+            }
+            break;
+        }
+        }
+
+        ObDereferenceObject(Thread);
+
+        return Status;
+    }
+
+    NTSTATUS FASTCALL KbSetThreadContext(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_GET_SET_THREAD_CONTEXT_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_GET_SET_THREAD_CONTEXT_IN>(RequestInfo->InputBuffer);
+        if (!Input || !Input->Context) return STATUS_INVALID_PARAMETER;
+
+        if (Input->ContextSize != sizeof(CONTEXT)) return STATUS_INFO_LENGTH_MISMATCH;
+
+        PETHREAD Thread = Processes::Descriptors::GetETHREAD(reinterpret_cast<HANDLE>(Input->ThreadId));
+        if (!Thread) return STATUS_NOT_FOUND;
+
+        NTSTATUS Status = STATUS_SUCCESS;
+        switch (Input->ProcessorMode) {
+        case KernelMode: {
+            PCONTEXT Context = static_cast<PCONTEXT>(VirtualMemory::AllocFromPool(sizeof(CONTEXT)));
+            if (Context) {
+                Status = Processes::MemoryManagement::ReadProcessMemory(PsGetCurrentProcess(), reinterpret_cast<PVOID>(Input->Context), Context, sizeof(CONTEXT));
+                if (NT_SUCCESS(Status)) {
+                    Status = Processes::Threads::SetContextThread(Thread, Context, KernelMode);
+                }
+                VirtualMemory::FreePoolMemory(Context);
+            } else {
+                Status = STATUS_MEMORY_NOT_ALLOCATED;
+            }
+            break;
+        }
+        case UserMode: {
+            PEPROCESS Process = IoThreadToProcess(Thread); // It doesn't requires dereferencing!
+            HANDLE hProcess = NULL;
+            Status = ObOpenObjectByPointer(
+                Process,
+                OBJ_KERNEL_HANDLE,
+                NULL,
+                PROCESS_ALL_ACCESS,
+                *PsProcessType,
+                KernelMode,
+                &hProcess
+            );
+            if (NT_SUCCESS(Status) && hProcess) {
+                PCONTEXT Context = static_cast<PCONTEXT>(Processes::MemoryManagement::AllocateVirtualMemory(hProcess, sizeof(CONTEXT), PAGE_READWRITE));
+                if (Context) {
+                    HANDLE SecureHandle = NULL;
+                    if (VirtualMemory::SecureProcessMemory(Process, Context, sizeof(CONTEXT), PAGE_READWRITE, &SecureHandle) && SecureHandle) {
+                        Status = Processes::MemoryManagement::WriteProcessMemory(Process, Context, reinterpret_cast<PVOID>(Input->Context), sizeof(CONTEXT));
+                        if (NT_SUCCESS(Status)) {
+                            Status = Processes::Threads::SetContextThread(Thread, Context, UserMode);    
+                        }
+                        VirtualMemory::UnsecureProcessMemory(Process, SecureHandle);
+                    }
+                    Processes::MemoryManagement::FreeVirtualMemory(hProcess, Context);
+                } else {
+                    Status = STATUS_MEMORY_NOT_ALLOCATED;
+                }
+                ZwClose(hProcess);
+            }
+            break;
+        }
+        }
+
+        ObDereferenceObject(Thread);
 
         return Status;
     }
@@ -1420,29 +1614,33 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 34 */ KbGetEprocess,
         /* 35 */ KbGetEthread,
         /* 36 */ KbOpenProcess,
-        /* 37 */ KbOpenThread,
-        /* 38 */ KbDereferenceObject,
-        /* 39 */ KbCloseHandle,
-        /* 40 */ KbAllocUserMemory,
-        /* 41 */ KbFreeUserMemory,
-        /* 42 */ KbSecureVirtualMemory,
-        /* 43 */ KbUnsecureVirtualMemory,
-        /* 44 */ KbReadProcessMemory,
-        /* 45 */ KbWriteProcessMemory,
-        /* 46 */ KbSuspendProcess,
-        /* 47 */ KbResumeProcess,
-        /* 48 */ KbCreateUserThread,
-        /* 49 */ KbCreateSystemThread,
-        /* 50 */ KbQueueUserApc,
-        /* 51 */ KbRaiseIopl,
-        /* 52 */ KbResetIopl,
+        /* 37 */ KbOpenProcessByPointer,
+        /* 38 */ KbOpenThread,
+        /* 39 */ KbOpenThreadByPointer,
+        /* 40 */ KbDereferenceObject,
+        /* 41 */ KbCloseHandle,
+        /* 42 */ KbAllocUserMemory,
+        /* 43 */ KbFreeUserMemory,
+        /* 44 */ KbSecureVirtualMemory,
+        /* 45 */ KbUnsecureVirtualMemory,
+        /* 46 */ KbReadProcessMemory,
+        /* 47 */ KbWriteProcessMemory,
+        /* 48 */ KbSuspendProcess,
+        /* 49 */ KbResumeProcess,
+        /* 50 */ KbGetThreadContext,
+        /* 51 */ KbSetThreadContext,
+        /* 52 */ KbCreateUserThread,
+        /* 53 */ KbCreateSystemThread,
+        /* 54 */ KbQueueUserApc,
+        /* 55 */ KbRaiseIopl,
+        /* 56 */ KbResetIopl,
 
         // Stuff u kn0w:
-        /* 53 */ KbExecuteShellCode,
-        /* 54 */ KbGetKernelProcAddress,
-        /* 55 */ KbStallExecutionProcessor,
-        /* 56 */ KbBugCheck,
-        /* 57 */ KbCreateDriver
+        /* 57 */ KbExecuteShellCode,
+        /* 58 */ KbGetKernelProcAddress,
+        /* 59 */ KbStallExecutionProcessor,
+        /* 60 */ KbBugCheck,
+        /* 61 */ KbCreateDriver
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;

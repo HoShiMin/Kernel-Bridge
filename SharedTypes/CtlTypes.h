@@ -58,29 +58,33 @@ namespace Ctls {
         /* 34 */ KbGetEprocess,
         /* 35 */ KbGetEthread,
         /* 36 */ KbOpenProcess,
-        /* 37 */ KbOpenThread,
-        /* 38 */ KbDereferenceObject,
-        /* 39 */ KbCloseHandle,
-        /* 40 */ KbAllocUserMemory,
-        /* 41 */ KbFreeUserMemory,
-        /* 42 */ KbSecureVirtualMemory,
-        /* 43 */ KbUnsecureVirtualMemory,
-        /* 44 */ KbReadProcessMemory,
-        /* 45 */ KbWriteProcessMemory,
-        /* 46 */ KbSuspendProcess,
-        /* 47 */ KbResumeProcess,
-        /* 48 */ KbCreateUserThread,
-        /* 49 */ KbCreateSystemThread,
-        /* 50 */ KbQueueUserApc,
-        /* 51 */ KbRaiseIopl,
-        /* 52 */ KbResetIopl,
+        /* 37 */ KbOpenProcessByPointer,
+        /* 38 */ KbOpenThread,
+        /* 39 */ KbOpenThreadByPointer,
+        /* 40 */ KbDereferenceObject,
+        /* 41 */ KbCloseHandle,
+        /* 42 */ KbAllocUserMemory,
+        /* 43 */ KbFreeUserMemory,
+        /* 44 */ KbSecureVirtualMemory,
+        /* 45 */ KbUnsecureVirtualMemory,
+        /* 46 */ KbReadProcessMemory,
+        /* 47 */ KbWriteProcessMemory,
+        /* 48 */ KbSuspendProcess,
+        /* 49 */ KbResumeProcess,
+        /* 50 */ KbGetThreadContext,
+        /* 51 */ KbSetThreadContext,
+        /* 52 */ KbCreateUserThread,
+        /* 53 */ KbCreateSystemThread,
+        /* 54 */ KbQueueUserApc,
+        /* 55 */ KbRaiseIopl,
+        /* 56 */ KbResetIopl,
 
         // Stuff u kn0w:
-        /* 53 */ KbExecuteShellCode,
-        /* 54 */ KbGetKernelProcAddress,
-        /* 55 */ KbStallExecutionProcessor,
-        /* 56 */ KbBugCheck,
-        /* 57 */ KbCreateDriver
+        /* 57 */ KbExecuteShellCode,
+        /* 58 */ KbGetKernelProcAddress,
+        /* 59 */ KbStallExecutionProcessor,
+        /* 60 */ KbBugCheck,
+        /* 61 */ KbCreateDriver
     };
 }
 
@@ -309,6 +313,13 @@ DECLARE_STRUCT(KB_OPEN_PROCESS_IN, {
     ULONG Attributes;
 });
 
+DECLARE_STRUCT(KB_OPEN_PROCESS_BY_POINTER_IN, {
+    WdkTypes::PEPROCESS Process;
+    ACCESS_MASK Access;
+    ULONG Attributes;
+    WdkTypes::KPROCESSOR_MODE ProcessorMode;
+});
+
 DECLARE_STRUCT(KB_OPEN_PROCESS_OUT, {
     WdkTypes::HANDLE hProcess;
 });
@@ -317,6 +328,13 @@ DECLARE_STRUCT(KB_OPEN_THREAD_IN, {
     UINT64 ThreadId;
     ACCESS_MASK Access;
     ULONG Attributes;
+});
+
+DECLARE_STRUCT(KB_OPEN_THREAD_BY_POINTER_IN, {
+    WdkTypes::PETHREAD Thread;
+    ACCESS_MASK Access;
+    ULONG Attributes;
+    WdkTypes::KPROCESSOR_MODE ProcessorMode;
 });
 
 DECLARE_STRUCT(KB_OPEN_THREAD_OUT, {
@@ -371,6 +389,13 @@ DECLARE_STRUCT(KB_READ_WRITE_PROCESS_MEMORY_IN, {
 
 DECLARE_STRUCT(KB_SUSPEND_RESUME_PROCESS_IN, {
     UINT64 ProcessId;
+});
+
+DECLARE_STRUCT(KB_GET_SET_THREAD_CONTEXT_IN, {
+    UINT64 ThreadId;
+    ULONG ContextSize; // Must be size of native CONTEXT struct
+    WdkTypes::KPROCESSOR_MODE ProcessorMode;
+    WdkTypes::PVOID Context; // Pointer to native CONTEXT struct
 });
 
 DECLARE_STRUCT(KB_CREATE_USER_THREAD_IN, {

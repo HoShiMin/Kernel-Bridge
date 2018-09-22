@@ -19,14 +19,35 @@ namespace Processes {
             ULONG Attributes = OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE
         );
 
+        _IRQL_requires_max_(PASSIVE_LEVEL)
+        NTSTATUS OpenProcessByPointer(
+            PEPROCESS Process, 
+            OUT PHANDLE hProcess, 
+            ACCESS_MASK AccessMask = PROCESS_ALL_ACCESS, 
+            ULONG Attributes = OBJ_KERNEL_HANDLE,
+            KPROCESSOR_MODE ProcessorMode = KernelMode
+        );
+
         // Queried hThread must be closed by ZwClose:
         _IRQL_requires_max_(PASSIVE_LEVEL)
         NTSTATUS OpenThread(
             HANDLE ThreadId, 
             OUT PHANDLE hThread, 
-            ACCESS_MASK AccessMask = PROCESS_ALL_ACCESS, 
+            ACCESS_MASK AccessMask = THREAD_ALL_ACCESS, 
             ULONG Attributes = OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE
         );
+
+        _IRQL_requires_max_(PASSIVE_LEVEL)
+        NTSTATUS OpenThreadByPointer(
+            PETHREAD Thread, 
+            OUT PHANDLE hThread, 
+            ACCESS_MASK AccessMask = THREAD_ALL_ACCESS, 
+            ULONG Attributes = OBJ_KERNEL_HANDLE,
+            KPROCESSOR_MODE ProcessorMode = KernelMode
+        );
+
+        // It doesn't requires dereference!
+        inline PEPROCESS ThreadToProcess(PETHREAD Thread) { return IoThreadToProcess(Thread); };
     }
 
     namespace AddressSpace {

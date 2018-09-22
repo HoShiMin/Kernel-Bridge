@@ -39,6 +39,25 @@ namespace Processes {
         }
 
         _IRQL_requires_max_(PASSIVE_LEVEL)
+        NTSTATUS OpenProcessByPointer(
+            PEPROCESS Process, 
+            OUT PHANDLE hProcess, 
+            ACCESS_MASK AccessMask, 
+            ULONG Attributes,
+            KPROCESSOR_MODE ProcessorMode
+        ) {
+            return ObOpenObjectByPointer(
+                Process,
+                Attributes,
+                NULL,
+                AccessMask,
+                *PsProcessType,
+                ProcessorMode,
+                hProcess
+            );
+        }
+
+        _IRQL_requires_max_(PASSIVE_LEVEL)
         NTSTATUS OpenThread(
             HANDLE ThreadId, 
             OUT PHANDLE hThread, 
@@ -63,6 +82,25 @@ namespace Processes {
             if (!ZwOpenThread) return STATUS_NOT_IMPLEMENTED;
 
             return ZwOpenThread(hThread, AccessMask, &ObjectAttributes, &ClientId);
+        }
+
+        _IRQL_requires_max_(PASSIVE_LEVEL)
+        NTSTATUS OpenThreadByPointer(
+            PETHREAD Thread, 
+            OUT PHANDLE hThread, 
+            ACCESS_MASK AccessMask, 
+            ULONG Attributes,
+            KPROCESSOR_MODE ProcessorMode
+        ) {
+            return ObOpenObjectByPointer(
+                Thread,
+                Attributes,
+                NULL,
+                AccessMask,
+                *PsThreadType,
+                ProcessorMode,
+                hThread
+            );
         }
     }
 
@@ -388,6 +426,32 @@ namespace Processes {
                     VirtualMemory::UnsecureProcessMemory(Process, hProcessSecure);
                     return STATUS_NOT_LOCKED;
                 }
+            }
+
+            // Check accessibility of user buffers:
+            switch (Operation) {
+            case MemRead: {
+                if (
+                    !VirtualMemory::CheckUserMemoryReadable(Process, BaseAddress, Size) || 
+                    (IsBufferUsermode && !VirtualMemory::CheckUserMemoryWriteable(Buffer, Size))
+                ) {
+                    VirtualMemory::UnsecureProcessMemory(Process, hProcessSecure);
+                    if (IsBufferUsermode) VirtualMemory::UnsecureMemory(hBufferSecure);
+                    return STATUS_INVALID_ADDRESS;
+                }
+                break;
+            }
+            case MemWrite: {
+                if (
+                    !VirtualMemory::CheckUserMemoryWriteable(Process, BaseAddress, Size) || 
+                    (IsBufferUsermode && !VirtualMemory::CheckUserMemoryReadable(Buffer, Size))
+                ) {
+                    VirtualMemory::UnsecureProcessMemory(Process, hProcessSecure);
+                    if (IsBufferUsermode) VirtualMemory::UnsecureMemory(hBufferSecure);
+                    return STATUS_INVALID_ADDRESS;
+                }
+                break;
+            }
             }
 
             // Attempt to map process memory:

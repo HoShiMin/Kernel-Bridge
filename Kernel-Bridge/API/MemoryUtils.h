@@ -77,7 +77,13 @@ namespace VirtualMemory {
     BOOLEAN CheckUserMemoryReadable(__in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size);
 
     _IRQL_requires_max_(APC_LEVEL)
+    BOOLEAN CheckUserMemoryReadable(PEPROCESS Process, __in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size);
+
+    _IRQL_requires_max_(APC_LEVEL)
     BOOLEAN CheckUserMemoryWriteable(__in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size);
+
+    _IRQL_requires_max_(APC_LEVEL)
+    BOOLEAN CheckUserMemoryWriteable(PEPROCESS Process, __in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size);
 }
 
 namespace Heap {

@@ -125,7 +125,6 @@ BOOL InstallMinifilter(LPCWSTR FilePath, LPCWSTR DriverName, LPCWSTR Altitude)
 
     LPCWSTR Arguments = NULL;
     BOOL Status = StartService(hService, 0, &Arguments);
-    ULONG LastError = GetLastError();
 
     CloseServiceHandle(hService);
    
@@ -190,8 +189,7 @@ BOOL SendRawIOCTL(
     IN ULONG InputBufferSize,
     IN PVOID OutputBuffer,
     IN ULONG OutputBufferSize,
-    OPTIONAL OUT PDWORD BytesReturned,
-    OPTIONAL IN DWORD Method
+    OPTIONAL OUT PDWORD BytesReturned
 ) {
     DWORD Returned = 0;
     BOOL Status = DeviceIoControl(hDevice, Ioctl, InputBuffer, InputBufferSize, OutputBuffer, OutputBufferSize, &Returned, NULL);

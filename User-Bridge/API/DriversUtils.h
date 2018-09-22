@@ -30,6 +30,5 @@ BOOL SendRawIOCTL(
     IN ULONG InputBufferSize,
     IN PVOID OutputBuffer,
     IN ULONG OutputBufferSize,
-    OPTIONAL OUT PDWORD BytesReturned = NULL,
-    OPTIONAL IN DWORD Method = METHOD_NEITHER
+    OPTIONAL OUT PDWORD BytesReturned = NULL
 );
