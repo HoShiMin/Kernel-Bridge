@@ -1,0 +1,489 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>675</width>
+    <height>415</height>
+   </rect>
+  </property>
+  <property name="palette">
+   <palette>
+    <active>
+     <colorrole role="Button">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>240</red>
+        <green>240</green>
+        <blue>240</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Base">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>255</red>
+        <green>255</green>
+        <blue>255</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Window">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>240</red>
+        <green>240</green>
+        <blue>240</blue>
+       </color>
+      </brush>
+     </colorrole>
+    </active>
+    <inactive>
+     <colorrole role="Button">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>240</red>
+        <green>240</green>
+        <blue>240</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Base">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>255</red>
+        <green>255</green>
+        <blue>255</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Window">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>240</red>
+        <green>240</green>
+        <blue>240</blue>
+       </color>
+      </brush>
+     </colorrole>
+    </inactive>
+    <disabled>
+     <colorrole role="Button">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>240</red>
+        <green>240</green>
+        <blue>240</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Base">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>240</red>
+        <green>240</green>
+        <blue>240</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Window">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>240</red>
+        <green>240</green>
+        <blue>240</blue>
+       </color>
+      </brush>
+     </colorrole>
+    </disabled>
+   </palette>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="MainForm">
+   <widget class="QTabWidget" name="TabWidget">
+    <property name="geometry">
+     <rect>
+      <x>7</x>
+      <y>6</y>
+      <width>664</width>
+      <height>404</height>
+     </rect>
+    </property>
+    <property name="currentIndex">
+     <number>0</number>
+    </property>
+    <widget class="QWidget" name="IoCpuTab">
+     <attribute name="title">
+      <string>IO/CPU</string>
+     </attribute>
+     <widget class="QPushButton" name="EnableBeeperButton">
+      <property name="geometry">
+       <rect>
+        <x>200</x>
+        <y>14</y>
+        <width>83</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Enable beeper</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="FreqEdit">
+      <property name="geometry">
+       <rect>
+        <x>151</x>
+        <y>15</y>
+        <width>47</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>1000</string>
+      </property>
+      <property name="maxLength">
+       <number>5</number>
+      </property>
+      <property name="frame">
+       <bool>true</bool>
+      </property>
+      <property name="clearButtonEnabled">
+       <bool>false</bool>
+      </property>
+     </widget>
+     <widget class="QLabel" name="FreqLabel">
+      <property name="geometry">
+       <rect>
+        <x>71</x>
+        <y>16</y>
+        <width>81</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Frequency, Hz:</string>
+      </property>
+     </widget>
+     <widget class="QSlider" name="FreqSlider">
+      <property name="geometry">
+       <rect>
+        <x>71</x>
+        <y>40</y>
+        <width>211</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="minimum">
+       <number>1</number>
+      </property>
+      <property name="maximum">
+       <number>10000</number>
+      </property>
+      <property name="value">
+       <number>1000</number>
+      </property>
+      <property name="sliderPosition">
+       <number>1000</number>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="PortNumberEdit">
+      <property name="geometry">
+       <rect>
+        <x>101</x>
+        <y>96</y>
+        <width>45</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>0</string>
+      </property>
+      <property name="maxLength">
+       <number>4</number>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="PortValueEdit">
+      <property name="geometry">
+       <rect>
+        <x>191</x>
+        <y>96</y>
+        <width>91</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>0xFF</string>
+      </property>
+      <property name="maxLength">
+       <number>11</number>
+      </property>
+     </widget>
+     <widget class="QLabel" name="PortNumberLabel">
+      <property name="geometry">
+       <rect>
+        <x>72</x>
+        <y>98</y>
+        <width>35</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Port:</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="PortValueLabel">
+      <property name="geometry">
+       <rect>
+        <x>154</x>
+        <y>98</y>
+        <width>50</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Value:</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="ReadPortButton">
+      <property name="geometry">
+       <rect>
+        <x>71</x>
+        <y>120</y>
+        <width>104</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Read from port</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="WritePortButton">
+      <property name="geometry">
+       <rect>
+        <x>179</x>
+        <y>120</y>
+        <width>104</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Write to port</string>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="ByteRadioButton">
+      <property name="geometry">
+       <rect>
+        <x>71</x>
+        <y>78</y>
+        <width>46</width>
+        <height>18</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Byte</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="WordRadioButton">
+      <property name="geometry">
+       <rect>
+        <x>122</x>
+        <y>78</y>
+        <width>52</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Word</string>
+      </property>
+      <property name="checked">
+       <bool>false</bool>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="DwordRadioButton">
+      <property name="geometry">
+       <rect>
+        <x>172</x>
+        <y>78</y>
+        <width>80</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Dword</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="CliButton">
+      <property name="geometry">
+       <rect>
+        <x>86</x>
+        <y>162</y>
+        <width>59</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>CLI</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="StiButton">
+      <property name="geometry">
+       <rect>
+        <x>148</x>
+        <y>162</y>
+        <width>59</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>STI</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="HltButton">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>162</y>
+        <width>59</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>HLT</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="RdmsrButton">
+      <property name="geometry">
+       <rect>
+        <x>43</x>
+        <y>231</y>
+        <width>85</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>RDMSR</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="WrmsrButton">
+      <property name="geometry">
+       <rect>
+        <x>135</x>
+        <y>231</y>
+        <width>85</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>WRMSR</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="RdpmcButton">
+      <property name="geometry">
+       <rect>
+        <x>227</x>
+        <y>231</y>
+        <width>85</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>RDPMC</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="MsrPmcIndexLabel">
+      <property name="geometry">
+       <rect>
+        <x>21</x>
+        <y>204</y>
+        <width>84</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>MSR/PMC Index:</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="MsrPmcValueLabel">
+      <property name="geometry">
+       <rect>
+        <x>184</x>
+        <y>204</y>
+        <width>33</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Value:</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="MsrPmcIndexEdit">
+      <property name="geometry">
+       <rect>
+        <x>105</x>
+        <y>203</y>
+        <width>70</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>0x00000000</string>
+      </property>
+      <property name="maxLength">
+       <number>10</number>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="MsrPmcValueEdit">
+      <property name="geometry">
+       <rect>
+        <x>218</x>
+        <y>203</y>
+        <width>120</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>0x0000000000000000</string>
+      </property>
+      <property name="maxLength">
+       <number>18</number>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="VmTab">
+     <attribute name="title">
+      <string>Virtual Memory</string>
+     </attribute>
+    </widget>
+    <widget class="QWidget" name="PmTab">
+     <attribute name="title">
+      <string>Physical Memory</string>
+     </attribute>
+    </widget>
+    <widget class="QWidget" name="PsTab">
+     <attribute name="title">
+      <string>Processes</string>
+     </attribute>
+    </widget>
+    <widget class="QWidget" name="ShellsTab">
+     <attribute name="title">
+      <string>Ring0 Shells</string>
+     </attribute>
+    </widget>
+   </widget>
+  </widget>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources/>
+ <connections/>
+</ui>
