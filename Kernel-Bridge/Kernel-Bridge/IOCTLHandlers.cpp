@@ -1074,8 +1074,6 @@ namespace
     {
         UNREFERENCED_PARAMETER(ResponseLength);
 
-        __debugbreak();
-
         if (RequestInfo->InputBufferSize != sizeof(KB_GET_SET_THREAD_CONTEXT_IN))
             return STATUS_INFO_LENGTH_MISMATCH;
 
