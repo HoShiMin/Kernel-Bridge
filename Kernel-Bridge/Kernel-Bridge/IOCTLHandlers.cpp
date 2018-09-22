@@ -1074,6 +1074,8 @@ namespace
     {
         UNREFERENCED_PARAMETER(ResponseLength);
 
+        __debugbreak();
+
         if (RequestInfo->InputBufferSize != sizeof(KB_GET_SET_THREAD_CONTEXT_IN))
             return STATUS_INFO_LENGTH_MISMATCH;
 
@@ -1085,14 +1087,27 @@ namespace
         PETHREAD Thread = Processes::Descriptors::GetETHREAD(reinterpret_cast<HANDLE>(Input->ThreadId));
         if (!Thread) return STATUS_NOT_FOUND;
 
+        PCONTEXT UserContext = reinterpret_cast<PCONTEXT>(Input->Context);
+        HANDLE SecureHandle = NULL;
+        if (!VirtualMemory::SecureMemory(UserContext, sizeof(CONTEXT), PAGE_READWRITE, &SecureHandle)) {
+            ObDereferenceObject(Thread);
+            return STATUS_NOT_LOCKED;
+        }
+
         NTSTATUS Status = STATUS_SUCCESS;
         switch (Input->ProcessorMode) {
         case KernelMode: {
             PCONTEXT Context = static_cast<PCONTEXT>(VirtualMemory::AllocFromPool(sizeof(CONTEXT)));
             if (Context) {
+                Context->ContextFlags = UserContext->ContextFlags;
                 Status = Processes::Threads::GetContextThread(Thread, Context, KernelMode);
                 if (NT_SUCCESS(Status)) {
-                    Status = Processes::MemoryManagement::WriteProcessMemory(PsGetCurrentProcess(), reinterpret_cast<PVOID>(Input->Context), Context, sizeof(CONTEXT));
+                    __try {
+                        RtlCopyMemory(UserContext, Context, sizeof(CONTEXT));
+                        Status = STATUS_SUCCESS;
+                    } __except (EXCEPTION_EXECUTE_HANDLER) {
+                        Status = STATUS_UNSUCCESSFUL;
+                    }
                 }
                 VirtualMemory::FreePoolMemory(Context);
             } else {
@@ -1101,38 +1116,12 @@ namespace
             break;
         }
         case UserMode: {
-            PEPROCESS Process = IoThreadToProcess(Thread); // It doesn't requires dereferencing!
-            HANDLE hProcess = NULL;
-            Status = ObOpenObjectByPointer(
-                Process,
-                OBJ_KERNEL_HANDLE,
-                NULL,
-                PROCESS_ALL_ACCESS,
-                *PsProcessType,
-                KernelMode,
-                &hProcess
-            );
-            if (NT_SUCCESS(Status) && hProcess) {
-                PCONTEXT Context = static_cast<PCONTEXT>(Processes::MemoryManagement::AllocateVirtualMemory(hProcess, sizeof(CONTEXT), PAGE_READWRITE));
-                if (Context) {
-                    HANDLE SecureHandle = NULL;
-                    if (VirtualMemory::SecureProcessMemory(Process, Context, sizeof(CONTEXT), PAGE_READWRITE, &SecureHandle) && SecureHandle) {
-                        Status = Processes::Threads::GetContextThread(Thread, Context, UserMode);
-                        if (NT_SUCCESS(Status)) {
-                            Status = Processes::MemoryManagement::ReadProcessMemory(Process, Context, reinterpret_cast<PVOID>(Input->Context), sizeof(CONTEXT));
-                        }
-                        VirtualMemory::UnsecureProcessMemory(Process, SecureHandle);
-                    }
-                    Processes::MemoryManagement::FreeVirtualMemory(hProcess, Context);
-                } else {
-                    Status = STATUS_MEMORY_NOT_ALLOCATED;
-                }
-                ZwClose(hProcess);
-            }
+            Status = Processes::Threads::GetContextThread(Thread, UserContext, UserMode);
             break;
         }
         }
 
+        VirtualMemory::UnsecureMemory(SecureHandle);
         ObDereferenceObject(Thread);
 
         return Status;
@@ -1153,14 +1142,23 @@ namespace
         PETHREAD Thread = Processes::Descriptors::GetETHREAD(reinterpret_cast<HANDLE>(Input->ThreadId));
         if (!Thread) return STATUS_NOT_FOUND;
 
+        PCONTEXT UserContext = reinterpret_cast<PCONTEXT>(Input->Context);
+        HANDLE SecureHandle = NULL;
+        if (!VirtualMemory::SecureMemory(UserContext, sizeof(CONTEXT), PAGE_READWRITE, &SecureHandle)) {
+            ObDereferenceObject(Thread);
+            return STATUS_NOT_LOCKED;
+        }
+
         NTSTATUS Status = STATUS_SUCCESS;
         switch (Input->ProcessorMode) {
         case KernelMode: {
             PCONTEXT Context = static_cast<PCONTEXT>(VirtualMemory::AllocFromPool(sizeof(CONTEXT)));
             if (Context) {
-                Status = Processes::MemoryManagement::ReadProcessMemory(PsGetCurrentProcess(), reinterpret_cast<PVOID>(Input->Context), Context, sizeof(CONTEXT));
-                if (NT_SUCCESS(Status)) {
+                __try {
+                    RtlCopyMemory(Context, UserContext, sizeof(CONTEXT));
                     Status = Processes::Threads::SetContextThread(Thread, Context, KernelMode);
+                } __except (EXCEPTION_EXECUTE_HANDLER) {
+                    Status = STATUS_UNSUCCESSFUL;
                 }
                 VirtualMemory::FreePoolMemory(Context);
             } else {
@@ -1169,38 +1167,12 @@ namespace
             break;
         }
         case UserMode: {
-            PEPROCESS Process = IoThreadToProcess(Thread); // It doesn't requires dereferencing!
-            HANDLE hProcess = NULL;
-            Status = ObOpenObjectByPointer(
-                Process,
-                OBJ_KERNEL_HANDLE,
-                NULL,
-                PROCESS_ALL_ACCESS,
-                *PsProcessType,
-                KernelMode,
-                &hProcess
-            );
-            if (NT_SUCCESS(Status) && hProcess) {
-                PCONTEXT Context = static_cast<PCONTEXT>(Processes::MemoryManagement::AllocateVirtualMemory(hProcess, sizeof(CONTEXT), PAGE_READWRITE));
-                if (Context) {
-                    HANDLE SecureHandle = NULL;
-                    if (VirtualMemory::SecureProcessMemory(Process, Context, sizeof(CONTEXT), PAGE_READWRITE, &SecureHandle) && SecureHandle) {
-                        Status = Processes::MemoryManagement::WriteProcessMemory(Process, Context, reinterpret_cast<PVOID>(Input->Context), sizeof(CONTEXT));
-                        if (NT_SUCCESS(Status)) {
-                            Status = Processes::Threads::SetContextThread(Thread, Context, UserMode);    
-                        }
-                        VirtualMemory::UnsecureProcessMemory(Process, SecureHandle);
-                    }
-                    Processes::MemoryManagement::FreeVirtualMemory(hProcess, Context);
-                } else {
-                    Status = STATUS_MEMORY_NOT_ALLOCATED;
-                }
-                ZwClose(hProcess);
-            }
+            Status = Processes::Threads::SetContextThread(Thread, UserContext, UserMode);
             break;
         }
         }
 
+        VirtualMemory::UnsecureMemory(SecureHandle);
         ObDereferenceObject(Thread);
 
         return Status;
