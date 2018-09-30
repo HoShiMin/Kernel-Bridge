@@ -177,6 +177,7 @@
     <ClCompile Include="..\User-Bridge\API\PEUtils\PEAnalyzer.cpp" />
     <ClCompile Include="..\User-Bridge\API\PEUtils\PELoader.cpp" />
     <ClCompile Include="..\User-Bridge\API\Rtl-Bridge.cpp" />
+    <ClCompile Include="..\User-Bridge\API\SymParser.cpp" />
     <ClCompile Include="..\User-Bridge\API\User-Bridge.cpp" />
     <ClCompile Include="Kernel-Tests.cpp" />
     <ClCompile Include="Main.cpp" />

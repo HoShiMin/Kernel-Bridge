@@ -463,12 +463,12 @@ namespace Processes {
                 BaseAddress,
                 Size,
                 KernelMode,
-                Operation == MemRead ? IoReadAccess : IoWriteAccess,
+                IoReadAccess,
                 MmNonCached,
                 NULL
             );
 
-            if (!NT_SUCCESS(Status)) { 
+            if (!NT_SUCCESS(Status) || !((Operation == MemWrite) && !NT_SUCCESS(MmProtectMdlSystemAddress(ProcessMapping.Mdl, PAGE_READWRITE)))) { 
                 VirtualMemory::UnsecureProcessMemory(Process, hProcessSecure);
                 if (IsBufferUsermode) VirtualMemory::UnsecureMemory(hBufferSecure);
                 return STATUS_NOT_MAPPED_VIEW;

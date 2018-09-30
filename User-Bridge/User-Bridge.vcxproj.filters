@@ -57,6 +57,9 @@
     <ClInclude Include="API\Flt-Bridge.h">
       <Filter>API</Filter>
     </ClInclude>
+    <ClInclude Include="API\SymParser.h">
+      <Filter>API</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="API\DriversUtils.cpp">
@@ -78,6 +81,9 @@
       <Filter>API</Filter>
     </ClCompile>
     <ClCompile Include="API\CommPort.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\SymParser.cpp">
       <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>

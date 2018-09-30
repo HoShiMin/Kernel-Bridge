@@ -401,6 +401,14 @@ namespace Mdl {
         return Status;
     }
 
+    BOOL WINAPI KbProtectMappedMemory(IN WdkTypes::PMDL Mdl, ULONG Protect) {
+        if (!Mdl) return FALSE;
+        KB_PROTECT_MAPPED_MEMORY_IN Input = {};
+        Input.Mdl = Mdl;
+        Input.Protect = Protect;
+        return KbSendRequest(Ctls::KbProtectMappedMemory, &Input, sizeof(Input));
+    }
+
     BOOL WINAPI KbUnmapMemory(IN PMAPPING_INFO MappingInfo) {
         if (!MappingInfo || !MappingInfo->Mdl) return FALSE;
         KB_UNMAP_MEMORY_IN Input = {};

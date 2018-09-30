@@ -44,47 +44,48 @@ namespace Ctls {
 
         // Memory mappings:
         /* 26 */ KbMapMemory,
-        /* 27 */ KbUnmapMemory,
+        /* 27 */ KbProtectMappedMemory,
+        /* 28 */ KbUnmapMemory,
 
         // Physical memory:
-        /* 28 */ KbMapPhysicalMemory,
-        /* 29 */ KbUnmapPhysicalMemory,
-        /* 30 */ KbGetPhysicalAddress,
-        /* 31 */ KbReadPhysicalMemory,
-        /* 32 */ KbWritePhysicalMemory,
-        /* 33 */ KbReadDmiMemory,
+        /* 29 */ KbMapPhysicalMemory,
+        /* 30 */ KbUnmapPhysicalMemory,
+        /* 31 */ KbGetPhysicalAddress,
+        /* 32 */ KbReadPhysicalMemory,
+        /* 33 */ KbWritePhysicalMemory,
+        /* 34 */ KbReadDmiMemory,
 
         // Processes & Threads:
-        /* 34 */ KbGetEprocess,
-        /* 35 */ KbGetEthread,
-        /* 36 */ KbOpenProcess,
-        /* 37 */ KbOpenProcessByPointer,
-        /* 38 */ KbOpenThread,
-        /* 39 */ KbOpenThreadByPointer,
-        /* 40 */ KbDereferenceObject,
-        /* 41 */ KbCloseHandle,
-        /* 42 */ KbAllocUserMemory,
-        /* 43 */ KbFreeUserMemory,
-        /* 44 */ KbSecureVirtualMemory,
-        /* 45 */ KbUnsecureVirtualMemory,
-        /* 46 */ KbReadProcessMemory,
-        /* 47 */ KbWriteProcessMemory,
-        /* 48 */ KbSuspendProcess,
-        /* 49 */ KbResumeProcess,
-        /* 50 */ KbGetThreadContext,
-        /* 51 */ KbSetThreadContext,
-        /* 52 */ KbCreateUserThread,
-        /* 53 */ KbCreateSystemThread,
-        /* 54 */ KbQueueUserApc,
-        /* 55 */ KbRaiseIopl,
-        /* 56 */ KbResetIopl,
+        /* 35 */ KbGetEprocess,
+        /* 36 */ KbGetEthread,
+        /* 37 */ KbOpenProcess,
+        /* 38 */ KbOpenProcessByPointer,
+        /* 39 */ KbOpenThread,
+        /* 40 */ KbOpenThreadByPointer,
+        /* 41 */ KbDereferenceObject,
+        /* 42 */ KbCloseHandle,
+        /* 43 */ KbAllocUserMemory,
+        /* 44 */ KbFreeUserMemory,
+        /* 45 */ KbSecureVirtualMemory,
+        /* 46 */ KbUnsecureVirtualMemory,
+        /* 47 */ KbReadProcessMemory,
+        /* 48 */ KbWriteProcessMemory,
+        /* 49 */ KbSuspendProcess,
+        /* 50 */ KbResumeProcess,
+        /* 51 */ KbGetThreadContext,
+        /* 52 */ KbSetThreadContext,
+        /* 53 */ KbCreateUserThread,
+        /* 54 */ KbCreateSystemThread,
+        /* 55 */ KbQueueUserApc,
+        /* 56 */ KbRaiseIopl,
+        /* 57 */ KbResetIopl,
 
         // Stuff u kn0w:
-        /* 57 */ KbExecuteShellCode,
-        /* 58 */ KbGetKernelProcAddress,
-        /* 59 */ KbStallExecutionProcessor,
-        /* 60 */ KbBugCheck,
-        /* 61 */ KbCreateDriver
+        /* 58 */ KbExecuteShellCode,
+        /* 59 */ KbGetKernelProcAddress,
+        /* 60 */ KbStallExecutionProcessor,
+        /* 61 */ KbBugCheck,
+        /* 62 */ KbCreateDriver
     };
 }
 
@@ -241,6 +242,11 @@ DECLARE_STRUCT(KB_MAP_MEMORY_IN, {
 DECLARE_STRUCT(KB_MAP_MEMORY_OUT, {
     WdkTypes::PVOID BaseAddress;
     WdkTypes::PMDL Mdl; // Necessary for unmapping, don't change!
+});
+
+DECLARE_STRUCT(KB_PROTECT_MAPPED_MEMORY_IN, {
+    WdkTypes::PMDL Mdl;
+    ULONG Protect;
 });
 
 DECLARE_STRUCT(KB_UNMAP_MEMORY_IN, {
