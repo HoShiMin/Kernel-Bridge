@@ -428,32 +428,6 @@ namespace Processes {
                 }
             }
 
-            // Check accessibility of user buffers:
-            switch (Operation) {
-            case MemRead: {
-                if (
-                    !VirtualMemory::CheckUserMemoryReadable(Process, BaseAddress, Size) || 
-                    (IsBufferUsermode && !VirtualMemory::CheckUserMemoryWriteable(Buffer, Size))
-                ) {
-                    VirtualMemory::UnsecureProcessMemory(Process, hProcessSecure);
-                    if (IsBufferUsermode) VirtualMemory::UnsecureMemory(hBufferSecure);
-                    return STATUS_INVALID_ADDRESS;
-                }
-                break;
-            }
-            case MemWrite: {
-                if (
-                    !VirtualMemory::CheckUserMemoryWriteable(Process, BaseAddress, Size) || 
-                    (IsBufferUsermode && !VirtualMemory::CheckUserMemoryReadable(Buffer, Size))
-                ) {
-                    VirtualMemory::UnsecureProcessMemory(Process, hProcessSecure);
-                    if (IsBufferUsermode) VirtualMemory::UnsecureMemory(hBufferSecure);
-                    return STATUS_INVALID_ADDRESS;
-                }
-                break;
-            }
-            }
-
             // Attempt to map process memory:
             Mdl::MAPPING_INFO ProcessMapping = {};
             NTSTATUS Status = Mdl::MapMemory(
@@ -468,7 +442,11 @@ namespace Processes {
                 NULL
             );
 
-            if (!NT_SUCCESS(Status) || !((Operation == MemWrite) && !NT_SUCCESS(MmProtectMdlSystemAddress(ProcessMapping.Mdl, PAGE_READWRITE)))) { 
+            if (NT_SUCCESS(Status) && (Operation == MemWrite)) {
+                Status = MmProtectMdlSystemAddress(ProcessMapping.Mdl, PAGE_READWRITE);
+            }
+
+            if (!NT_SUCCESS(Status)) { 
                 VirtualMemory::UnsecureProcessMemory(Process, hProcessSecure);
                 if (IsBufferUsermode) VirtualMemory::UnsecureMemory(hBufferSecure);
                 return STATUS_NOT_MAPPED_VIEW;
