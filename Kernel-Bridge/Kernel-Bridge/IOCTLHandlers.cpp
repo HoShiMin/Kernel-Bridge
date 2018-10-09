@@ -8,7 +8,7 @@
 #include "../API/ProcessesUtils.h"
 #include "../API/IO.h"
 #include "../API/CPU.h"
-#include "../API/GetProcAddress.h"
+#include "../API/Importer.h"
 #include "../API/KernelShells.h"
 
 #include "IOCTLs.h"
