@@ -53,9 +53,6 @@
     <ClCompile Include="API\ProcessesUtils.cpp">
       <Filter>API</Filter>
     </ClCompile>
-    <ClCompile Include="API\GetProcAddress.cpp">
-      <Filter>API</Filter>
-    </ClCompile>
     <ClCompile Include="API\OSVersion.cpp">
       <Filter>API</Filter>
     </ClCompile>
@@ -86,6 +83,9 @@
     <ClCompile Include="API\PsCallbacks.cpp">
       <Filter>API</Filter>
     </ClCompile>
+    <ClCompile Include="API\Importer.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h">
@@ -98,9 +98,6 @@
       <Filter>API</Filter>
     </ClInclude>
     <ClInclude Include="API\ProcessesUtils.h">
-      <Filter>API</Filter>
-    </ClInclude>
-    <ClInclude Include="API\GetProcAddress.h">
       <Filter>API</Filter>
     </ClInclude>
     <ClInclude Include="API\RAII.h">
@@ -149,6 +146,12 @@
       <Filter>SharedTypes</Filter>
     </ClInclude>
     <ClInclude Include="API\PsCallbacks.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\StringsAPI.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\Importer.h">
       <Filter>API</Filter>
     </ClInclude>
   </ItemGroup>

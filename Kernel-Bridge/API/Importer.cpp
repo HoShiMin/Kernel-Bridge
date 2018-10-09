@@ -1,5 +1,5 @@
 #include <fltKernel.h>
-#include "GetProcAddress.h"
+#include "Importer.h"
 
 namespace Importer {
     _IRQL_requires_max_(PASSIVE_LEVEL)

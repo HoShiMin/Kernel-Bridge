@@ -1,7 +1,7 @@
 #include <wdm.h>
 
 #include "ObCallbacks.h"
-#include "GetProcAddress.h"
+#include "Importer.h"
 
 ObCallbacks::ObCallbacks() : RegistrationHandle(NULL) {
     // For the WinXP support we should import them dynamically:

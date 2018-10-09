@@ -117,6 +117,9 @@ NTSTATUS DriverEntry(
 ) {
     UNREFERENCED_PARAMETER(RegistryPath);
 
+    // Initialization of POOL_NX_OPTIN:
+    ExInitializeDriverRuntime(DrvRtPoolNxOptIn);
+
     __crt_init(); // Global objects initialization
 
     DriverObject->DriverUnload = reinterpret_cast<PDRIVER_UNLOAD>(DriverUnload);

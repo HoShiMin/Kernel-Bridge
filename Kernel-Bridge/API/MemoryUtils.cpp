@@ -1,29 +1,25 @@
 #include <fltKernel.h>
 
 #include "MemoryUtils.h"
-#include "OSVersion.h"
 
 namespace VirtualMemory {
-    // In Windows 8 NonPagedPool is deprecated, 
-    // so we should to use NonPagedPoolNx or NonPagedPoolExecute.
-    // In Windows 7 or lower we use NonPagedPool that has RWX rights.
+/*
+    In Windows 8 NonPagedPool is deprecated, 
+    so we should to use NonPagedPoolNx or NonPagedPoolExecute.
+    In Windows 7 or lower we use NonPagedPool that has RWX rights.
 
+    -> !!! NOTICE !!! <-
+    To use ExDefaultNonPagedPoolType you should:
+    1. Add definition POOL_NX_OPTIN=1 to global preprocessor definitions (look at project settings)
+    2. Call ExInitializeDriverRuntime(DrvRtPoolNxOptIn) in your DriverEntry before all allocations
+*/
     static const ULONG PoolTag = 'KBLI';
-    static const BOOLEAN IsWin8OrGreater = TRUE; // OSVersion::IsWindows8OrGreater(); 
-
-    _IRQL_requires_max_(DISPATCH_LEVEL)
-    POOL_TYPE GetPoolType(BOOLEAN Executable) {
-
-        return OSVersion::IsWindows8OrGreater()
-        ? (Executable ? NonPagedPoolExecute : NonPagedPoolNx)
-        : NonPagedPool;
-    }
 
     _IRQL_requires_max_(DISPATCH_LEVEL)
     PVOID AllocFromPool(SIZE_T Bytes, BOOLEAN FillByZeroes) {
         if (!Bytes) return NULL;
         VOID* CONST Address = ExAllocatePoolWithTag(
-            IsWin8OrGreater ? NonPagedPoolNx : NonPagedPool, 
+            ExDefaultNonPagedPoolType,
             Bytes, 
             PoolTag
         );
@@ -38,7 +34,7 @@ namespace VirtualMemory {
     PVOID AllocFromPoolExecutable(SIZE_T Bytes) {
         if (!Bytes) return NULL;
         return ExAllocatePoolWithTag(
-            IsWin8OrGreater ? NonPagedPoolExecute : NonPagedPool,
+            NonPagedPoolExecute,
             Bytes,
             PoolTag
         );

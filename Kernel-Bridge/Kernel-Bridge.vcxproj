@@ -22,7 +22,7 @@
     <ClCompile Include="API\CommPort.cpp" />
     <ClCompile Include="API\CppSupport.cpp" />
     <ClCompile Include="API\CPU.cpp" />
-    <ClCompile Include="API\GetProcAddress.cpp" />
+    <ClCompile Include="API\Importer.cpp" />
     <ClCompile Include="API\IO.cpp" />
     <ClCompile Include="API\KernelShells.cpp" />
     <ClCompile Include="API\MemoryUtils.cpp" />
@@ -125,6 +125,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <SupportJustMyCode>false</SupportJustMyCode>
       <EnablePREfast>false</EnablePREfast>
+      <PreprocessorDefinitions>POOL_NX_OPTIN=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -140,6 +141,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
+      <PreprocessorDefinitions>POOL_NX_OPTIN=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -152,6 +154,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <SupportJustMyCode>false</SupportJustMyCode>
       <EnablePREfast>false</EnablePREfast>
+      <PreprocessorDefinitions>POOL_NX_OPTIN=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -167,6 +170,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
+      <PreprocessorDefinitions>POOL_NX_OPTIN=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -179,7 +183,7 @@
     <ClInclude Include="API\CommPort.h" />
     <ClInclude Include="API\CppSupport.h" />
     <ClInclude Include="API\CPU.h" />
-    <ClInclude Include="API\GetProcAddress.h" />
+    <ClInclude Include="API\Importer.h" />
     <ClInclude Include="API\IO.h" />
     <ClInclude Include="API\KernelShells.h" />
     <ClInclude Include="API\LinkedList.h" />
@@ -190,6 +194,7 @@
     <ClInclude Include="API\ProcessesUtils.h" />
     <ClInclude Include="API\PsCallbacks.h" />
     <ClInclude Include="API\RAII.h" />
+    <ClInclude Include="API\StringsAPI.h" />
     <ClInclude Include="Kernel-Bridge\DriverEvents.h" />
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h" />
     <ClInclude Include="Kernel-Bridge\IOCTLHandlers.h" />

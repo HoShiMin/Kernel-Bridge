@@ -2,7 +2,7 @@
 
 #include "KernelShells.h"
 
-#include "GetProcAddress.h"
+#include "Importer.h"
 #include "MemoryUtils.h"
 #include "CPU.h"
 
