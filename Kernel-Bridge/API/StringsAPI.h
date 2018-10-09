@@ -445,7 +445,7 @@ public:
     static inline const TChar* Find(const TChar* Str, const TChar* Substr, SIZE_T Offset = 0);
     inline const TChar* Find(const TChar* Substring, SIZE_T Offset = 0) const {
         if (Offset > Data.Length) return nullptr;
-        return Find(Data.Buffer, Substring);
+        return Find(Data.Buffer, Substring, Offset);
     }
     inline bool Contains(const TChar* Substring, SIZE_T Offset = 0) const {
         return Find(Substring, Offset) != nullptr;
@@ -664,7 +664,7 @@ public:
     String& Replace(
 	    const TChar* Substr,
 	    const TChar* Replacer,
-	    bool SelectiveReplacement, // aXXabXXabc.Replace("a", "abc", true) == abcXXabcbXXabc
+	    bool SelectiveReplacement = false, // aXXabXXabc.Replace("a", "abc", true) == abcXXabcbXXabc
 	    unsigned int* ReplacementsCount = nullptr
     ) {
 	    unsigned int Replaced = 0;
