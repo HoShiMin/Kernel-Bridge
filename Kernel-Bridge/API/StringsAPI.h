@@ -213,7 +213,7 @@ public:
 
         return String(&StringInfo);
     }
-	String operator + (String&& Str) {
+    String operator + (String&& Str) {
         SIZE_T StrLength = Str.GetLength();
         if (!StrLength) return *this;
 
@@ -228,7 +228,7 @@ public:
 
         return String(&StringInfo);         
     }
-	String operator + (const String& Str) {
+    String operator + (const String& Str) {
         if (!Str.Data.Length) return *this;
 
         SIZE_T SummaryLength = Data.Length + Str.Data.Length;
@@ -242,7 +242,7 @@ public:
 
         return String(&StringInfo);        
     }
-	friend String operator + (const TChar* Left, const String& Right) {
+    friend String operator + (const TChar* Left, const String& Right) {
         if (!Left) return Right;
 
         SIZE_T LeftLength = Length(Left);
@@ -258,14 +258,14 @@ public:
         StringInfo.Length = SummaryLength;
 
         return String(&StringInfo);  
-	}
+    }
 
     String& operator += (const TChar* Str) {
         Concat(Str);
         return *this;
     }
 
-	String& operator += (String&& Str) {
+    String& operator += (String&& Str) {
         Concat(&Str.Data);
         return *this;
     }
@@ -286,7 +286,7 @@ public:
         Data.Length = StrLength;
         return *this;
     }
-	String& operator = (const String& Str) {
+    String& operator = (const String& Str) {
         Free(&Data);
         SetupSso(&Data, SsoBuffer);
         if (Str.Data.Length < SSO_SIZE || Alloc(&Data, Str.Data.Length))
@@ -295,7 +295,7 @@ public:
         Data.Length = Str.Data.Length;
         return *this;
     }
-	String& operator = (String&& Str) {
+    String& operator = (String&& Str) {
         Free(&Data);
         SetupSso(&Data, SsoBuffer);
         if (Str.Data.SsoUsing || Str.Data.Length < SSO_SIZE) {
@@ -308,25 +308,25 @@ public:
         return *this;
     }
 
-	bool operator == (const TChar* Str) {
+    bool operator == (const TChar* Str) {
         if (Data.Buffer == Str) return true;
         SIZE_T StrLength = Length(Str);
         if (Data.Length != StrLength) return false;
         return RtlCompareMemory(Data.Buffer, Str, StrLength) == StrLength;
     }
-	bool operator == (const String& String) {
+    bool operator == (const String& String) {
         if (Data.Buffer == String.Data.Buffer) return true;
         if (Data.Length != String.Data.Length) return false;
         return RtlCompareMemory(Data.Buffer, String.Data.Buffer, Data.Length) == Data.Length;
     }
 
-	bool operator != (const TChar* Str) {
+    bool operator != (const TChar* Str) {
         if (Data.Buffer == Str) return false;
         SIZE_T StrLength = Length(Str);
         if (Data.Length != StrLength) return true;
         return RtlCompareMemory(Data.Buffer, Str, StrLength) != StrLength;
     }
-	bool operator != (const String& String) {
+    bool operator != (const String& String) {
         if (Data.Buffer == String.Data.Buffer) return false;
         if (Data.Length != String.Data.Length) return true;
         return RtlCompareMemory(Data.Buffer, String.Data.Buffer, Data.Length) != Data.Length;
@@ -378,64 +378,64 @@ public:
     }
 
     static bool Matches(const TChar* Str, const TChar* Mask) {
-	    /* 
-		    Dr.Dobb's Algorithm:
-		    http://www.drdobbs.com/architecture-and-design/matching-wildcards-an-empirical-way-to-t/240169123?queryText=path%2Bmatches
-	    */
+        /* 
+            Dr.Dobb's Algorithm:
+            http://www.drdobbs.com/architecture-and-design/matching-wildcards-an-empirical-way-to-t/240169123?queryText=path%2Bmatches
+        */
 
-	    const TChar* TameText = Str;
-	    const TChar* WildText = Mask;
-	    const TChar* TameBookmark = static_cast<TChar*>(0x00);
-	    const TChar* WildBookmark = static_cast<TChar*>(0x00);
+        const TChar* TameText = Str;
+        const TChar* WildText = Mask;
+        const TChar* TameBookmark = static_cast<TChar*>(0x00);
+        const TChar* WildBookmark = static_cast<TChar*>(0x00);
 
-	    while (true) {
-		    if (*WildText == static_cast<TChar>('*')) {
-			    while (*(++WildText) == static_cast<TChar>('*')); // "xy" matches "x**y"
-			    if (!*WildText) return true; // "x" matches "*"
-			
-			    if (*WildText != static_cast<TChar>('?')) {
-				    while (*TameText != *WildText) {
-					    if (!(*(++TameText)))
-						    return false;  // "x" doesn't match "*y*"
-				    }
-			    }
+        while (true) {
+            if (*WildText == static_cast<TChar>('*')) {
+                while (*(++WildText) == static_cast<TChar>('*')); // "xy" matches "x**y"
+                if (!*WildText) return true; // "x" matches "*"
+            
+                if (*WildText != static_cast<TChar>('?')) {
+                    while (*TameText != *WildText) {
+                        if (!(*(++TameText)))
+                            return false;  // "x" doesn't match "*y*"
+                    }
+                }
 
-			    WildBookmark = WildText;
-			    TameBookmark = TameText;
-		    }
-		    else if (*TameText != *WildText && *WildText != static_cast<TChar>('?')) {
-			    if (WildBookmark) {
-				    if (WildText != WildBookmark) {
-					    WildText = WildBookmark;
+                WildBookmark = WildText;
+                TameBookmark = TameText;
+            }
+            else if (*TameText != *WildText && *WildText != static_cast<TChar>('?')) {
+                if (WildBookmark) {
+                    if (WildText != WildBookmark) {
+                        WildText = WildBookmark;
 
-					    if (*TameText != *WildText) {
-						    TameText = ++TameBookmark;
-						    continue; // "xy" matches "*y"
-					    }
-					    else {
-						    WildText++;
-					    }
-				    }
+                        if (*TameText != *WildText) {
+                            TameText = ++TameBookmark;
+                            continue; // "xy" matches "*y"
+                        }
+                        else {
+                            WildText++;
+                        }
+                    }
 
-				    if (*TameText) {
-					    TameText++;
-					    continue; // "mississippi" matches "*sip*"
-				    }
-			    }
+                    if (*TameText) {
+                        TameText++;
+                        continue; // "mississippi" matches "*sip*"
+                    }
+                }
 
-			    return false; // "xy" doesn't match "x"
-		    }
+                return false; // "xy" doesn't match "x"
+            }
 
-		    TameText++;
-		    WildText++;
+            TameText++;
+            WildText++;
 
-		    if (!*TameText) {
-			    while (*WildText == static_cast<TChar>('*')) WildText++; // "x" matches "x*"
+            if (!*TameText) {
+                while (*WildText == static_cast<TChar>('*')) WildText++; // "x" matches "x*"
 
-			    if (!*WildText) return true; // "x" matches "x"
-			    return false; // "x" doesn't match "xy"
-		    }
-	    }
+                if (!*WildText) return true; // "x" matches "x"
+                return false; // "x" doesn't match "xy"
+            }
+        }
     }
 
     bool Matches(const TChar* Mask) {
@@ -662,27 +662,27 @@ public:
     }
 
     String& Replace(
-	    const TChar* Substr,
-	    const TChar* Replacer,
-	    bool SelectiveReplacement = false, // aXXabXXabc.Replace("a", "abc", true) == abcXXabcbXXabc
-	    unsigned int* ReplacementsCount = nullptr
+        const TChar* Substr,
+        const TChar* Replacer,
+        bool SelectiveReplacement = false, // aXXabXXabc.Replace("a", "abc", true) == abcXXabcbXXabc
+        unsigned int* ReplacementsCount = nullptr
     ) {
-	    unsigned int Replaced = 0;
-	    SIZE_T SubstrLength = Length(Substr);
-	    SIZE_T ReplacerLength = Length(Replacer);
-		
-	    SIZE_T Position = Pos(Substr);
-	    if (Position == NoPos) return *this;
-	    do {
-		    if (SelectiveReplacement)
-			    if (Pos(Replacer, Position) == Position) continue;
-		    Delete(Position, SubstrLength);
-		    Insert(Position, Replacer);
-		    Replaced++;
-	    } while ((Position = Pos(Substr, Position + ReplacerLength)) != NoPos);
-	
-	    if (ReplacementsCount) *ReplacementsCount = Replaced;
-	    return *this;
+        unsigned int Replaced = 0;
+        SIZE_T SubstrLength = Length(Substr);
+        SIZE_T ReplacerLength = Length(Replacer);
+        
+        SIZE_T Position = Pos(Substr);
+        if (Position == NoPos) return *this;
+        do {
+            if (SelectiveReplacement)
+                if (Pos(Replacer, Position) == Position) continue;
+            Delete(Position, SubstrLength);
+            Insert(Position, Replacer);
+            Replaced++;
+        } while ((Position = Pos(Substr, Position + ReplacerLength)) != NoPos);
+    
+        if (ReplacementsCount) *ReplacementsCount = Replaced;
+        return *this;
     }
 };
 
@@ -707,13 +707,13 @@ public:
 template<>
 static inline SIZE_T String<CHAR>::Length(const CHAR* String) {
     if (!String) return 0;
-	return strlen(String);
+    return strlen(String);
 }
 
 template<>
 static inline SIZE_T String<WCHAR>::Length(const WCHAR* String) {
     if (!String) return 0;
-	return wcslen(String);
+    return wcslen(String);
 }
 
 template<>
@@ -800,11 +800,11 @@ inline const WCHAR* String<WCHAR>::Find(const WCHAR* Str, const WCHAR* Substr, S
 
 
 String<CHAR> FormatAnsi(LPCSTR Format, ...) {
-	va_list args;
-	va_start(args, Format);
+    va_list args;
+    va_start(args, Format);
     constexpr int BufferSize = 3;
     CHAR Buffer[BufferSize];
-	int characters = _vsnprintf_s(Buffer, BufferSize, BufferSize - 1, Format, args);
+    int characters = _vsnprintf_s(Buffer, BufferSize, BufferSize - 1, Format, args);
     if (characters != -1) return String<CHAR>(Buffer);
     String<CHAR> Result;
     Result.Resize(BufferSize * 2);
@@ -822,11 +822,11 @@ String<CHAR> FormatAnsi(LPCSTR Format, ...) {
 }
 
 String<WCHAR> FormatWide(LPCWSTR Format, ...) {
-	va_list args;
-	va_start(args, Format);
+    va_list args;
+    va_start(args, Format);
     constexpr int BufferSize = 3;
     WCHAR Buffer[BufferSize];
-	int characters = _vsnwprintf_s(Buffer, BufferSize, BufferSize - 1, Format, args);
+    int characters = _vsnwprintf_s(Buffer, BufferSize, BufferSize - 1, Format, args);
     if (characters != -1) return String<WCHAR>(Buffer);
     String<WCHAR> Result;
     Result.Resize(BufferSize * 2);
