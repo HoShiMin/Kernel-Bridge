@@ -320,6 +320,18 @@ public:
         return RtlCompareMemory(Data.Buffer, String.Data.Buffer, Data.Length) == Data.Length;
     }
 
+	bool operator != (const TChar* Str) {
+        if (Data.Buffer == Str) return false;
+        SIZE_T StrLength = Length(Str);
+        if (Data.Length != StrLength) return true;
+        return RtlCompareMemory(Data.Buffer, Str, StrLength) != StrLength;
+    }
+	bool operator != (const String& String) {
+        if (Data.Buffer == String.Data.Buffer) return false;
+        if (Data.Length != String.Data.Length) return true;
+        return RtlCompareMemory(Data.Buffer, String.Data.Buffer, Data.Length) != Data.Length;
+    }
+
     inline operator const TChar* () const {
         return Data.Buffer;
     }
@@ -680,6 +692,7 @@ public:
     AnsiString(PCANSI_STRING Ansi) : String(Ansi->Buffer, Ansi->Length / sizeof(CHAR)) {}
     AnsiString(const String& Str) : String(Str) {}
     AnsiString(String&& Str) : String(Str) {}
+    AnsiString() : String() {}
 };
 
 class WideString : public String<WCHAR> {
@@ -688,6 +701,7 @@ public:
     WideString(PCUNICODE_STRING Wide) : String(Wide->Buffer, Wide->Length / sizeof(WCHAR)) {}
     WideString(const String& Str) : String(Str) {}
     WideString(String&& Str) : String(Str) {}
+    WideString() : String() {}
 };
 
 template<>
