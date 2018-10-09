@@ -802,7 +802,7 @@ inline const WCHAR* String<WCHAR>::Find(const WCHAR* Str, const WCHAR* Substr, S
 String<CHAR> FormatAnsi(LPCSTR Format, ...) {
     va_list args;
     va_start(args, Format);
-    constexpr int BufferSize = 3;
+    constexpr int BufferSize = 64;
     CHAR Buffer[BufferSize];
     int characters = _vsnprintf_s(Buffer, BufferSize, BufferSize - 1, Format, args);
     if (characters != -1) return String<CHAR>(Buffer);
@@ -824,7 +824,7 @@ String<CHAR> FormatAnsi(LPCSTR Format, ...) {
 String<WCHAR> FormatWide(LPCWSTR Format, ...) {
     va_list args;
     va_start(args, Format);
-    constexpr int BufferSize = 3;
+    constexpr int BufferSize = 64;
     WCHAR Buffer[BufferSize];
     int characters = _vsnwprintf_s(Buffer, BufferSize, BufferSize - 1, Format, args);
     if (characters != -1) return String<WCHAR>(Buffer);
