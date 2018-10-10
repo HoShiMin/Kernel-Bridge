@@ -42,8 +42,8 @@ private:
     STRING_INFO Data;
 
     static inline VOID SetupSso(OUT STRING_INFO* StringInfo, const TChar* SsoBuffer) {
-        *StringInfo = {};
         StringInfo->Buffer = const_cast<TChar*>(SsoBuffer);
+        StringInfo->Length = 0;
         StringInfo->BufferSize = SSO_SIZE * sizeof(TChar);
         StringInfo->SsoUsing = TRUE;
         StringInfo->Buffer[0] = NullChar;
@@ -116,26 +116,9 @@ private:
     }
 
     bool Concat(const IN TChar* Str, SIZE_T StrLength) {
-        SIZE_T StrSize = StrLength * sizeof(TChar);
-        SIZE_T SelfSize = Data.Length * sizeof(TChar);
-        SIZE_T SummaryLength = StrLength + Data.Length;
-        SIZE_T SummarySize = StrSize + SelfSize + sizeof(TChar);
-        if (Data.BufferSize >= SummarySize) {
-            // We don't need realloc:
-            Copy(Data.Buffer + Data.Length, Str, StrLength);
-            Data.Length = SummaryLength;
-        } else {
-            // Need realloc:
-            STRING_INFO StringInfo = {}; // SSO disabled!
-            if (Alloc(&StringInfo, SummaryLength)) {
-                CopyCat(StringInfo.Buffer, Data.Buffer, Data.Length, Str, StrLength);
-                StringInfo.Length = SummaryLength;
-            } else {
-                return false;
-            }
-            Free(&Data);
-            Data = StringInfo;
-        }
+        if (!StrLength) return true;
+        Resize(Data.Length + StrLength);
+        Copy(&Data.Buffer[Data.Length - StrLength], Str, StrLength);
         return true;
     }
 
@@ -166,7 +149,7 @@ public:
     static constexpr ULONG StrPoolTag = 'RTS_';
 #endif
 
-    String() : Data({}) {
+    String() {
         SetupSso(&Data, SsoBuffer);
     };
     ~String() {
@@ -276,23 +259,14 @@ public:
     }
 
     String& operator = (const TChar* Str) {
-        Free(&Data);
-        SetupSso(&Data, SsoBuffer);
         SIZE_T StrLength = Length(Str);
-        if (!StrLength) return *this;
-        if (StrLength < SSO_SIZE || Alloc(&Data, StrLength))
-            Copy(Data.Buffer, Str, StrLength);
-        
-        Data.Length = StrLength;
+        Resize(StrLength);
+        Copy(Data.Buffer, Str, StrLength);
         return *this;
     }
     String& operator = (const String& Str) {
-        Free(&Data);
-        SetupSso(&Data, SsoBuffer);
-        if (Str.Data.Length < SSO_SIZE || Alloc(&Data, Str.Data.Length))
-            Copy(Data.Buffer, Str.Data.Buffer, Str.Data.Length);
-
-        Data.Length = Str.Data.Length;
+        Resize(Str.Data.Length);
+        Copy(Data.Buffer, Str.Data.Buffer, Str.Data.Length);
         return *this;
     }
     String& operator = (String&& Str) {
@@ -585,7 +559,7 @@ public:
 
     void Shrink() {
         if (Data.SsoUsing) return;
-        SIZE_T RequiredSize = ((((Data.Length + sizeof(TChar)) * sizeof(TChar)) / AllocationGranularity) + 1) * AllocationGranularity;
+        SIZE_T RequiredSize = ((((Data.Length + 1) * sizeof(TChar)) / AllocationGranularity) + 1) * AllocationGranularity;
         if (RequiredSize < Data.BufferSize) {
             STRING_INFO StringInfo = {};
             if (Data.Length < SSO_SIZE) {
@@ -604,29 +578,45 @@ public:
         }
     }
 
-    void Resize(SIZE_T Characters, TChar Filler = 0, bool AutoShrink = true) {
+    void Resize(SIZE_T Characters, TChar Filler = 0, bool AutoShrink = false) {
         if (Characters == Data.Length) {
             if (AutoShrink) Shrink();
             return;
         }
         
         if (!Characters) {
-            Clear();
+            if (AutoShrink) {
+                Clear();
+            } else {
+                Data.Buffer[0] = NullChar;
+                Data.Length = 0;
+            }
             return;
         }
 
         if (Characters > Data.Length) {
-            STRING_INFO StringInfo = {};
-            if (Characters < SSO_SIZE) {
-                SetupSso(&StringInfo, SsoBuffer);
-            } else {
-                Alloc(&StringInfo, Characters);
-            }
-            
-            if (StringInfo.Buffer) {
+            SIZE_T RequiredSize = (Characters + 1) * sizeof(TChar);
+            if (RequiredSize <= Data.BufferSize) {
+                if (Filler == 0)
+                    RtlZeroMemory(&Data.Buffer[Data.Length], (Characters - Data.Length) * sizeof(TChar));
+                else {
+                    for (SIZE_T Index = Data.Length; Index < Characters; ++Index)
+                        Data.Buffer[Index] = Filler;
+                }
+                Data.Buffer[Characters] = NullChar;
+                Data.Length = Characters;
+                return;
+            } 
+
+            STRING_INFO StringInfo = {};            
+            if (Alloc(&StringInfo, Characters)) {
                 Copy(StringInfo.Buffer, Data.Buffer, Data.Length);
-                for (SIZE_T Index = Data.Length; Index < Characters; ++Index)
-                    StringInfo.Buffer[Index] = Filler;
+                if (Filler == 0)
+                    RtlZeroMemory(&StringInfo.Buffer[Data.Length], (Characters - Data.Length) * sizeof(TChar));
+                else {
+                    for (SIZE_T Index = Data.Length; Index < Characters; ++Index)
+                        StringInfo.Buffer[Index] = Filler;
+                }
                 StringInfo.Buffer[Characters] = NullChar;
                 StringInfo.Length = Characters;
                 Free(&Data);
