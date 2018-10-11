@@ -30,7 +30,7 @@ private:
     static constexpr unsigned char SSO_SIZE = 32;
     __declspec(align(MEMORY_ALLOCATION_ALIGNMENT)) TChar SsoBuffer[SSO_SIZE];
 
-    static constexpr unsigned short AllocationGranularity = 128;
+    static constexpr unsigned short AllocationGranularity = 64;
 
     using STRING_INFO = struct {
         TChar* Buffer;

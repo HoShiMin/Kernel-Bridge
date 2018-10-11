@@ -34,6 +34,7 @@ namespace WdkTypes {
     };
 
     // Using universal x64 types for compatibility with x32 and x64:
+    using NTSTATUS  = unsigned int;
     using HANDLE    = unsigned long long;
     using PVOID     = unsigned long long;
     using PVOID64   = unsigned long long;

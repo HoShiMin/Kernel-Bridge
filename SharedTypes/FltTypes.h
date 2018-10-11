@@ -4,7 +4,8 @@ enum KbFltTypes {
     KbObCallbacks,
     KbPsProcess,
     KbPsThread,
-    KbPsImage
+    KbPsImage,
+    KbFltPreCreate
 };
 
 DECLARE_STRUCT(KB_FLT_CONTEXT, {
@@ -38,4 +39,11 @@ DECLARE_STRUCT(KB_FLT_PS_IMAGE_INFO, {
     WdkTypes::PVOID BaseAddress;
     UINT64 ImageSize;
     WCHAR FullImageName[384]; // Fixed size! Enough for paths.
+});
+
+DECLARE_STRUCT(KB_FLT_PRE_CREATE_INFO, {
+    WdkTypes::HANDLE ProcessId;
+    ACCESS_MASK AccessMask;
+    WdkTypes::NTSTATUS Status;
+    WCHAR Path[384]; // Fixed size! Enough for paths.
 });

@@ -1,11 +1,14 @@
 #include <fltKernel.h>
+#include <stdarg.h>
 
 #include "../API/MemoryUtils.h"
+#include "../API/ProcessesUtils.h"
 #include "../API/Locks.h"
 #include "../API/LinkedList.h"
 #include "../API/CommPort.h"
 #include "../API/ObCallbacks.h"
 #include "../API/PsCallbacks.h"
+#include "../API/StringsAPI.h"
 
 #include "FilterCallbacks.h"
 
@@ -219,15 +222,88 @@ namespace KbCallbacks {
     }
 }
 
+static WideString GetWin32Path(const PFILE_OBJECT FileObject) {
+    if (!FileObject || !FileObject->FileName.Buffer) return WideString();
+    UNICODE_STRING VolumeName;
+    if (NT_SUCCESS(IoVolumeDeviceToDosName(FileObject->DeviceObject, &VolumeName))) {
+        WideString Volume(&VolumeName);
+        ExFreePool(VolumeName.Buffer);
+        return Volume + FileObject->FileName.Buffer;
+    } else {
+        return FileObject->FileName.Buffer;
+    }
+}
+
+namespace FltHandlers {
+    NTSTATUS PreCreate(
+        _Inout_ PFLT_CALLBACK_DATA Data,
+        _In_ PCFLT_RELATED_OBJECTS FltObjects,
+        _Flt_CompletionContext_Outptr_ PVOID* CompletionContext
+    ) {
+        UNREFERENCED_PARAMETER(FltObjects);
+        UNREFERENCED_PARAMETER(CompletionContext);
+
+        WideString Path = GetWin32Path(Data->Iopb->TargetFileObject);
+        if (!Path.GetLength()) return STATUS_SUCCESS;;
+
+        KB_FLT_PRE_CREATE_INFO Info = {};
+        HANDLE ProcessId = PsGetCurrentProcessId();
+        HANDLE CurrentThreadId = PsGetCurrentThreadId();
+        Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
+        Info.AccessMask = Data->Iopb->Parameters.Create.SecurityContext->DesiredAccess;
+        SIZE_T SymbolsToCopy = Path.GetLength() >= sizeof(Info.Path) / sizeof(Info.Path[0])
+            ? (sizeof(Info.Path) / sizeof(Info.Path[0])) - 1
+            : Path.GetLength();
+        RtlCopyMemory(Info.Path, Path.GetConstData(), SymbolsToCopy * sizeof(Info.Path[0]));
+        Info.Path[SymbolsToCopy] = 0x0000;
+
+        using namespace Communication;
+        auto& Clients = Server.GetClients();
+
+        Clients.LockShared();
+        for (auto& Client : Clients) {
+            if (Client.SizeOfContext != sizeof(KB_FLT_CONTEXT)) continue;
+            auto ClientContext = static_cast<PKB_FLT_CONTEXT>(Client.ConnectionContext);
+            if (ClientContext->Type != KbFltPreCreate) continue;
+            if (reinterpret_cast<HANDLE>(ClientContext->Client.ThreadId) == CurrentThreadId) continue;
+
+            Server.Send(Client.ClientPort, &Info, sizeof(Info), &Info, sizeof(Info), 250);
+
+            // Restoring constant fields:
+            Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
+            Info.AccessMask = Data->Iopb->Parameters.Create.SecurityContext->DesiredAccess;
+        }
+        Clients.Unlock();
+
+        return Info.Status;
+    }
+}
+
 FLT_PREOP_CALLBACK_STATUS
 FilterPreOperation(
     _Inout_ PFLT_CALLBACK_DATA Data,
     _In_ PCFLT_RELATED_OBJECTS FltObjects,
-    _Flt_CompletionContext_Outptr_ PVOID *CompletionContext
+    _Flt_CompletionContext_Outptr_ PVOID* CompletionContext
 ) {
-    UNREFERENCED_PARAMETER(Data);
-    UNREFERENCED_PARAMETER(FltObjects);
-    UNREFERENCED_PARAMETER(CompletionContext);
+    // If we at DPC or greater we're unable to use communication ports...
+    if (KeGetCurrentIrql() > APC_LEVEL)
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+
+    // Check whether we have what to handle:
+    if (!Data->Iopb->TargetFileObject)
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+
+    NTSTATUS Status = STATUS_SUCCESS;
+    switch (Data->Iopb->MajorFunction) {
+    case IRP_MJ_CREATE:
+        Status = FltHandlers::PreCreate(Data, FltObjects, CompletionContext);
+        break;
+    }
+
+    if (!NT_SUCCESS(Status)) {
+        Data->IoStatus.Status = Status;
+        return FLT_PREOP_COMPLETE;
+    }
 
     return FLT_PREOP_SUCCESS_WITH_CALLBACK;
 }
