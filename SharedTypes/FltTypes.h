@@ -5,7 +5,8 @@ enum KbFltTypes {
     KbPsProcess,
     KbPsThread,
     KbPsImage,
-    KbFltPreCreate
+    KbFltPreCreate,
+    KbFltPreWrite
 };
 
 DECLARE_STRUCT(KB_FLT_CONTEXT, {
@@ -46,4 +47,12 @@ DECLARE_STRUCT(KB_FLT_PRE_CREATE_INFO, {
     ACCESS_MASK AccessMask;
     WdkTypes::NTSTATUS Status;
     WCHAR Path[384]; // Fixed size! Enough for paths.
+});
+
+DECLARE_STRUCT(KB_FLT_PRE_WRITE_INFO, {
+    WdkTypes::HANDLE ProcessId;
+    WdkTypes::PMDL Mdl;
+    ULONG Size;
+    WdkTypes::NTSTATUS Status;
+    WCHAR Path[384];
 });

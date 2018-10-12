@@ -674,6 +674,13 @@ public:
         if (ReplacementsCount) *ReplacementsCount = Replaced;
         return *this;
     }
+
+    VOID CopyTo(TChar* Buffer, SIZE_T Characters) {
+        if (Data.Length < Characters)
+            Characters = Data.Length;
+        RtlCopyMemory(Buffer, Data.Buffer, Characters * sizeof(TChar));
+        Buffer[Characters] = 0x0000;
+    }
 };
 
 class AnsiString : public String<CHAR> {

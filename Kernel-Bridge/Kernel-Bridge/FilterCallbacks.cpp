@@ -41,6 +41,13 @@ namespace Communication {
     VOID StopServer() {
         Server.StopServer();
     }
+
+    bool IsClientAppropriate(const CommPort::CLIENT_INFO& Client, KbFltTypes Type, OPTIONAL HANDLE IgnoredThreadId = NULL) {
+        if (Client.SizeOfContext != sizeof(KB_FLT_CONTEXT)) return false;
+        auto ClientContext = static_cast<PKB_FLT_CONTEXT>(Client.ConnectionContext);
+        if (ClientContext->Type != Type) return false;
+        return !IgnoredThreadId || reinterpret_cast<HANDLE>(ClientContext->Client.ThreadId) != IgnoredThreadId;    
+    }
 }
 
 namespace KbCallbacks {
@@ -93,14 +100,10 @@ namespace KbCallbacks {
                 // Broadcasting:
                 for (auto& Client : Clients) {
                     // Check whether the filter type is ObCallbacks:
-                    if (Client.SizeOfContext != sizeof(KB_FLT_CONTEXT)) continue;
-                    auto ClientContext = static_cast<PKB_FLT_CONTEXT>(Client.ConnectionContext);
-                    if (ClientContext->Type != KbObCallbacks) continue;
+                    if (!IsClientAppropriate(Client, KbObCallbacks)) continue;
                     
-                    constexpr int Timeout = 350; // Timeout per request, ms
-
                     KB_FLT_OB_CALLBACK_INFO Request = FltInfo;
-                    Server.Send(Client.ClientPort, &Request, sizeof(Request), &Request, sizeof(Request), Timeout);
+                    Server.Send(Client.ClientPort, &Request, sizeof(Request), &Request, sizeof(Request), 350);
                     FltInfo.CreateResultAccess = Request.CreateResultAccess;
                     FltInfo.DuplicateResultAccess = Request.DuplicateResultAccess;
                 }
@@ -134,10 +137,7 @@ namespace KbCallbacks {
 
                 Clients.LockShared();
                 for (auto& Client : Clients) {
-                    if (Client.SizeOfContext != sizeof(KB_FLT_CONTEXT)) continue;
-                    auto ClientContext = static_cast<PKB_FLT_CONTEXT>(Client.ConnectionContext);
-                    if (ClientContext->Type != KbPsProcess) continue;
-                    if (reinterpret_cast<HANDLE>(ClientContext->Client.ThreadId) == CurrentThreadId) continue;
+                    if (!IsClientAppropriate(Client, KbPsProcess, CurrentThreadId)) continue;
 
                     // We're not waiting for response:
                     Server.Send(Client.ClientPort, &Info, sizeof(Info));
@@ -166,10 +166,7 @@ namespace KbCallbacks {
 
                 Clients.LockShared();
                 for (auto& Client : Clients) {
-                    if (Client.SizeOfContext != sizeof(KB_FLT_CONTEXT)) continue;
-                    auto ClientContext = static_cast<PKB_FLT_CONTEXT>(Client.ConnectionContext);
-                    if (ClientContext->Type != KbPsThread) continue;
-                    if (reinterpret_cast<HANDLE>(ClientContext->Client.ThreadId) == CurrentThreadId) continue;
+                    if (!IsClientAppropriate(Client, KbPsThread, CurrentThreadId)) continue;
 
                     // We're not waiting for response:
                     Server.Send(Client.ClientPort, &Info, sizeof(Info));
@@ -244,34 +241,85 @@ namespace FltHandlers {
         UNREFERENCED_PARAMETER(CompletionContext);
 
         WideString Path = GetWin32Path(Data->Iopb->TargetFileObject);
-        if (!Path.GetLength()) return STATUS_SUCCESS;;
+        if (!Path.GetLength()) return STATUS_SUCCESS;
 
         KB_FLT_PRE_CREATE_INFO Info = {};
         HANDLE ProcessId = PsGetCurrentProcessId();
         HANDLE CurrentThreadId = PsGetCurrentThreadId();
         Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
         Info.AccessMask = Data->Iopb->Parameters.Create.SecurityContext->DesiredAccess;
-        SIZE_T SymbolsToCopy = Path.GetLength() >= sizeof(Info.Path) / sizeof(Info.Path[0])
-            ? (sizeof(Info.Path) / sizeof(Info.Path[0])) - 1
-            : Path.GetLength();
-        RtlCopyMemory(Info.Path, Path.GetConstData(), SymbolsToCopy * sizeof(Info.Path[0]));
-        Info.Path[SymbolsToCopy] = 0x0000;
+        Path.CopyTo(Info.Path, (sizeof(Info.Path) / sizeof(Info.Path[0])) - 1);
 
         using namespace Communication;
         auto& Clients = Server.GetClients();
 
         Clients.LockShared();
         for (auto& Client : Clients) {
-            if (Client.SizeOfContext != sizeof(KB_FLT_CONTEXT)) continue;
-            auto ClientContext = static_cast<PKB_FLT_CONTEXT>(Client.ConnectionContext);
-            if (ClientContext->Type != KbFltPreCreate) continue;
-            if (reinterpret_cast<HANDLE>(ClientContext->Client.ThreadId) == CurrentThreadId) continue;
+            if (!IsClientAppropriate(Client, KbFltPreCreate, CurrentThreadId)) continue;
 
-            Server.Send(Client.ClientPort, &Info, sizeof(Info), &Info, sizeof(Info), 250);
+            Server.Send(Client.ClientPort, &Info, sizeof(Info), &Info, sizeof(Info), 350);
 
             // Restoring constant fields:
             Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
             Info.AccessMask = Data->Iopb->Parameters.Create.SecurityContext->DesiredAccess;
+        }
+        Clients.Unlock();
+
+        return Info.Status;
+    }
+
+    NTSTATUS PostRead(
+        _Inout_  PFLT_CALLBACK_DATA Data,
+        _In_     PCFLT_RELATED_OBJECTS FltObjects,
+        _In_opt_ PVOID CompletionContext,
+        _In_     FLT_POST_OPERATION_FLAGS Flags
+    ) {
+        UNREFERENCED_PARAMETER(Data);
+        UNREFERENCED_PARAMETER(FltObjects);
+        UNREFERENCED_PARAMETER(CompletionContext);
+        UNREFERENCED_PARAMETER(Flags);
+
+        return STATUS_SUCCESS;
+    }
+
+    NTSTATUS PreWrite(
+        _Inout_ PFLT_CALLBACK_DATA Data,
+        _In_ PCFLT_RELATED_OBJECTS FltObjects,
+        _Flt_CompletionContext_Outptr_ PVOID* CompletionContext
+    ) {
+        UNREFERENCED_PARAMETER(FltObjects);
+        UNREFERENCED_PARAMETER(CompletionContext);
+
+        struct {
+            PMDL* Mdl;
+            ULONG* Size;
+            PVOID* UserBuffer;
+        } Params = {};
+
+        if (!NT_SUCCESS(FltDecodeParameters(Data, &Params.Mdl, &Params.UserBuffer, &Params.Size, NULL))) 
+            return STATUS_SUCCESS; // We're not attempt to filter it
+
+        WideString Path = GetWin32Path(Data->Iopb->TargetFileObject);
+        if (!Path.GetLength()) return STATUS_SUCCESS;
+
+        KB_FLT_PRE_WRITE_INFO Info = {};
+        HANDLE ProcessId = PsGetCurrentProcessId();
+        HANDLE CurrentThreadId = PsGetCurrentThreadId();
+        
+        using namespace Communication;
+        auto& Clients = Server.GetClients();
+
+        Clients.LockShared();
+        for (auto& Client : Clients) {
+            if (!IsClientAppropriate(Client, KbFltPreWrite, CurrentThreadId)) continue;
+
+            // Every iteration restoring constant fields:
+            Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
+            Info.Mdl = Params.Mdl ? reinterpret_cast<WdkTypes::PMDL>(*Params.Mdl) : NULL;
+            Info.Size = Params.Size ? *Params.Size : 0;
+            Path.CopyTo(Info.Path, (sizeof(Info.Path) / sizeof(Info.Path[0])) - 1);
+
+            Server.Send(Client.ClientPort, &Info, sizeof(Info), &Info, sizeof(Info), 3000);
         }
         Clients.Unlock();
 
@@ -298,6 +346,9 @@ FilterPreOperation(
     case IRP_MJ_CREATE:
         Status = FltHandlers::PreCreate(Data, FltObjects, CompletionContext);
         break;
+    case IRP_MJ_WRITE:
+        Status = FltHandlers::PreWrite(Data, FltObjects, CompletionContext);
+        break;
     }
 
     if (!NT_SUCCESS(Status)) {
@@ -315,10 +366,23 @@ FilterPostOperation(
     _In_opt_ PVOID CompletionContext,
     _In_     FLT_POST_OPERATION_FLAGS Flags
 ) {
-    UNREFERENCED_PARAMETER(Data);
-    UNREFERENCED_PARAMETER(FltObjects);
-    UNREFERENCED_PARAMETER(CompletionContext);
-    UNREFERENCED_PARAMETER(Flags);
+    if (KeGetCurrentIrql() > APC_LEVEL)
+        return FLT_POSTOP_FINISHED_PROCESSING;
+
+    if (!Data->Iopb->TargetFileObject)
+        return FLT_POSTOP_FINISHED_PROCESSING;
+
+    NTSTATUS Status = STATUS_SUCCESS;
+    switch (Data->Iopb->MajorFunction) {
+    case IRP_MJ_READ:
+        Status = FltHandlers::PostRead(Data, FltObjects, CompletionContext, Flags);
+        break;
+    }
+
+    if (!NT_SUCCESS(Status)) {
+        Data->IoStatus.Status = Status;
+        return FLT_POSTOP_FINISHED_PROCESSING;
+    }
 
     return FLT_POSTOP_FINISHED_PROCESSING;
 }
