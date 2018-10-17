@@ -225,9 +225,9 @@ static WideString GetWin32Path(const PFILE_OBJECT FileObject) {
     if (NT_SUCCESS(IoVolumeDeviceToDosName(FileObject->DeviceObject, &VolumeName))) {
         WideString Volume(&VolumeName);
         ExFreePool(VolumeName.Buffer);
-        return Volume + FileObject->FileName.Buffer;
+        return Volume + WideString(&FileObject->FileName);
     } else {
-        return FileObject->FileName.Buffer;
+        return WideString(&FileObject->FileName);
     }
 }
 
