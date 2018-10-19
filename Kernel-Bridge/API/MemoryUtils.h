@@ -171,6 +171,34 @@ namespace PhysicalMemory {
 }
 
 namespace Mdl {
+    // Maps the specified Mdl from specified process (or from kernel) 
+    // to address space of desired process:
+    //    - Mdl            : Mdl you want to map
+    //    - MappedMemory   : address of variable that receives the base address of mapped memory
+    //    - SrcProcess     : target process from which we want to map memory (or NULL to current process or if VA is a kernel address)
+    //    - DestProcess    : process to which memory should be mapped (or NULL to current process or to map to kernel memory)
+    //    - AccessMode     : KernelMode/UserMode - maps to kernel or current user address space
+    //    - Protect        : PAGE_*** protection rights for the mapped memory
+    //    - CacheType      : cache type of mapped memory
+    //    - UserRequestedAddress : if AccessMode == UserMode it specifies the target address to which memory will map,
+    //                             or NULL to choose address automatically (if AccessMode == KernelMode this param must be NULL)                              
+    // You can unmap memory with UnmapMdl function.
+    _IRQL_requires_max_(APC_LEVEL)
+    NTSTATUS MapMdl(
+        IN PMDL Mdl,
+        OUT PVOID* MappedMemory,
+        OPTIONAL PEPROCESS SrcProcess,
+        OPTIONAL PEPROCESS DestProcess,
+        KPROCESSOR_MODE AccessMode = KernelMode, 
+        ULONG Protect = PAGE_EXECUTE_READWRITE,
+        MEMORY_CACHING_TYPE CacheType = MmNonCached,
+        OPTIONAL PVOID UserRequestedAddress = NULL    
+    );
+
+    _IRQL_requires_max_(APC_LEVEL)
+    VOID UnmapMdl(IN PMDL Mdl, IN PVOID MappedMemory);
+
+    // Result type of MapMemory function:
     using MAPPING_INFO = struct {
         PMDL Mdl;
         PVOID BaseAddress;
@@ -185,7 +213,7 @@ namespace Mdl {
     //    - VirtualAddress : usermode or kernelmode address of memory we want to map
     //    - Size           : size in bytes of mapped block
     //    - AccessMode     : KernelMode/UserMode - maps to kernel or current user address space
-    //    - LockOperation  : IoReadAccess/IoModifyAccess - whether we can or not to modify this memory
+    //    - Protect        : PAGE_*** protection rights for the mapped memory
     //    - CacheType      : cache type of mapped memory
     //    - UserRequestedAddress : if AccessMode == UserMode it specifies the target address to which memory will map,
     //                             or NULL to choose address automatically (if AccessMode == KernelMode this param must be NULL)                              
@@ -198,7 +226,7 @@ namespace Mdl {
         IN PVOID VirtualAddress,
         ULONG Size,
         KPROCESSOR_MODE AccessMode = KernelMode,
-        LOCK_OPERATION LockOperation = IoModifyAccess,
+        ULONG Protect = PAGE_EXECUTE_READWRITE,
         MEMORY_CACHING_TYPE CacheType = MmNonCached,
         OPTIONAL PVOID UserRequestedAddress = NULL
     );

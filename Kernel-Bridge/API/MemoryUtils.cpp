@@ -326,29 +326,25 @@ namespace PhysicalMemory {
 
 namespace Mdl {
     _IRQL_requires_max_(APC_LEVEL)
-    NTSTATUS MapMemory(
-        OUT PMAPPING_INFO MappingInfo,
+    NTSTATUS MapMdl(
+        IN PMDL Mdl,
+        OUT PVOID* MappedMemory,
         OPTIONAL PEPROCESS SrcProcess,
         OPTIONAL PEPROCESS DestProcess,
-        IN PVOID VirtualAddress,
-        ULONG Size,
         KPROCESSOR_MODE AccessMode, 
-        LOCK_OPERATION LockOperation,
+        ULONG Protect,
         MEMORY_CACHING_TYPE CacheType,
-        OPTIONAL PVOID UserRequestedAddress 
+        OPTIONAL PVOID UserRequestedAddress     
     ) {
-        if (!Size || !MappingInfo) return STATUS_INVALID_PARAMETER;
+        if (!MappedMemory) return STATUS_INVALID_PARAMETER;
+        *MappedMemory = NULL;
+
         if (UserRequestedAddress) {
             if (
                 (AccessMode == KernelMode && AddressRange::IsUserAddress(UserRequestedAddress)) || 
                 (AccessMode == UserMode && AddressRange::IsKernelAddress(UserRequestedAddress))
-            ) return STATUS_INVALID_PARAMETER_7;
+            ) return STATUS_INVALID_PARAMETER_5; // Access mode is incompatible with UserRequestAddress!
         }
-
-        *MappingInfo = {};
-
-        MappingInfo->Mdl = IoAllocateMdl(VirtualAddress, Size, FALSE, FALSE, NULL);
-        if (!MappingInfo->Mdl) return STATUS_MEMORY_NOT_ALLOCATED;
 
         BOOLEAN IsLocked = FALSE;
         BOOLEAN IsAttached = FALSE;
@@ -358,9 +354,9 @@ namespace Mdl {
 
             // Lock and prepare pages in target process:
             if (!SrcProcess || SrcProcess == CurrentProcess)
-                MmProbeAndLockPages(MappingInfo->Mdl, KernelMode, LockOperation);
+                MmProbeAndLockPages(Mdl, KernelMode, IoReadAccess);
             else
-                MmProbeAndLockProcessPages(MappingInfo->Mdl, SrcProcess, KernelMode, LockOperation);
+                MmProbeAndLockProcessPages(Mdl, SrcProcess, KernelMode, IoReadAccess);
             IsLocked = TRUE;
 
             if (DestProcess && DestProcess != CurrentProcess) {
@@ -369,8 +365,8 @@ namespace Mdl {
             }
 
             // Map prepared pages to current process:
-            MappingInfo->BaseAddress = MmMapLockedPagesSpecifyCache(
-                MappingInfo->Mdl,
+            PVOID Mapping = MmMapLockedPagesSpecifyCache(
+                Mdl,
                 AccessMode,
                 CacheType,
                 AccessMode == UserMode ? UserRequestedAddress : NULL,
@@ -378,16 +374,63 @@ namespace Mdl {
                 NormalPagePriority
             );
 
+            MmProtectMdlSystemAddress(Mdl, Protect);
+
             if (IsAttached) KeUnstackDetachProcess(&ApcState);
+            *MappedMemory = Mapping;
         } __except (EXCEPTION_EXECUTE_HANDLER) {
             if (IsAttached) KeUnstackDetachProcess(&ApcState);
-            if (IsLocked) MmUnlockPages(MappingInfo->Mdl);
-            IoFreeMdl(MappingInfo->Mdl);
-            *MappingInfo = {};
+            if (IsLocked) MmUnlockPages(Mdl);
             return STATUS_UNSUCCESSFUL;                
         }
 
         return STATUS_SUCCESS;
+    }
+
+    _IRQL_requires_max_(APC_LEVEL)
+    VOID UnmapMdl(IN PMDL Mdl, IN PVOID MappedMemory) {
+        MmUnmapLockedPages(MappedMemory, Mdl);
+        MmUnlockPages(Mdl);
+    }
+
+    _IRQL_requires_max_(APC_LEVEL)
+    NTSTATUS MapMemory(
+        OUT PMAPPING_INFO MappingInfo,
+        OPTIONAL PEPROCESS SrcProcess,
+        OPTIONAL PEPROCESS DestProcess,
+        IN PVOID VirtualAddress,
+        ULONG Size,
+        KPROCESSOR_MODE AccessMode, 
+        ULONG Protect,
+        MEMORY_CACHING_TYPE CacheType,
+        OPTIONAL PVOID UserRequestedAddress 
+    ) {
+        if (!Size || !MappingInfo) return STATUS_INVALID_PARAMETER;
+
+        *MappingInfo = {};
+
+        MappingInfo->Mdl = IoAllocateMdl(VirtualAddress, Size, FALSE, FALSE, NULL);
+        if (!MappingInfo->Mdl) return STATUS_MEMORY_NOT_ALLOCATED;
+
+        NTSTATUS Status = MapMdl(
+            MappingInfo->Mdl,
+            &MappingInfo->BaseAddress,
+            SrcProcess,
+            DestProcess,
+            AccessMode,
+            Protect,
+            CacheType,
+            UserRequestedAddress
+        );
+        
+        if (!NT_SUCCESS(Status)) {
+            if (Status == STATUS_INVALID_PARAMETER_5)
+                Status = STATUS_INVALID_PARAMETER_6; // Do it corresponding to current prototype
+            IoFreeMdl(MappingInfo->Mdl);
+            *MappingInfo = {};
+        }
+
+        return Status;
     }
 
     _IRQL_requires_max_(APC_LEVEL)

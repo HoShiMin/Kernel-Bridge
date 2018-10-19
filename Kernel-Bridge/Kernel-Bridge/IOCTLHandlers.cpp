@@ -449,6 +449,62 @@ namespace
         return STATUS_SUCCESS;
     }
 
+    NTSTATUS FASTCALL KbMapMdl(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength) 
+    {
+        if (
+            RequestInfo->InputBufferSize != sizeof(KB_MAP_MDL_IN) || 
+            RequestInfo->OutputBufferSize != sizeof(KB_MAP_MDL_OUT)
+        ) return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_MAP_MDL_IN>(RequestInfo->InputBuffer);
+        auto Output = static_cast<PKB_MAP_MDL_OUT>(RequestInfo->OutputBuffer);
+
+        if (!Input || !Output) return STATUS_INVALID_PARAMETER;
+
+        PEPROCESS SrcProcess = NULL, DestProcess = NULL;
+        HANDLE CurrentProcessId = PsGetCurrentProcessId();
+        
+        if (Input->SrcProcessId && reinterpret_cast<HANDLE>(Input->SrcProcessId) != CurrentProcessId) { 
+            SrcProcess = Processes::Descriptors::GetEPROCESS(
+                reinterpret_cast<HANDLE>(Input->SrcProcessId)
+            );
+            if (!SrcProcess) return STATUS_NOT_FOUND;
+        }
+
+        if (Input->DestProcessId && reinterpret_cast<HANDLE>(Input->DestProcessId) != CurrentProcessId) { 
+            DestProcess = Processes::Descriptors::GetEPROCESS(
+                reinterpret_cast<HANDLE>(Input->DestProcessId)
+            );
+            if (!DestProcess) {
+                if (SrcProcess) ObDereferenceObject(SrcProcess);
+                return STATUS_NOT_FOUND;
+            }
+        }
+
+        PVOID Mapping = NULL;
+        NTSTATUS Status = Mdl::MapMdl(
+            reinterpret_cast<PMDL>(Input->Mdl),
+            &Mapping,
+            SrcProcess,
+            DestProcess,
+            static_cast<KPROCESSOR_MODE>(Input->AccessMode),
+            Input->Protect,
+            static_cast<MEMORY_CACHING_TYPE>(Input->CacheType),
+            reinterpret_cast<PVOID>(Input->UserRequestedAddress)
+        );
+
+        Output->BaseAddress = reinterpret_cast<WdkTypes::PVOID>(Mapping);
+
+        if (SrcProcess) ObDereferenceObject(SrcProcess);
+        if (DestProcess) ObDereferenceObject(DestProcess);
+
+        if (NT_SUCCESS(Status)) {
+            *ResponseLength = RequestInfo->OutputBufferSize;
+        }
+
+        return Status;
+    }
+
     NTSTATUS FASTCALL KbMapMemory(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength) 
     {
         if (
@@ -489,7 +545,7 @@ namespace
             reinterpret_cast<PVOID>(Input->VirtualAddress),
             Input->Size,
             static_cast<KPROCESSOR_MODE>(Input->AccessMode),
-            static_cast<LOCK_OPERATION>(Input->LockOperation),
+            Input->Protect,
             static_cast<MEMORY_CACHING_TYPE>(Input->CacheType),
             reinterpret_cast<PVOID>(Input->UserRequestedAddress)
         );
@@ -520,6 +576,21 @@ namespace
             reinterpret_cast<PMDL>(Input->Mdl),
             Input->Protect
         );
+    }
+
+    NTSTATUS FASTCALL KbUnmapMdl(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_UNMAP_MDL_IN)) 
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_UNMAP_MDL_IN>(RequestInfo->InputBuffer);
+        if (!Input || !Input->Mdl || !Input->BaseAddress) return STATUS_INVALID_PARAMETER;
+
+        Mdl::UnmapMdl(reinterpret_cast<PMDL>(Input->Mdl), reinterpret_cast<PVOID>(Input->BaseAddress));
+        
+        return STATUS_SUCCESS;
     }
 
     NTSTATUS FASTCALL KbUnmapMemory(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
@@ -1585,49 +1656,51 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 25 */ KbEqualMemory,
 
         // Memory mappings:
-        /* 26 */ KbMapMemory,
-        /* 27 */ KbProtectMappedMemory,
-        /* 28 */ KbUnmapMemory,
+        /* 26 */ KbMapMdl,
+        /* 27 */ KbMapMemory,
+        /* 28 */ KbProtectMappedMemory,
+        /* 29 */ KbUnmapMdl,
+        /* 30 */ KbUnmapMemory,
 
         // Physical memory:
-        /* 29 */ KbMapPhysicalMemory,
-        /* 30 */ KbUnmapPhysicalMemory,
-        /* 31 */ KbGetPhysicalAddress,
-        /* 32 */ KbReadPhysicalMemory,
-        /* 33 */ KbWritePhysicalMemory,
-        /* 34 */ KbReadDmiMemory,
+        /* 31 */ KbMapPhysicalMemory,
+        /* 32 */ KbUnmapPhysicalMemory,
+        /* 33 */ KbGetPhysicalAddress,
+        /* 34 */ KbReadPhysicalMemory,
+        /* 35 */ KbWritePhysicalMemory,
+        /* 36 */ KbReadDmiMemory,
 
         // Processes & Threads:
-        /* 35 */ KbGetEprocess,
-        /* 36 */ KbGetEthread,
-        /* 37 */ KbOpenProcess,
-        /* 38 */ KbOpenProcessByPointer,
-        /* 39 */ KbOpenThread,
-        /* 40 */ KbOpenThreadByPointer,
-        /* 41 */ KbDereferenceObject,
-        /* 42 */ KbCloseHandle,
-        /* 43 */ KbAllocUserMemory,
-        /* 44 */ KbFreeUserMemory,
-        /* 45 */ KbSecureVirtualMemory,
-        /* 46 */ KbUnsecureVirtualMemory,
-        /* 47 */ KbReadProcessMemory,
-        /* 48 */ KbWriteProcessMemory,
-        /* 49 */ KbSuspendProcess,
-        /* 50 */ KbResumeProcess,
-        /* 51 */ KbGetThreadContext,
-        /* 52 */ KbSetThreadContext,
-        /* 53 */ KbCreateUserThread,
-        /* 54 */ KbCreateSystemThread,
-        /* 55 */ KbQueueUserApc,
-        /* 56 */ KbRaiseIopl,
-        /* 57 */ KbResetIopl,
+        /* 37 */ KbGetEprocess,
+        /* 38 */ KbGetEthread,
+        /* 39 */ KbOpenProcess,
+        /* 40 */ KbOpenProcessByPointer,
+        /* 41 */ KbOpenThread,
+        /* 42 */ KbOpenThreadByPointer,
+        /* 43 */ KbDereferenceObject,
+        /* 44 */ KbCloseHandle,
+        /* 45 */ KbAllocUserMemory,
+        /* 46 */ KbFreeUserMemory,
+        /* 47 */ KbSecureVirtualMemory,
+        /* 48 */ KbUnsecureVirtualMemory,
+        /* 49 */ KbReadProcessMemory,
+        /* 50 */ KbWriteProcessMemory,
+        /* 51 */ KbSuspendProcess,
+        /* 52 */ KbResumeProcess,
+        /* 53 */ KbGetThreadContext,
+        /* 54 */ KbSetThreadContext,
+        /* 55 */ KbCreateUserThread,
+        /* 56 */ KbCreateSystemThread,
+        /* 57 */ KbQueueUserApc,
+        /* 58 */ KbRaiseIopl,
+        /* 59 */ KbResetIopl,
 
         // Stuff u kn0w:
-        /* 58 */ KbExecuteShellCode,
-        /* 59 */ KbGetKernelProcAddress,
-        /* 60 */ KbStallExecutionProcessor,
-        /* 61 */ KbBugCheck,
-        /* 62 */ KbCreateDriver
+        /* 60 */ KbExecuteShellCode,
+        /* 61 */ KbGetKernelProcAddress,
+        /* 62 */ KbStallExecutionProcessor,
+        /* 63 */ KbBugCheck,
+        /* 64 */ KbCreateDriver
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;

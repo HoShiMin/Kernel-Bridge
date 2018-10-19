@@ -39,8 +39,10 @@ EXPORTS
 	KbCopyMoveMemory
 	KbFillMemory
 	KbEqualMemory
+	KbMapMdl
 	KbMapMemory
 	KbProtectMappedMemory
+	KbUnmapMdl
 	KbUnmapMemory
 	KbMapPhysicalMemory
 	KbUnmapPhysicalMemory

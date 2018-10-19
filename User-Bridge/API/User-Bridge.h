@@ -102,6 +102,17 @@ namespace VirtualMemory {
 }
 
 namespace Mdl {
+    BOOL WINAPI KbMapMdl(
+        OUT WdkTypes::PVOID* MappedMemory,
+        OPTIONAL UINT64 SrcProcessId,
+        OPTIONAL UINT64 DestProcessId,
+        WdkTypes::PMDL Mdl,
+        WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode,
+        ULONG Protect = PAGE_EXECUTE_READWRITE,
+        WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
+        OPTIONAL WdkTypes::PVOID UserRequestedAddress = NULL
+    );
+
     using MAPPING_INFO = struct {
         WdkTypes::PVOID MappedAddress;
         WdkTypes::PVOID Mdl;
@@ -115,11 +126,14 @@ namespace Mdl {
         WdkTypes::PVOID VirtualAddress,
         ULONG Size,
         WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode,
-        WdkTypes::LOCK_OPERATION LockOperation = WdkTypes::IoWriteAccess,
+        ULONG Protect = PAGE_EXECUTE_READWRITE,
         WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
         OPTIONAL WdkTypes::PVOID UserRequestedAddress = NULL
     );
 
+    BOOL WINAPI KbProtectMappedMemory(IN WdkTypes::PMDL Mdl, ULONG Protect);
+
+    BOOL WINAPI KbUnmapMdl(IN WdkTypes::PMDL Mdl, IN WdkTypes::PVOID MappedMemory);
     BOOL WINAPI KbUnmapMemory(IN PMAPPING_INFO MappingInfo);
 }
 

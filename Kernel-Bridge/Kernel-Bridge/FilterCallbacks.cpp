@@ -42,6 +42,15 @@ namespace Communication {
         Server.StopServer();
     }
 
+    bool IsProcessSubscribed(CommPort::ClientsList& Clients, HANDLE ProcessId) {
+        for (const auto& Client : Clients) {
+            if (Client.SizeOfContext != sizeof(KB_FLT_CONTEXT)) continue;
+            auto ClientContext = static_cast<PKB_FLT_CONTEXT>(Client.ConnectionContext);
+            if (ClientContext->Client.ProcessId == reinterpret_cast<UINT64>(ProcessId)) return true;
+        }
+        return false;
+    }
+
     bool IsClientAppropriate(const CommPort::CLIENT_INFO& Client, KbFltTypes Type, OPTIONAL HANDLE IgnoredThreadId = NULL) {
         if (Client.SizeOfContext != sizeof(KB_FLT_CONTEXT)) return false;
         auto ClientContext = static_cast<PKB_FLT_CONTEXT>(Client.ConnectionContext);
@@ -221,6 +230,10 @@ namespace KbCallbacks {
 
 static WideString GetWin32Path(const PFILE_OBJECT FileObject) {
     if (!FileObject || !FileObject->FileName.Buffer) return WideString();
+    
+    if (KeAreAllApcsDisabled())
+        return WideString(&FileObject->FileName);
+    
     UNICODE_STRING VolumeName;
     if (NT_SUCCESS(IoVolumeDeviceToDosName(FileObject->DeviceObject, &VolumeName))) {
         WideString Volume(&VolumeName);
@@ -274,12 +287,53 @@ namespace FltHandlers {
         _In_opt_ PVOID CompletionContext,
         _In_     FLT_POST_OPERATION_FLAGS Flags
     ) {
-        UNREFERENCED_PARAMETER(Data);
         UNREFERENCED_PARAMETER(FltObjects);
         UNREFERENCED_PARAMETER(CompletionContext);
         UNREFERENCED_PARAMETER(Flags);
 
-        return STATUS_SUCCESS;
+        struct {
+            PMDL* Mdl;
+            ULONG* Size;
+            PVOID* UserBuffer;
+        } Params = {};
+
+        if (!NT_SUCCESS(FltDecodeParameters(Data, &Params.Mdl, &Params.UserBuffer, &Params.Size, NULL))) 
+            return STATUS_SUCCESS; // We're not attempt to filter it
+
+        WideString Path = GetWin32Path(Data->Iopb->TargetFileObject);
+        if (!Path.GetLength()) return STATUS_SUCCESS;
+
+        KB_FLT_POST_READ_INFO Info = {};
+        HANDLE ProcessId = PsGetCurrentProcessId();
+        HANDLE CurrentThreadId = PsGetCurrentThreadId();
+        
+        using namespace Communication;
+        auto& Clients = Server.GetClients();
+
+        PMDL UserMdl = NULL;
+        if (Params.Size && *Params.Size && Params.UserBuffer && *Params.UserBuffer) {
+            UserMdl = IoAllocateMdl(*Params.UserBuffer, *Params.Size, FALSE, FALSE, NULL);
+        }
+
+        Clients.LockShared();
+        if (!IsProcessSubscribed(Clients, ProcessId)) for (auto& Client : Clients) {
+            if (!IsClientAppropriate(Client, KbFltPostRead, CurrentThreadId)) continue;
+
+            // Every iteration restoring constant fields:
+            Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
+            Info.Mdl = reinterpret_cast<WdkTypes::PMDL>(UserMdl);
+            Info.Size = Params.Size ? *Params.Size : 0;
+            Path.CopyTo(Info.Path, (sizeof(Info.Path) / sizeof(Info.Path[0])) - 1);
+
+            Server.Send(Client.ClientPort, &Info, sizeof(Info), &Info, sizeof(Info), 5000);
+        }
+        Clients.Unlock();
+
+        if (UserMdl) {
+            IoFreeMdl(UserMdl);
+        }
+
+        return Info.Status;
     }
 
     NTSTATUS PreWrite(
@@ -309,19 +363,28 @@ namespace FltHandlers {
         using namespace Communication;
         auto& Clients = Server.GetClients();
 
+        PMDL UserMdl = NULL;
+        if (Params.Size && *Params.Size && Params.UserBuffer && *Params.UserBuffer) {
+            UserMdl = IoAllocateMdl(*Params.UserBuffer, *Params.Size, FALSE, FALSE, NULL);
+        }
+
         Clients.LockShared();
-        for (auto& Client : Clients) {
+        if (!IsProcessSubscribed(Clients, ProcessId)) for (auto& Client : Clients) {
             if (!IsClientAppropriate(Client, KbFltPreWrite, CurrentThreadId)) continue;
 
             // Every iteration restoring constant fields:
             Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
-            Info.Mdl = Params.Mdl ? reinterpret_cast<WdkTypes::PMDL>(*Params.Mdl) : NULL;
+            Info.Mdl = reinterpret_cast<WdkTypes::PMDL>(UserMdl);
             Info.Size = Params.Size ? *Params.Size : 0;
             Path.CopyTo(Info.Path, (sizeof(Info.Path) / sizeof(Info.Path[0])) - 1);
 
-            Server.Send(Client.ClientPort, &Info, sizeof(Info), &Info, sizeof(Info), 3000);
+            Server.Send(Client.ClientPort, &Info, sizeof(Info), &Info, sizeof(Info), 5000);
         }
         Clients.Unlock();
+
+        if (UserMdl) {
+            IoFreeMdl(UserMdl);
+        }
 
         return Info.Status;
     }
@@ -334,7 +397,7 @@ FilterPreOperation(
     _Flt_CompletionContext_Outptr_ PVOID* CompletionContext
 ) {
     // If we at DPC or greater we're unable to use communication ports...
-    if (KeGetCurrentIrql() > APC_LEVEL)
+    if (KeGetCurrentIrql() > PASSIVE_LEVEL)
         return FLT_PREOP_SUCCESS_NO_CALLBACK;
 
     // Check whether we have what to handle:
@@ -366,7 +429,7 @@ FilterPostOperation(
     _In_opt_ PVOID CompletionContext,
     _In_     FLT_POST_OPERATION_FLAGS Flags
 ) {
-    if (KeGetCurrentIrql() > APC_LEVEL)
+    if (KeGetCurrentIrql() > PASSIVE_LEVEL)
         return FLT_POSTOP_FINISHED_PROCESSING;
 
     if (!Data->Iopb->TargetFileObject)

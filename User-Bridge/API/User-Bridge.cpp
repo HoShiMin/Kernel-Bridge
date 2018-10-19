@@ -373,6 +373,31 @@ namespace VirtualMemory {
 }
 
 namespace Mdl {
+    BOOL WINAPI KbMapMdl(
+        OUT WdkTypes::PVOID* MappedMemory,
+        OPTIONAL UINT64 SrcProcessId,
+        OPTIONAL UINT64 DestProcessId,
+        WdkTypes::PMDL Mdl,
+        WdkTypes::KPROCESSOR_MODE AccessMode,
+        ULONG Protect,
+        WdkTypes::MEMORY_CACHING_TYPE CacheType,
+        OPTIONAL WdkTypes::PVOID UserRequestedAddress
+    ) {
+        if (!MappedMemory) return FALSE;
+        KB_MAP_MDL_IN Input = {};
+        KB_MAP_MDL_OUT Output = {};
+        Input.SrcProcessId = SrcProcessId;
+        Input.DestProcessId = DestProcessId;
+        Input.Mdl = Mdl;
+        Input.AccessMode = AccessMode;
+        Input.Protect = Protect;
+        Input.CacheType = CacheType;
+        Input.UserRequestedAddress;
+        BOOL Status = KbSendRequest(Ctls::KbMapMdl, &Input, sizeof(Input), &Output, sizeof(Output));
+        *MappedMemory = Output.BaseAddress;
+        return Status;
+    }
+
     BOOL WINAPI KbMapMemory(
         OUT PMAPPING_INFO MappingInfo,
         OPTIONAL UINT64 SrcProcessId,
@@ -380,7 +405,7 @@ namespace Mdl {
         WdkTypes::PVOID VirtualAddress,
         ULONG Size,
         WdkTypes::KPROCESSOR_MODE AccessMode,
-        WdkTypes::LOCK_OPERATION LockOperation,
+        ULONG Protect,
         WdkTypes::MEMORY_CACHING_TYPE CacheType,
         OPTIONAL WdkTypes::PVOID UserRequestedAddress
     ) {
@@ -392,7 +417,7 @@ namespace Mdl {
         Input.VirtualAddress = VirtualAddress;
         Input.Size = Size;
         Input.AccessMode = AccessMode;
-        Input.LockOperation = LockOperation;
+        Input.Protect = Protect;
         Input.CacheType = CacheType;
         Input.UserRequestedAddress;
         BOOL Status = KbSendRequest(Ctls::KbMapMemory, &Input, sizeof(Input), &Output, sizeof(Output));
@@ -407,6 +432,14 @@ namespace Mdl {
         Input.Mdl = Mdl;
         Input.Protect = Protect;
         return KbSendRequest(Ctls::KbProtectMappedMemory, &Input, sizeof(Input));
+    }
+
+    BOOL WINAPI KbUnmapMdl(IN WdkTypes::PMDL Mdl, IN WdkTypes::PVOID MappedMemory) {
+        if (!Mdl || !MappedMemory) return FALSE;
+        KB_UNMAP_MDL_IN Input = {};
+        Input.Mdl = Mdl;
+        Input.BaseAddress = MappedMemory;
+        return KbSendRequest(Ctls::KbUnmapMdl, &Input, sizeof(Input));
     }
 
     BOOL WINAPI KbUnmapMemory(IN PMAPPING_INFO MappingInfo) {
