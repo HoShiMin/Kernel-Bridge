@@ -83,6 +83,18 @@ static CONST FLT_OPERATION_REGISTRATION Callbacks[] =
         reinterpret_cast<PFLT_POST_OPERATION_CALLBACK>(FilterPostOperation)
     },
     {
+        IRP_MJ_DEVICE_CONTROL,
+        0,
+        reinterpret_cast<PFLT_PRE_OPERATION_CALLBACK>(FilterPreOperation),
+        reinterpret_cast<PFLT_POST_OPERATION_CALLBACK>(FilterPostOperation)
+    },
+    {
+        IRP_MJ_INTERNAL_DEVICE_CONTROL,
+        0,
+        reinterpret_cast<PFLT_PRE_OPERATION_CALLBACK>(FilterPreOperation),
+        reinterpret_cast<PFLT_POST_OPERATION_CALLBACK>(FilterPostOperation)
+    },
+    {
         IRP_MJ_OPERATION_END
     }
 };

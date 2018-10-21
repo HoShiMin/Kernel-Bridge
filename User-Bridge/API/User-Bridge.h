@@ -107,6 +107,7 @@ namespace Mdl {
         OPTIONAL UINT64 SrcProcessId,
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PMDL Mdl,
+        BOOLEAN NeedLock,
         WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode,
         ULONG Protect = PAGE_EXECUTE_READWRITE,
         WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
@@ -133,7 +134,7 @@ namespace Mdl {
 
     BOOL WINAPI KbProtectMappedMemory(IN WdkTypes::PMDL Mdl, ULONG Protect);
 
-    BOOL WINAPI KbUnmapMdl(IN WdkTypes::PMDL Mdl, IN WdkTypes::PVOID MappedMemory);
+    BOOL WINAPI KbUnmapMdl(IN WdkTypes::PMDL Mdl, IN WdkTypes::PVOID MappedMemory, BOOLEAN NeedUnlock);
     BOOL WINAPI KbUnmapMemory(IN PMAPPING_INFO MappingInfo);
 }
 

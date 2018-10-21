@@ -6,8 +6,16 @@ enum KbFltTypes {
     KbPsThread,
     KbPsImage,
     KbFltPreCreate,
+    KbFltPostCreate,
+    KbFltPreRead,
     KbFltPostRead,
-    KbFltPreWrite
+    KbFltPreWrite,
+    KbFltPostWrite,
+    KbFltPreDeviceControl,
+    KbFltPostDeviceControl,
+    KbFltPreInternalDeviceControl,
+    KbFltPostInternalDeviceControl,
+    KbFltNone
 };
 
 DECLARE_STRUCT(KB_FLT_CONTEXT, {
@@ -25,43 +33,49 @@ DECLARE_STRUCT(KB_FLT_OB_CALLBACK_INFO, {
 });
 
 DECLARE_STRUCT(KB_FLT_PS_PROCESS_INFO, {
-    WdkTypes::HANDLE ParentId;
-    WdkTypes::HANDLE ProcessId;
+    UINT64 ParentId;
+    UINT64 ProcessId;
     BOOLEAN Created;
 });
 
 DECLARE_STRUCT(KB_FLT_PS_THREAD_INFO, {
-    WdkTypes::HANDLE ProcessId;
-    WdkTypes::HANDLE ThreadId;
+    UINT64 ProcessId;
+    UINT64 ThreadId;
     BOOLEAN Created;
 });
 
 DECLARE_STRUCT(KB_FLT_PS_IMAGE_INFO, {
-    WdkTypes::HANDLE ProcessId;
+    UINT64 ProcessId;
     WdkTypes::PVOID BaseAddress;
     UINT64 ImageSize;
     WCHAR FullImageName[384]; // Fixed size! Enough for paths.
 });
 
-DECLARE_STRUCT(KB_FLT_PRE_CREATE_INFO, {
-    WdkTypes::HANDLE ProcessId;
+DECLARE_STRUCT(KB_FLT_CREATE_INFO, {
+    UINT64 ProcessId;
+    UINT64 ThreadId;
     ACCESS_MASK AccessMask;
     WdkTypes::NTSTATUS Status;
     WCHAR Path[384]; // Fixed size! Enough for paths.
 });
 
-DECLARE_STRUCT(KB_FLT_POST_READ_INFO, {
-    WdkTypes::HANDLE ProcessId;
-    WdkTypes::PMDL Mdl;
+DECLARE_STRUCT(KB_FLT_READ_WRITE_INFO, {
+    UINT64 ProcessId;
+    UINT64 ThreadId; 
+    WdkTypes::PMDL LockedMdl;
     ULONG Size;
     WdkTypes::NTSTATUS Status;
     WCHAR Path[384];
 });
 
-DECLARE_STRUCT(KB_FLT_PRE_WRITE_INFO, {
-    WdkTypes::HANDLE ProcessId;
-    WdkTypes::PMDL Mdl;
-    ULONG Size;
+DECLARE_STRUCT(KB_FLT_DEVICE_CONTROL_INFO, {
+    UINT64 ProcessId;
+    UINT64 ThreadId; 
+    WdkTypes::PMDL InputLockedMdl;
+    WdkTypes::PMDL OutputLockedMdl;
+    ULONG InputSize;
+    ULONG OutputSize;
+    ULONG Ioctl;
     WdkTypes::NTSTATUS Status;
     WCHAR Path[384];
 });

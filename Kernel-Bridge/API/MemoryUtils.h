@@ -11,9 +11,6 @@ namespace AddressRange {
 }
 
 namespace VirtualMemory {
-    _IRQL_requires_max_(DISPATCH_LEVEL)
-    POOL_TYPE GetPoolType(BOOLEAN Executable = FALSE);
-
     // Allocates non-paged not initialized memory from pool:
     _IRQL_requires_max_(DISPATCH_LEVEL)
     PVOID AllocFromPool(SIZE_T Bytes, BOOLEAN FillByZeroes = TRUE);
@@ -177,6 +174,7 @@ namespace Mdl {
     //    - MappedMemory   : address of variable that receives the base address of mapped memory
     //    - SrcProcess     : target process from which we want to map memory (or NULL to current process or if VA is a kernel address)
     //    - DestProcess    : process to which memory should be mapped (or NULL to current process or to map to kernel memory)
+    //    - NeedLock       : whether need to lock memory pages by MmProbeAndLock[Process]Pages (if pages already locked, set it to FALSE)
     //    - AccessMode     : KernelMode/UserMode - maps to kernel or current user address space
     //    - Protect        : PAGE_*** protection rights for the mapped memory
     //    - CacheType      : cache type of mapped memory
@@ -189,6 +187,7 @@ namespace Mdl {
         OUT PVOID* MappedMemory,
         OPTIONAL PEPROCESS SrcProcess,
         OPTIONAL PEPROCESS DestProcess,
+        BOOLEAN NeedLock,
         KPROCESSOR_MODE AccessMode = KernelMode, 
         ULONG Protect = PAGE_EXECUTE_READWRITE,
         MEMORY_CACHING_TYPE CacheType = MmNonCached,
@@ -196,7 +195,7 @@ namespace Mdl {
     );
 
     _IRQL_requires_max_(APC_LEVEL)
-    VOID UnmapMdl(IN PMDL Mdl, IN PVOID MappedMemory);
+    VOID UnmapMdl(IN PMDL Mdl, IN PVOID MappedMemory, BOOLEAN NeedUnlock);
 
     // Result type of MapMemory function:
     using MAPPING_INFO = struct {

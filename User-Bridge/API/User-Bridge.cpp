@@ -378,6 +378,7 @@ namespace Mdl {
         OPTIONAL UINT64 SrcProcessId,
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PMDL Mdl,
+        BOOLEAN NeedLock,
         WdkTypes::KPROCESSOR_MODE AccessMode,
         ULONG Protect,
         WdkTypes::MEMORY_CACHING_TYPE CacheType,
@@ -389,6 +390,7 @@ namespace Mdl {
         Input.SrcProcessId = SrcProcessId;
         Input.DestProcessId = DestProcessId;
         Input.Mdl = Mdl;
+        Input.NeedLock = NeedLock;
         Input.AccessMode = AccessMode;
         Input.Protect = Protect;
         Input.CacheType = CacheType;
@@ -434,11 +436,12 @@ namespace Mdl {
         return KbSendRequest(Ctls::KbProtectMappedMemory, &Input, sizeof(Input));
     }
 
-    BOOL WINAPI KbUnmapMdl(IN WdkTypes::PMDL Mdl, IN WdkTypes::PVOID MappedMemory) {
+    BOOL WINAPI KbUnmapMdl(IN WdkTypes::PMDL Mdl, IN WdkTypes::PVOID MappedMemory, BOOLEAN NeedUnlock) {
         if (!Mdl || !MappedMemory) return FALSE;
         KB_UNMAP_MDL_IN Input = {};
         Input.Mdl = Mdl;
         Input.BaseAddress = MappedMemory;
+        Input.NeedUnlock = NeedUnlock;
         return KbSendRequest(Ctls::KbUnmapMdl, &Input, sizeof(Input));
     }
 

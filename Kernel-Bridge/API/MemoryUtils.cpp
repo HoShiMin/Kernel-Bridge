@@ -331,6 +331,7 @@ namespace Mdl {
         OUT PVOID* MappedMemory,
         OPTIONAL PEPROCESS SrcProcess,
         OPTIONAL PEPROCESS DestProcess,
+        BOOLEAN NeedLock,
         KPROCESSOR_MODE AccessMode, 
         ULONG Protect,
         MEMORY_CACHING_TYPE CacheType,
@@ -343,7 +344,7 @@ namespace Mdl {
             if (
                 (AccessMode == KernelMode && AddressRange::IsUserAddress(UserRequestedAddress)) || 
                 (AccessMode == UserMode && AddressRange::IsKernelAddress(UserRequestedAddress))
-            ) return STATUS_INVALID_PARAMETER_5; // Access mode is incompatible with UserRequestAddress!
+            ) return STATUS_INVALID_PARAMETER_6; // Access mode is incompatible with UserRequestAddress!
         }
 
         BOOLEAN IsLocked = FALSE;
@@ -353,11 +354,13 @@ namespace Mdl {
             PEPROCESS CurrentProcess = PsGetCurrentProcess();
 
             // Lock and prepare pages in target process:
-            if (!SrcProcess || SrcProcess == CurrentProcess)
-                MmProbeAndLockPages(Mdl, KernelMode, IoReadAccess);
-            else
-                MmProbeAndLockProcessPages(Mdl, SrcProcess, KernelMode, IoReadAccess);
-            IsLocked = TRUE;
+            if (NeedLock) {
+                if (!SrcProcess || SrcProcess == CurrentProcess)
+                    MmProbeAndLockPages(Mdl, KernelMode, IoReadAccess);
+                else
+                    MmProbeAndLockProcessPages(Mdl, SrcProcess, KernelMode, IoReadAccess);
+                IsLocked = TRUE;
+            }
 
             if (DestProcess && DestProcess != CurrentProcess) {
                 KeStackAttachProcess(DestProcess, &ApcState);
@@ -388,9 +391,9 @@ namespace Mdl {
     }
 
     _IRQL_requires_max_(APC_LEVEL)
-    VOID UnmapMdl(IN PMDL Mdl, IN PVOID MappedMemory) {
+    VOID UnmapMdl(IN PMDL Mdl, IN PVOID MappedMemory, BOOLEAN NeedUnlock) {
         MmUnmapLockedPages(MappedMemory, Mdl);
-        MmUnlockPages(Mdl);
+        if (NeedUnlock) MmUnlockPages(Mdl);
     }
 
     _IRQL_requires_max_(APC_LEVEL)
@@ -417,6 +420,7 @@ namespace Mdl {
             &MappingInfo->BaseAddress,
             SrcProcess,
             DestProcess,
+            TRUE,
             AccessMode,
             Protect,
             CacheType,
@@ -424,8 +428,8 @@ namespace Mdl {
         );
         
         if (!NT_SUCCESS(Status)) {
-            if (Status == STATUS_INVALID_PARAMETER_5)
-                Status = STATUS_INVALID_PARAMETER_6; // Do it corresponding to current prototype
+            if (Status == STATUS_INVALID_PARAMETER_6)
+                Status = STATUS_INVALID_PARAMETER_7; // Do it corresponding to current prototype
             IoFreeMdl(MappingInfo->Mdl);
             *MappingInfo = {};
         }

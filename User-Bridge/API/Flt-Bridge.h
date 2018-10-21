@@ -4,6 +4,7 @@
     Depends on:
     - Windows.h
     - fltUser.h
+    - functional
     - WdkTypes.h
     - FltTypes.h
     - CommPort.h
@@ -12,7 +13,7 @@
 template <typename PacketDataType, KbFltTypes PacketType>
 class CommPortListener {
 public:
-    using _Callback = VOID(WINAPI*)(CommPort& Port, MessagePacket<PacketDataType>& Message);
+    using _Callback = std::function<void(CommPort& Port, MessagePacket<PacketDataType>& Message)>;
 private:
     CommPort Port;
     HANDLE hThread;
@@ -20,6 +21,17 @@ private:
 
     HRESULT ConnectStatus;
     HANDLE hSubscriptionEvent;
+
+    static bool CallCallbackSafe(CommPortListener* Self, MessagePacket<PacketDataType>& Message) {
+        if (Self->Callback) {
+            __try {
+                Self->Callback(Self->Port, Message);
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     static VOID WINAPI ListenerThread(CommPortListener* Self) {
         KB_FLT_CONTEXT Context = {};
@@ -37,10 +49,9 @@ private:
             MessagePacket<PacketDataType> Message;
             Status = Self->Port.Recv(*reinterpret_cast<CommPortPacket*>(&Message));
             if (SUCCEEDED(Status)) {
-                if (Self->Callback) Self->Callback(Self->Port, Message);
+                CallCallbackSafe(Self, Message);
             }
         } while (SUCCEEDED(Status));
-        std::cout << "Thread finished with " << std::hex << HRESULT_CODE(Status) << std::endl;
         ExitThread(0);    
     }
 public:

@@ -234,6 +234,7 @@ DECLARE_STRUCT(KB_MAP_MDL_IN, {
     OPTIONAL UINT64 SrcProcessId;
     OPTIONAL UINT64 DestProcessId;
     WdkTypes::PMDL Mdl;
+    BOOLEAN NeedLock;
     WdkTypes::KPROCESSOR_MODE AccessMode;
     ULONG Protect;
     WdkTypes::MEMORY_CACHING_TYPE CacheType;
@@ -268,6 +269,7 @@ DECLARE_STRUCT(KB_PROTECT_MAPPED_MEMORY_IN, {
 DECLARE_STRUCT(KB_UNMAP_MDL_IN, {
     WdkTypes::PVOID BaseAddress;
     WdkTypes::PMDL Mdl;
+    BOOLEAN NeedUnlock;
 });
 
 DECLARE_STRUCT(KB_UNMAP_MEMORY_IN, {

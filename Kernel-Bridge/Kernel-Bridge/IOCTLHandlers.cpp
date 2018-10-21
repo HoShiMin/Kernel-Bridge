@@ -487,6 +487,7 @@ namespace
             &Mapping,
             SrcProcess,
             DestProcess,
+            Input->NeedLock,
             static_cast<KPROCESSOR_MODE>(Input->AccessMode),
             Input->Protect,
             static_cast<MEMORY_CACHING_TYPE>(Input->CacheType),
@@ -588,7 +589,7 @@ namespace
         auto Input = static_cast<PKB_UNMAP_MDL_IN>(RequestInfo->InputBuffer);
         if (!Input || !Input->Mdl || !Input->BaseAddress) return STATUS_INVALID_PARAMETER;
 
-        Mdl::UnmapMdl(reinterpret_cast<PMDL>(Input->Mdl), reinterpret_cast<PVOID>(Input->BaseAddress));
+        Mdl::UnmapMdl(reinterpret_cast<PMDL>(Input->Mdl), reinterpret_cast<PVOID>(Input->BaseAddress), Input->NeedUnlock);
         
         return STATUS_SUCCESS;
     }

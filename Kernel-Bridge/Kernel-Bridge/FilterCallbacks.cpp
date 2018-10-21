@@ -15,6 +15,8 @@
 #include "WdkTypes.h"
 #include "FltTypes.h"
 
+#include "IOCTLs.h"
+
 namespace Communication {
     static CommPort Server;
 
@@ -135,8 +137,8 @@ namespace KbCallbacks {
         return PsProcessFilter.SetupCallback(
             [](HANDLE ParentId, HANDLE ProcessId, BOOLEAN Created) -> VOID {
                 KB_FLT_PS_PROCESS_INFO Info = {};
-                Info.ParentId = reinterpret_cast<WdkTypes::HANDLE>(ParentId);
-                Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
+                Info.ParentId = reinterpret_cast<UINT64>(ParentId);
+                Info.ProcessId = reinterpret_cast<UINT64>(ProcessId);
                 Info.Created = Created;
 
                 using namespace Communication;
@@ -164,8 +166,8 @@ namespace KbCallbacks {
         return PsThreadFilter.SetupCallback(
             [](HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Created) -> VOID {
                 KB_FLT_PS_THREAD_INFO Info = {};
-                Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
-                Info.ThreadId = reinterpret_cast<WdkTypes::HANDLE>(ThreadId);
+                Info.ProcessId = reinterpret_cast<UINT64>(ProcessId);
+                Info.ThreadId = reinterpret_cast<UINT64>(ThreadId);
                 Info.Created = Created;
 
                 using namespace Communication;
@@ -193,7 +195,7 @@ namespace KbCallbacks {
         return PsImageFilter.SetupCallback(
             [](PUNICODE_STRING FullImageName, HANDLE ProcessId, PIMAGE_INFO ImageInfo) -> VOID {
                 KB_FLT_PS_IMAGE_INFO Info = {};
-                Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
+                Info.ProcessId = reinterpret_cast<UINT64>(ProcessId);
                 Info.BaseAddress = reinterpret_cast<WdkTypes::PVOID>(ImageInfo->ImageBase);
                 Info.ImageSize = ImageInfo->ImageSize;
                 if (FullImageName && FullImageName->Buffer && FullImageName->Length && FullImageName->MaximumLength) {
@@ -228,10 +230,12 @@ namespace KbCallbacks {
     }
 }
 
-static WideString GetWin32Path(const PFILE_OBJECT FileObject) {
+static WideString GetWin32Path(const PFLT_CALLBACK_DATA Data) {
+    if (!Data || !Data->Iopb || !Data->Iopb->TargetFileObject) return WideString();
+    const PFILE_OBJECT FileObject = Data->Iopb->TargetFileObject;
     if (!FileObject || !FileObject->FileName.Buffer) return WideString();
     
-    if (KeAreAllApcsDisabled())
+    if (KeGetCurrentIrql() > PASSIVE_LEVEL || KeAreAllApcsDisabled())
         return WideString(&FileObject->FileName);
     
     UNICODE_STRING VolumeName;
@@ -244,8 +248,40 @@ static WideString GetWin32Path(const PFILE_OBJECT FileObject) {
     }
 }
 
+static WideString GetNtFileName(const PFLT_CALLBACK_DATA Data) {
+    if (!Data || !Data->Iopb || !Data->Iopb->TargetFileObject) return WideString();
+
+    PFLT_FILE_NAME_INFORMATION Info = NULL;
+    NTSTATUS Status = FltGetFileNameInformation(
+        Data, 
+        FLT_FILE_NAME_OPENED | FLT_FILE_NAME_QUERY_ALWAYS_ALLOW_CACHE_LOOKUP,
+        &Info
+    );
+
+    if (!NT_SUCCESS(Status) || !Info) return WideString();
+
+    FltParseFileNameInformation(Info);
+    WideString FileName(&Info->Name);
+
+    FltReleaseFileNameInformation(Info);
+
+    return FileName;
+}
+
+static WideString GetFilePath(const PFLT_CALLBACK_DATA Data) {
+    WideString Path = GetWin32Path(Data);
+    if (!Path.GetLength()) Path = GetNtFileName(Data);
+    return Path;
+}
+
 namespace FltHandlers {
-    NTSTATUS PreCreate(
+    enum FltDirection {
+        FltPreOp,
+        FltPostOp
+    };
+
+    NTSTATUS FltCreateHandler(
+        FltDirection Direction,
         _Inout_ PFLT_CALLBACK_DATA Data,
         _In_ PCFLT_RELATED_OBJECTS FltObjects,
         _Flt_CompletionContext_Outptr_ PVOID* CompletionContext
@@ -253,13 +289,29 @@ namespace FltHandlers {
         UNREFERENCED_PARAMETER(FltObjects);
         UNREFERENCED_PARAMETER(CompletionContext);
 
-        WideString Path = GetWin32Path(Data->Iopb->TargetFileObject);
-        if (!Path.GetLength()) return STATUS_SUCCESS;
+        // Check whether MajorNumber is valid:
+        if (Data->Iopb->MajorFunction != IRP_MJ_CREATE) 
+            return STATUS_SUCCESS;
 
-        KB_FLT_PRE_CREATE_INFO Info = {};
+        KbFltTypes HandlerType = KbFltNone;
+        switch (Direction) {
+        case FltPreOp:
+            HandlerType = KbFltPreCreate;
+            break;
+        case FltPostOp:
+            HandlerType = KbFltPostCreate;
+            break;
+        default:
+            return STATUS_SUCCESS; // Unknown direction
+        }
+
+        WideString Path = GetFilePath(Data);
+
+        KB_FLT_CREATE_INFO Info = {};
         HANDLE ProcessId = PsGetCurrentProcessId();
-        HANDLE CurrentThreadId = PsGetCurrentThreadId();
-        Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
+        HANDLE ThreadId = PsGetCurrentThreadId();
+        Info.ProcessId = reinterpret_cast<UINT64>(ProcessId);
+        Info.ThreadId = reinterpret_cast<UINT64>(ThreadId);
         Info.AccessMask = Data->Iopb->Parameters.Create.SecurityContext->DesiredAccess;
         Path.CopyTo(Info.Path, (sizeof(Info.Path) / sizeof(Info.Path[0])) - 1);
 
@@ -268,12 +320,13 @@ namespace FltHandlers {
 
         Clients.LockShared();
         for (auto& Client : Clients) {
-            if (!IsClientAppropriate(Client, KbFltPreCreate, CurrentThreadId)) continue;
+            if (!IsClientAppropriate(Client, HandlerType, ThreadId)) continue;
 
             Server.Send(Client.ClientPort, &Info, sizeof(Info), &Info, sizeof(Info), 350);
 
             // Restoring constant fields:
-            Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
+            Info.ProcessId = reinterpret_cast<UINT64>(ProcessId);
+            Info.ThreadId = reinterpret_cast<UINT64>(ThreadId);
             Info.AccessMask = Data->Iopb->Parameters.Create.SecurityContext->DesiredAccess;
         }
         Clients.Unlock();
@@ -281,112 +334,238 @@ namespace FltHandlers {
         return Info.Status;
     }
 
-    NTSTATUS PostRead(
-        _Inout_  PFLT_CALLBACK_DATA Data,
-        _In_     PCFLT_RELATED_OBJECTS FltObjects,
-        _In_opt_ PVOID CompletionContext,
-        _In_     FLT_POST_OPERATION_FLAGS Flags
-    ) {
-        UNREFERENCED_PARAMETER(FltObjects);
-        UNREFERENCED_PARAMETER(CompletionContext);
-        UNREFERENCED_PARAMETER(Flags);
-
-        struct {
-            PMDL* Mdl;
-            ULONG* Size;
-            PVOID* UserBuffer;
-        } Params = {};
-
-        if (!NT_SUCCESS(FltDecodeParameters(Data, &Params.Mdl, &Params.UserBuffer, &Params.Size, NULL))) 
-            return STATUS_SUCCESS; // We're not attempt to filter it
-
-        WideString Path = GetWin32Path(Data->Iopb->TargetFileObject);
-        if (!Path.GetLength()) return STATUS_SUCCESS;
-
-        KB_FLT_POST_READ_INFO Info = {};
-        HANDLE ProcessId = PsGetCurrentProcessId();
-        HANDLE CurrentThreadId = PsGetCurrentThreadId();
-        
-        using namespace Communication;
-        auto& Clients = Server.GetClients();
-
-        PMDL UserMdl = NULL;
-        if (Params.Size && *Params.Size && Params.UserBuffer && *Params.UserBuffer) {
-            UserMdl = IoAllocateMdl(*Params.UserBuffer, *Params.Size, FALSE, FALSE, NULL);
-        }
-
-        Clients.LockShared();
-        if (!IsProcessSubscribed(Clients, ProcessId)) for (auto& Client : Clients) {
-            if (!IsClientAppropriate(Client, KbFltPostRead, CurrentThreadId)) continue;
-
-            // Every iteration restoring constant fields:
-            Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
-            Info.Mdl = reinterpret_cast<WdkTypes::PMDL>(UserMdl);
-            Info.Size = Params.Size ? *Params.Size : 0;
-            Path.CopyTo(Info.Path, (sizeof(Info.Path) / sizeof(Info.Path[0])) - 1);
-
-            Server.Send(Client.ClientPort, &Info, sizeof(Info), &Info, sizeof(Info), 5000);
-        }
-        Clients.Unlock();
-
-        if (UserMdl) {
-            IoFreeMdl(UserMdl);
-        }
-
-        return Info.Status;
-    }
-
-    NTSTATUS PreWrite(
+    NTSTATUS FltReadWriteHandler(
+        FltDirection Direction,
         _Inout_ PFLT_CALLBACK_DATA Data,
         _In_ PCFLT_RELATED_OBJECTS FltObjects,
-        _Flt_CompletionContext_Outptr_ PVOID* CompletionContext
+        _Flt_CompletionContext_Outptr_ _Inout_ PVOID* CompletionContext
     ) {
         UNREFERENCED_PARAMETER(FltObjects);
         UNREFERENCED_PARAMETER(CompletionContext);
 
-        struct {
-            PMDL* Mdl;
-            ULONG* Size;
-            PVOID* UserBuffer;
-        } Params = {};
+        UCHAR IrpMjNumber = Data->Iopb->MajorFunction;
+        KbFltTypes HandlerType = KbFltNone;
+        switch (Direction) {
+        case FltPreOp:
+            switch (IrpMjNumber) {
+            case IRP_MJ_READ:
+                HandlerType = KbFltPreRead;
+                break;
+            case IRP_MJ_WRITE:
+                HandlerType = KbFltPreWrite;
+                break;
+            default:
+                return STATUS_SUCCESS; // Invalid IRP_MJ_*** for this handler
+            }
+            break;
+        case FltPostOp:
+            switch (IrpMjNumber) {
+            case IRP_MJ_READ:
+                HandlerType = KbFltPostRead;
+                break;
+            case IRP_MJ_WRITE:
+                HandlerType = KbFltPostWrite;
+                break;
+            default:
+                return STATUS_SUCCESS; // Invalid IRP_MJ_*** for this handler
+            }
+            break;
+        default:
+            return STATUS_SUCCESS; // Unknown direction
+        }
 
-        if (!NT_SUCCESS(FltDecodeParameters(Data, &Params.Mdl, &Params.UserBuffer, &Params.Size, NULL))) 
-            return STATUS_SUCCESS; // We're not attempt to filter it
+        if (!NT_SUCCESS(FltLockUserBuffer(Data)))
+            return STATUS_SUCCESS; // Well, we aren't filtering due to locking failure
 
-        WideString Path = GetWin32Path(Data->Iopb->TargetFileObject);
-        if (!Path.GetLength()) return STATUS_SUCCESS;
-
-        KB_FLT_PRE_WRITE_INFO Info = {};
-        HANDLE ProcessId = PsGetCurrentProcessId();
-        HANDLE CurrentThreadId = PsGetCurrentThreadId();
+        WideString Path = GetFilePath(Data);
         
+        KB_FLT_READ_WRITE_INFO Info = {};
+        HANDLE ProcessId = PsGetCurrentProcessId();
+        HANDLE ThreadId = PsGetCurrentThreadId();
+        PMDL Mdl = NULL;
+        ULONG Size = 0;
+
+        switch (HandlerType) {
+        case KbFltPreRead:
+        case KbFltPostRead:
+            Mdl = Data->Iopb->Parameters.Read.MdlAddress;
+            Size = Data->Iopb->Parameters.Read.Length;
+            break;
+        case KbFltPreWrite:
+        case KbFltPostWrite:
+            Mdl = Data->Iopb->Parameters.Write.MdlAddress;
+            Size = Data->Iopb->Parameters.Write.Length;
+            break;
+        default:
+            return STATUS_SUCCESS; // Invalid HandlerType fot this request
+        }
+
         using namespace Communication;
         auto& Clients = Server.GetClients();
 
-        PMDL UserMdl = NULL;
-        if (Params.Size && *Params.Size && Params.UserBuffer && *Params.UserBuffer) {
-            UserMdl = IoAllocateMdl(*Params.UserBuffer, *Params.Size, FALSE, FALSE, NULL);
-        }
-
         Clients.LockShared();
         if (!IsProcessSubscribed(Clients, ProcessId)) for (auto& Client : Clients) {
-            if (!IsClientAppropriate(Client, KbFltPreWrite, CurrentThreadId)) continue;
+            if (!IsClientAppropriate(Client, HandlerType, ThreadId)) continue;
 
             // Every iteration restoring constant fields:
-            Info.ProcessId = reinterpret_cast<WdkTypes::HANDLE>(ProcessId);
-            Info.Mdl = reinterpret_cast<WdkTypes::PMDL>(UserMdl);
-            Info.Size = Params.Size ? *Params.Size : 0;
+            Info.ProcessId = reinterpret_cast<UINT64>(ProcessId);
+            Info.ThreadId = reinterpret_cast<UINT64>(ThreadId);
+            Info.LockedMdl = reinterpret_cast<WdkTypes::PMDL>(Mdl);
+            Info.Size = Size;
             Path.CopyTo(Info.Path, (sizeof(Info.Path) / sizeof(Info.Path[0])) - 1);
 
             Server.Send(Client.ClientPort, &Info, sizeof(Info), &Info, sizeof(Info), 5000);
         }
         Clients.Unlock();
 
-        if (UserMdl) {
-            IoFreeMdl(UserMdl);
+        return Info.Status;    
+    }
+
+    NTSTATUS FltDeviceControlHandler(
+        FltDirection Direction,
+        _Inout_ PFLT_CALLBACK_DATA Data,
+        _In_ PCFLT_RELATED_OBJECTS FltObjects,
+        _Flt_CompletionContext_Outptr_ _Inout_ PVOID* CompletionContext
+    ) {
+        UNREFERENCED_PARAMETER(FltObjects);
+        UNREFERENCED_PARAMETER(CompletionContext);
+
+        UCHAR IrpMjNumber = Data->Iopb->MajorFunction;
+        KbFltTypes HandlerType = KbFltNone;
+        switch (Direction) {
+        case FltPreOp:
+            switch (IrpMjNumber) {
+            case IRP_MJ_DEVICE_CONTROL:
+                HandlerType = KbFltPreDeviceControl;
+                break;
+            case IRP_MJ_INTERNAL_DEVICE_CONTROL:
+                HandlerType = KbFltPreInternalDeviceControl;
+                break;
+            default:
+                return STATUS_SUCCESS; // Invalid IRP_MJ_*** for this handler
+            }
+            break;
+        case FltPostOp:
+            switch (IrpMjNumber) {
+            case IRP_MJ_DEVICE_CONTROL:
+                HandlerType = KbFltPostDeviceControl;
+                break;
+            case IRP_MJ_INTERNAL_DEVICE_CONTROL:
+                HandlerType = KbFltPostInternalDeviceControl;
+                break;
+            default:
+                return STATUS_SUCCESS; // Invalid IRP_MJ_*** for this handler
+            }
+            break;
+        default:
+            return STATUS_SUCCESS; // Unknown direction
         }
 
-        return Info.Status;
+        WideString Path = GetFilePath(Data);
+
+        KB_FLT_DEVICE_CONTROL_INFO Info = {};
+        HANDLE ProcessId = PsGetCurrentProcessId();
+        HANDLE ThreadId = PsGetCurrentThreadId();
+        ULONG Ioctl = Data->Iopb->Parameters.DeviceIoControl.Common.IoControlCode;
+        ULONG InputSize = Data->Iopb->Parameters.DeviceIoControl.Common.InputBufferLength;
+        ULONG OutputSize = Data->Iopb->Parameters.DeviceIoControl.Common.OutputBufferLength;
+        PMDL InputMdl = NULL;
+        PMDL OutputMdl = NULL;
+
+        switch (EXTRACT_CTL_METHOD(Ioctl)) {
+        case METHOD_BUFFERED: {
+            PVOID SystemBuffer = Data->Iopb->Parameters.DeviceIoControl.Buffered.SystemBuffer;
+            if (SystemBuffer && InputSize) {
+                InputMdl = IoAllocateMdl(SystemBuffer, InputSize, FALSE, FALSE, NULL);
+                __try {
+                    MmProbeAndLockPages(InputMdl, KernelMode, IoReadAccess);
+                } __except (EXCEPTION_EXECUTE_HANDLER) {
+                    IoFreeMdl(InputMdl);
+                    InputMdl = NULL;
+                }
+            }
+            if (SystemBuffer && OutputSize) {
+                OutputMdl = IoAllocateMdl(SystemBuffer, OutputSize, FALSE, FALSE, NULL);
+                __try {
+                    MmProbeAndLockPages(OutputMdl, KernelMode, IoWriteAccess);
+                } __except (EXCEPTION_EXECUTE_HANDLER) {
+                    IoFreeMdl(OutputMdl);
+                    OutputMdl = NULL;
+                }
+            }
+            break;
+        }
+        case METHOD_IN_DIRECT:
+        case METHOD_OUT_DIRECT: {
+            PVOID InputSystemBuffer = Data->Iopb->Parameters.DeviceIoControl.Direct.InputSystemBuffer;
+            if (InputSystemBuffer && InputSize) {
+                InputMdl = IoAllocateMdl(InputSystemBuffer, InputSize, FALSE, FALSE, NULL);
+                __try {
+                    MmProbeAndLockPages(InputMdl, KernelMode, IoReadAccess);
+                } __except (EXCEPTION_EXECUTE_HANDLER) {
+                    IoFreeMdl(InputMdl);
+                    InputMdl = NULL;
+                }
+            }
+            if (NT_SUCCESS(FltLockUserBuffer(Data)))
+                OutputMdl = Data->Iopb->Parameters.DeviceIoControl.Direct.OutputMdlAddress;
+            break;
+        }
+        case METHOD_NEITHER:
+            PVOID InputUserBuffer = Data->Iopb->Parameters.DeviceIoControl.Neither.InputBuffer;
+            if (InputUserBuffer && InputSize) {
+                InputMdl = IoAllocateMdl(InputUserBuffer, InputSize, FALSE, FALSE, NULL);
+                __try {
+                    MmProbeAndLockPages(InputMdl, KernelMode, IoReadAccess);
+                } __except (EXCEPTION_EXECUTE_HANDLER) {
+                    IoFreeMdl(InputMdl);
+                    InputMdl = NULL;
+                }
+            }
+            if (NT_SUCCESS(FltLockUserBuffer(Data)))
+                OutputMdl = Data->Iopb->Parameters.DeviceIoControl.Neither.OutputMdlAddress;
+            break;
+        }
+
+        using namespace Communication;
+        auto& Clients = Server.GetClients();
+
+        Clients.LockShared();
+        if (!IsProcessSubscribed(Clients, ProcessId)) for (auto& Client : Clients) {
+            if (!IsClientAppropriate(Client, HandlerType, ThreadId)) continue;
+
+            // Every iteration restoring constant fields:
+            Info.ProcessId = reinterpret_cast<UINT64>(ProcessId);
+            Info.ThreadId = reinterpret_cast<UINT64>(ThreadId);
+            Info.InputLockedMdl = reinterpret_cast<WdkTypes::PMDL>(InputMdl);
+            Info.OutputLockedMdl = reinterpret_cast<WdkTypes::PMDL>(OutputMdl);
+            Info.InputSize = InputSize;
+            Info.OutputSize = OutputSize;
+            Info.Ioctl = Ioctl;
+            Path.CopyTo(Info.Path, (sizeof(Info.Path) / sizeof(Info.Path[0])) - 1);
+
+            Server.Send(Client.ClientPort, &Info, sizeof(Info), &Info, sizeof(Info), 5000);
+        }
+        Clients.Unlock();
+
+        switch (EXTRACT_CTL_METHOD(Ioctl)) {
+        case METHOD_BUFFERED:
+            if (OutputMdl) {
+                MmUnlockPages(OutputMdl);
+                IoFreeMdl(OutputMdl);
+            }
+            [[fallthrough]];
+        case METHOD_IN_DIRECT:
+        case METHOD_OUT_DIRECT:
+        case METHOD_NEITHER:
+            if (InputMdl) {
+                MmUnlockPages(InputMdl);
+                IoFreeMdl(InputMdl);
+            }
+            break;
+        }
+
+        return Info.Status;    
     }
 }
 
@@ -397,7 +576,7 @@ FilterPreOperation(
     _Flt_CompletionContext_Outptr_ PVOID* CompletionContext
 ) {
     // If we at DPC or greater we're unable to use communication ports...
-    if (KeGetCurrentIrql() > PASSIVE_LEVEL)
+    if (KeGetCurrentIrql() > APC_LEVEL)
         return FLT_PREOP_SUCCESS_NO_CALLBACK;
 
     // Check whether we have what to handle:
@@ -407,10 +586,15 @@ FilterPreOperation(
     NTSTATUS Status = STATUS_SUCCESS;
     switch (Data->Iopb->MajorFunction) {
     case IRP_MJ_CREATE:
-        Status = FltHandlers::PreCreate(Data, FltObjects, CompletionContext);
+        Status = FltHandlers::FltCreateHandler(FltHandlers::FltPreOp, Data, FltObjects, CompletionContext);
         break;
+    case IRP_MJ_READ:
     case IRP_MJ_WRITE:
-        Status = FltHandlers::PreWrite(Data, FltObjects, CompletionContext);
+        Status = FltHandlers::FltReadWriteHandler(FltHandlers::FltPreOp, Data, FltObjects, CompletionContext);
+        break;
+    case IRP_MJ_DEVICE_CONTROL:
+    case IRP_MJ_INTERNAL_DEVICE_CONTROL:
+        Status = FltHandlers::FltDeviceControlHandler(FltHandlers::FltPreOp, Data, FltObjects, CompletionContext);
         break;
     }
 
@@ -429,7 +613,9 @@ FilterPostOperation(
     _In_opt_ PVOID CompletionContext,
     _In_     FLT_POST_OPERATION_FLAGS Flags
 ) {
-    if (KeGetCurrentIrql() > PASSIVE_LEVEL)
+    UNREFERENCED_PARAMETER(Flags);
+
+    if (KeGetCurrentIrql() > APC_LEVEL)
         return FLT_POSTOP_FINISHED_PROCESSING;
 
     if (!Data->Iopb->TargetFileObject)
@@ -437,8 +623,16 @@ FilterPostOperation(
 
     NTSTATUS Status = STATUS_SUCCESS;
     switch (Data->Iopb->MajorFunction) {
+    case IRP_MJ_CREATE:
+        Status = FltHandlers::FltCreateHandler(FltHandlers::FltPostOp, Data, FltObjects, &CompletionContext);
+        break;
     case IRP_MJ_READ:
-        Status = FltHandlers::PostRead(Data, FltObjects, CompletionContext, Flags);
+    case IRP_MJ_WRITE:
+        Status = FltHandlers::FltReadWriteHandler(FltHandlers::FltPostOp, Data, FltObjects, &CompletionContext);
+        break;
+    case IRP_MJ_DEVICE_CONTROL:
+    case IRP_MJ_INTERNAL_DEVICE_CONTROL:
+        Status = FltHandlers::FltDeviceControlHandler(FltHandlers::FltPostOp, Data, FltObjects, &CompletionContext);
         break;
     }
 
