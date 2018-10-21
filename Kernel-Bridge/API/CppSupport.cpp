@@ -95,44 +95,44 @@ extern "C" void __crt_deinit() {
 
 constexpr unsigned long CrtPoolTag = 'TRC_';
 
-void* operator new(SIZE_T Size) {
+void* __cdecl operator new(size_t Size) {
     void* Pointer = ExAllocatePoolWithTag(NonPagedPool, Size, CrtPoolTag);
     if (Pointer) RtlZeroMemory(Pointer, Size);
     return Pointer;
 }
  
-void* operator new(SIZE_T Size, POOL_TYPE PoolType) {
+void* __cdecl operator new(size_t Size, POOL_TYPE PoolType) {
     void* Pointer = ExAllocatePoolWithTag(PoolType, Size, CrtPoolTag);
     if (Pointer) RtlZeroMemory(Pointer, Size);
     return Pointer;
 }
 
-void* operator new[](SIZE_T Size) {
+void* __cdecl operator new[](size_t Size) {
     void* Pointer = ExAllocatePoolWithTag(NonPagedPool, Size, CrtPoolTag);
     if (Pointer) RtlZeroMemory(Pointer, Size);
     return Pointer;
 }
  
-void* operator new[](SIZE_T Size, POOL_TYPE PoolType) {
+void* __cdecl operator new[](size_t Size, POOL_TYPE PoolType) {
     void* Pointer = ExAllocatePoolWithTag(PoolType, Size, CrtPoolTag);
     if (Pointer) RtlZeroMemory(Pointer, Size);
     return Pointer;
 }
  
-void operator delete(void* Pointer) {
+void __cdecl operator delete(void* Pointer) {
     ExFreePoolWithTag(Pointer, CrtPoolTag);
 }
  
-void operator delete(void* Pointer, SIZE_T Size) {
+void __cdecl operator delete(void* Pointer, size_t Size) {
     UNREFERENCED_PARAMETER(Size);
     ExFreePoolWithTag(Pointer, CrtPoolTag);
 }
 
-void operator delete[](void* Pointer) {
+void __cdecl operator delete[](void* Pointer) {
     ExFreePoolWithTag(Pointer, CrtPoolTag);
 }
 
-void operator delete[](void* Pointer, SIZE_T Size) {
+void __cdecl operator delete[](void* Pointer, size_t Size) {
     UNREFERENCED_PARAMETER(Size);
     ExFreePoolWithTag(Pointer, CrtPoolTag);
 }

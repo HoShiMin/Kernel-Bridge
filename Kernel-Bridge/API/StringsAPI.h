@@ -19,8 +19,8 @@ extern "C" {
 }
 #endif
 
-extern "C" int _vsnprintf_s(char* dest, size_t size, size_t max_count, const char* format, va_list args);
-extern "C" int _vsnwprintf_s(wchar_t* dest, size_t size, size_t max_count, const wchar_t* format, va_list args);
+extern "C" int __cdecl _vsnprintf_s(char* dest, size_t size, size_t max_count, const char* format, va_list args);
+extern "C" int __cdecl _vsnwprintf_s(wchar_t* dest, size_t size, size_t max_count, const wchar_t* format, va_list args);
 
 template<typename TChar> class String {
 private:
@@ -34,8 +34,8 @@ private:
 
     using STRING_INFO = struct {
         TChar* Buffer;
-        SIZE_T Length; // Symbols count without null-terminator
-        SIZE_T BufferSize; // Buffer size in bytes
+        size_t Length; // Symbols count without null-terminator
+        size_t BufferSize; // Buffer size in bytes
         BOOLEAN SsoUsing;
     };
 
@@ -50,7 +50,7 @@ private:
         StringInfo->Buffer[SSO_SIZE - 1] = NullChar;
     }
 
-    static inline TChar* StrAllocMem(SIZE_T Bytes) {
+    static inline TChar* StrAllocMem(size_t Bytes) {
 #ifdef _NTDDK_
 #ifdef POOL_NX_OPTIN
         return static_cast<TChar*>(ExAllocatePoolWithTag(ExDefaultNonPagedPoolType, Bytes, StrPoolTag));
@@ -70,10 +70,10 @@ private:
 #endif
     }
 
-    static bool Alloc(OUT STRING_INFO* StringInfo, SIZE_T Characters) {
+    static bool Alloc(OUT STRING_INFO* StringInfo, size_t Characters) {
         if (!StringInfo || !Characters) return false;
         *StringInfo = {};
-        SIZE_T Size = (Characters + 1) * sizeof(TChar); // Null-terminated buffer
+        size_t Size = (Characters + 1) * sizeof(TChar); // Null-terminated buffer
         Size = ((Size / AllocationGranularity) + 1) * AllocationGranularity;
         TChar* Buffer = StrAllocMem(Size);
         if (!Buffer) return false;
@@ -92,13 +92,13 @@ private:
         }
     }
 
-    static VOID Copy(OUT TChar* Dest, const IN TChar* Src, SIZE_T Characters, bool Terminate = true) {
+    static VOID Copy(OUT TChar* Dest, const IN TChar* Src, size_t Characters, bool Terminate = true) {
         if (!Dest || !Src || !Characters) return;
         RtlCopyMemory(Dest, Src, Characters * sizeof(TChar));
         if (Terminate) Dest[Characters] = NullChar;
     }
 
-    static VOID CopyCat(OUT TChar* Dest, const IN TChar* First, SIZE_T FirstLength, const IN TChar* Second, SIZE_T SecondLength) {
+    static VOID CopyCat(OUT TChar* Dest, const IN TChar* First, size_t FirstLength, const IN TChar* Second, size_t SecondLength) {
         if (!Dest) return;
         if (First && FirstLength) {
             RtlCopyMemory(Dest, First, FirstLength * sizeof(TChar));
@@ -115,7 +115,7 @@ private:
         return Concat(Str, Length(Str));
     }
 
-    bool Concat(const IN TChar* Str, SIZE_T StrLength) {
+    bool Concat(const IN TChar* Str, size_t StrLength) {
         if (!StrLength) return true;
         Resize(Data.Length + StrLength);
         Copy(&Data.Buffer[Data.Length - StrLength], Str, StrLength);
@@ -157,7 +157,7 @@ public:
     }
     String(const TChar* Str) : String(Str, Length(Str)) {
     }
-    String(const TChar* Str, SIZE_T StrLength) : String() {
+    String(const TChar* Str, size_t StrLength) : String() {
         if (StrLength < SSO_SIZE || Alloc(&Data, StrLength))
             Copy(Data.Buffer, Str, StrLength);
 
@@ -182,10 +182,10 @@ public:
     String operator + (const TChar* Str) {
         if (!Str) return *this;
 
-        SIZE_T StrLength = Length(Str);
+        size_t StrLength = Length(Str);
         if (!StrLength) return *this;
 
-        SIZE_T SummaryLength = Data.Length + StrLength;
+        size_t SummaryLength = Data.Length + StrLength;
 
         STRING_INFO StringInfo = {};
         if (!Alloc(&StringInfo, SummaryLength)) 
@@ -197,10 +197,10 @@ public:
         return String(&StringInfo);
     }
     String operator + (String&& Str) {
-        SIZE_T StrLength = Str.GetLength();
+        size_t StrLength = Str.GetLength();
         if (!StrLength) return *this;
 
-        SIZE_T SummaryLength = Data.Length + Str.Data.Length;
+        size_t SummaryLength = Data.Length + Str.Data.Length;
 
         STRING_INFO StringInfo = {};
         if (!Alloc(&StringInfo, SummaryLength)) 
@@ -214,7 +214,7 @@ public:
     String operator + (const String& Str) {
         if (!Str.Data.Length) return *this;
 
-        SIZE_T SummaryLength = Data.Length + Str.Data.Length;
+        size_t SummaryLength = Data.Length + Str.Data.Length;
 
         STRING_INFO StringInfo = {};
         if (!Alloc(&StringInfo, SummaryLength)) 
@@ -228,10 +228,10 @@ public:
     friend String operator + (const TChar* Left, const String& Right) {
         if (!Left) return Right;
 
-        SIZE_T LeftLength = Length(Left);
+        size_t LeftLength = Length(Left);
         if (!LeftLength) return Right;
 
-        SIZE_T SummaryLength = Right.GetLength() + LeftLength;
+        size_t SummaryLength = Right.GetLength() + LeftLength;
 
         STRING_INFO StringInfo = {};
         if (!Alloc(&StringInfo, SummaryLength)) 
@@ -259,7 +259,7 @@ public:
     }
 
     String& operator = (const TChar* Str) {
-        SIZE_T StrLength = Length(Str);
+        size_t StrLength = Length(Str);
         Resize(StrLength);
         Copy(Data.Buffer, Str, StrLength);
         return *this;
@@ -284,7 +284,7 @@ public:
 
     bool operator == (const TChar* Str) {
         if (Data.Buffer == Str) return true;
-        SIZE_T StrLength = Length(Str);
+        size_t StrLength = Length(Str);
         if (Data.Length != StrLength) return false;
         return RtlCompareMemory(Data.Buffer, Str, StrLength) == StrLength;
     }
@@ -296,7 +296,7 @@ public:
 
     bool operator != (const TChar* Str) {
         if (Data.Buffer == Str) return false;
-        SIZE_T StrLength = Length(Str);
+        size_t StrLength = Length(Str);
         if (Data.Length != StrLength) return true;
         return RtlCompareMemory(Data.Buffer, Str, StrLength) != StrLength;
     }
@@ -322,10 +322,10 @@ public:
         return Data.Buffer[Index];
     }
 
-    static inline SIZE_T Length(const TChar* String);
+    static inline size_t Length(const TChar* String);
 
-    inline SIZE_T GetLength() const { return Data.Length; };
-    inline SIZE_T GetSize() const { return Data.BufferSize; }
+    inline size_t GetLength() const { return Data.Length; };
+    inline size_t GetSize() const { return Data.BufferSize; }
     inline const TChar* GetConstData() const { return Data.Buffer ? Data.Buffer : &NullChar; }
     inline TChar* GetData() { return Data.Buffer ? Data.Buffer : NULL; };
 
@@ -416,23 +416,29 @@ public:
         return Matches(Data.Buffer, Mask);
     }
 
-    static inline const TChar* Find(const TChar* Str, const TChar* Substr, SIZE_T Offset = 0);
-    inline const TChar* Find(const TChar* Substring, SIZE_T Offset = 0) const {
+    static inline const TChar* Find(const TChar* Str, const TChar* Substr, size_t Offset = 0);
+    inline const TChar* Find(const TChar* Substring, size_t Offset = 0) const {
         if (Offset > Data.Length) return nullptr;
         return Find(Data.Buffer, Substring, Offset);
     }
-    inline bool Contains(const TChar* Substring, SIZE_T Offset = 0) const {
+    inline bool Contains(const TChar* Substring, size_t Offset = 0) const {
         return Find(Substring, Offset) != nullptr;
     }
-    static constexpr SIZE_T NoPos = ~0ULL;
-    inline SIZE_T Pos(const TChar* Substring, SIZE_T Offset = 0, bool GetRelativePos = false) const {
+
+#ifdef _AMD64_
+    static constexpr size_t NoPos = ~0ULL;
+#else
+    static constexpr size_t NoPos = ~0UL;
+#endif
+
+    inline size_t Pos(const TChar* Substring, size_t Offset = 0, bool GetRelativePos = false) const {
         const TChar* SubstrAddr = Find(Substring, Offset);
         if (!SubstrAddr) return NoPos;
-        SIZE_T AbsPos = (reinterpret_cast<SIZE_T>(SubstrAddr) - reinterpret_cast<SIZE_T>(Data.Buffer)) / sizeof(TChar);
+        size_t AbsPos = (reinterpret_cast<size_t>(SubstrAddr) - reinterpret_cast<size_t>(Data.Buffer)) / sizeof(TChar);
         return GetRelativePos ? AbsPos - Offset : AbsPos;
     }
 
-    String& Delete(SIZE_T Position, SIZE_T Count, bool AutoShrink = false) {
+    String& Delete(size_t Position, size_t Count, bool AutoShrink = false) {
         if (Position >= Data.Length) return *this;
         if (Position + Count >= Data.Length) {
             Data.Buffer[Position] = NullChar;
@@ -448,22 +454,22 @@ public:
         return *this;
     }
 
-    String& Insert(SIZE_T Position, const TChar* Insertion) {
+    String& Insert(size_t Position, const TChar* Insertion) {
         return Insert(Position, Insertion, Length(Insertion));
     }
 
-    String& Insert(SIZE_T Position, const String& Insertion) {
+    String& Insert(size_t Position, const String& Insertion) {
         return Insert(Position, Insertion.Data.Buffer, Insertion.Data.Length);
     }
 
-    String& Insert(SIZE_T Position, const String&& Insertion) {
+    String& Insert(size_t Position, const String&& Insertion) {
         return Insert(Position, Insertion.Data.Buffer, Insertion.Data.Length);
     }
 
-    String& Insert(SIZE_T Position, const TChar* Insertion, SIZE_T CharactersCount) {
+    String& Insert(size_t Position, const TChar* Insertion, size_t CharactersCount) {
         if (!CharactersCount) return *this;
-        SIZE_T SummaryLength = Data.Length + CharactersCount;
-        SIZE_T RequiredSize = (SummaryLength + 1) * sizeof(TChar);
+        size_t SummaryLength = Data.Length + CharactersCount;
+        size_t RequiredSize = (SummaryLength + 1) * sizeof(TChar);
         if (RequiredSize > Data.BufferSize) {
             STRING_INFO StringInfo = {};
             if (Alloc(&StringInfo, SummaryLength)) {
@@ -481,7 +487,7 @@ public:
         return *this;
     } 
 
-    String Substr(SIZE_T Position, SIZE_T CharactersCount = 0) const {
+    String Substr(size_t Position, size_t CharactersCount = 0) const {
         if (!Data.Length || Position > Data.Length) return String();
         if (CharactersCount) {
             if (Position + CharactersCount > Data.Length) CharactersCount = Data.Length - Position;
@@ -493,7 +499,7 @@ public:
 
     String& TrimLeft(bool AutoShrink = false) {
         if (!Data.Length) return *this;
-        SIZE_T Symbol;
+        size_t Symbol;
         for (Symbol = 0; Symbol < Data.Length; ++Symbol) {
             if (
                 Data.Buffer[Symbol] != static_cast<TChar>(' ') &&
@@ -503,7 +509,7 @@ public:
 
         if (Symbol == 0) return *this;
         
-        SIZE_T TrimmedLength = Data.Length - Symbol;
+        size_t TrimmedLength = Data.Length - Symbol;
 
         if (!Data.SsoUsing && TrimmedLength < SSO_SIZE) {
             STRING_INFO StringInfo = {};
@@ -524,7 +530,7 @@ public:
 
     String& TrimRight(bool AutoShrink = false) {
         if (!Data.Length) return *this;
-        SIZE_T Symbol;
+        size_t Symbol;
         for (Symbol = Data.Length - 1; Symbol >= 0; --Symbol) {
             if (
                 Data.Buffer[Symbol] != static_cast<TChar>(' ') &&
@@ -559,7 +565,7 @@ public:
 
     void Shrink() {
         if (Data.SsoUsing) return;
-        SIZE_T RequiredSize = ((((Data.Length + 1) * sizeof(TChar)) / AllocationGranularity) + 1) * AllocationGranularity;
+        size_t RequiredSize = ((((Data.Length + 1) * sizeof(TChar)) / AllocationGranularity) + 1) * AllocationGranularity;
         if (RequiredSize < Data.BufferSize) {
             STRING_INFO StringInfo = {};
             if (Data.Length < SSO_SIZE) {
@@ -578,7 +584,7 @@ public:
         }
     }
 
-    void Resize(SIZE_T Characters, TChar Filler = 0, bool AutoShrink = false) {
+    void Resize(size_t Characters, TChar Filler = 0, bool AutoShrink = false) {
         if (Characters == Data.Length) {
             if (AutoShrink) Shrink();
             return;
@@ -595,12 +601,12 @@ public:
         }
 
         if (Characters > Data.Length) {
-            SIZE_T RequiredSize = (Characters + 1) * sizeof(TChar);
+            size_t RequiredSize = (Characters + 1) * sizeof(TChar);
             if (RequiredSize <= Data.BufferSize) {
                 if (Filler == 0)
                     RtlZeroMemory(&Data.Buffer[Data.Length], (Characters - Data.Length) * sizeof(TChar));
                 else {
-                    for (SIZE_T Index = Data.Length; Index < Characters; ++Index)
+                    for (size_t Index = Data.Length; Index < Characters; ++Index)
                         Data.Buffer[Index] = Filler;
                 }
                 Data.Buffer[Characters] = NullChar;
@@ -614,7 +620,7 @@ public:
                 if (Filler == 0)
                     RtlZeroMemory(&StringInfo.Buffer[Data.Length], (Characters - Data.Length) * sizeof(TChar));
                 else {
-                    for (SIZE_T Index = Data.Length; Index < Characters; ++Index)
+                    for (size_t Index = Data.Length; Index < Characters; ++Index)
                         StringInfo.Buffer[Index] = Filler;
                 }
                 StringInfo.Buffer[Characters] = NullChar;
@@ -629,7 +635,7 @@ public:
         if (AutoShrink) Shrink();
     }
 
-    void Reserve(SIZE_T Characters) {
+    void Reserve(size_t Characters) {
         if (Characters == Data.Length) return;
         if (Characters < Data.Length) {
             Resize(Characters);
@@ -658,10 +664,10 @@ public:
         unsigned int* ReplacementsCount = nullptr
     ) {
         unsigned int Replaced = 0;
-        SIZE_T SubstrLength = Length(Substr);
-        SIZE_T ReplacerLength = Length(Replacer);
+        size_t SubstrLength = Length(Substr);
+        size_t ReplacerLength = Length(Replacer);
         
-        SIZE_T Position = Pos(Substr);
+        size_t Position = Pos(Substr);
         if (Position == NoPos) return *this;
         do {
             if (SelectiveReplacement)
@@ -675,7 +681,7 @@ public:
         return *this;
     }
 
-    VOID CopyTo(TChar* Buffer, SIZE_T Characters) {
+    VOID CopyTo(TChar* Buffer, size_t Characters) {
         if (Data.Length < Characters)
             Characters = Data.Length;
         RtlCopyMemory(Buffer, Data.Buffer, Characters * sizeof(TChar));
@@ -702,13 +708,13 @@ public:
 };
 
 template<>
-static inline SIZE_T String<CHAR>::Length(const CHAR* String) {
+static inline size_t String<CHAR>::Length(const CHAR* String) {
     if (!String) return 0;
     return strlen(String);
 }
 
 template<>
-static inline SIZE_T String<WCHAR>::Length(const WCHAR* String) {
+static inline size_t String<WCHAR>::Length(const WCHAR* String) {
     if (!String) return 0;
     return wcslen(String);
 }
@@ -786,12 +792,12 @@ String<WCHAR>& String<WCHAR>::ToUpperCase() {
 }
 
 template<>
-inline const CHAR* String<CHAR>::Find(const CHAR* Str, const CHAR* Substr, SIZE_T Offset) {
+inline const CHAR* String<CHAR>::Find(const CHAR* Str, const CHAR* Substr, size_t Offset) {
     return strstr(Str + Offset, Substr);
 }
 
 template<>
-inline const WCHAR* String<WCHAR>::Find(const WCHAR* Str, const WCHAR* Substr, SIZE_T Offset) {
+inline const WCHAR* String<WCHAR>::Find(const WCHAR* Str, const WCHAR* Substr, size_t Offset) {
     return wcsstr(Str + Offset, Substr);
 }
 

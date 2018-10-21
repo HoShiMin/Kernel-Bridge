@@ -549,6 +549,9 @@ namespace Processes {
                     if (!GetWow64Process || GetWow64Process()) {
                         PsWrapApcWow64Thread(static_cast<PVOID*>(NormalContext), reinterpret_cast<PVOID*>(NormalRoutine));
                     }
+#else
+                    UNREFERENCED_PARAMETER(NormalRoutine);
+                    UNREFERENCED_PARAMETER(NormalContext);
 #endif
 
                     VirtualMemory::FreePoolMemory(Apc);
