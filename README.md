@@ -20,10 +20,10 @@ kernel-mode API and wrappers written on C++17.
 * Execution of custom usermode shellcodes
 * Unsigned drivers mapping
 * Processes, threads, handles and modules usermode callbacks (`ObRegisterCallbacks` & `PsSet***NotifyRoutine`)
+* Minifilter with usermode callbacks
   
 ### ➰ In development and coming soon:
 * PCI configuration (is it really necessary?)
-* Minifilter with usermode callbacks
 * PDB parsing and AsmJIT integration
   
 Driver template has full support of C++ static and global initializers and all of C++17 features (without C++ exceptions). All of API modules are easy-to-use and have no external dependiencies, so you can include them to your own C++ drivers. All of API functions are grouped into a logical categories into namespaces, so you can quickly find all functions you want.
