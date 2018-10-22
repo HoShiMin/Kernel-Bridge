@@ -326,6 +326,36 @@ namespace PhysicalMemory {
 
 namespace Mdl {
     _IRQL_requires_max_(APC_LEVEL)
+    PMDL AllocMdlAndLockPages(
+        PVOID Address, 
+        ULONG Size, 
+        KPROCESSOR_MODE AccessMode, 
+        LOCK_OPERATION Operation, 
+        OPTIONAL PEPROCESS Process
+    ) {
+        if (!Address || !Size) return NULL;
+        PMDL Mdl = IoAllocateMdl(Address, Size, FALSE, FALSE, NULL);
+        if (!Mdl) return NULL;
+        __try {
+            if (Process && Process != PsGetCurrentProcess())
+                MmProbeAndLockProcessPages(Mdl, Process, AccessMode, Operation);
+            else
+                MmProbeAndLockPages(Mdl, AccessMode, Operation);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            IoFreeMdl(Mdl);
+            return NULL;
+        }
+        return Mdl;
+    }
+
+    _IRQL_requires_max_(APC_LEVEL)
+    VOID UnlockPagesAndFreeMdl(PMDL Mdl) {
+        if (!Mdl) return;
+        MmUnlockPages(Mdl);
+        IoFreeMdl(Mdl);
+    }
+
+    _IRQL_requires_max_(APC_LEVEL)
     NTSTATUS MapMdl(
         IN PMDL Mdl,
         OUT PVOID* MappedMemory,

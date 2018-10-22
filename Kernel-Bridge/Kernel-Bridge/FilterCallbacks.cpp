@@ -475,53 +475,25 @@ namespace FltHandlers {
         switch (EXTRACT_CTL_METHOD(Ioctl)) {
         case METHOD_BUFFERED: {
             PVOID SystemBuffer = Data->Iopb->Parameters.DeviceIoControl.Buffered.SystemBuffer;
-            if (SystemBuffer && InputSize) {
-                InputMdl = IoAllocateMdl(SystemBuffer, InputSize, FALSE, FALSE, NULL);
-                __try {
-                    MmProbeAndLockPages(InputMdl, KernelMode, IoReadAccess);
-                } __except (EXCEPTION_EXECUTE_HANDLER) {
-                    IoFreeMdl(InputMdl);
-                    InputMdl = NULL;
-                }
-            }
-            if (SystemBuffer && OutputSize) {
-                OutputMdl = IoAllocateMdl(SystemBuffer, OutputSize, FALSE, FALSE, NULL);
-                __try {
-                    MmProbeAndLockPages(OutputMdl, KernelMode, IoWriteAccess);
-                } __except (EXCEPTION_EXECUTE_HANDLER) {
-                    IoFreeMdl(OutputMdl);
-                    OutputMdl = NULL;
-                }
-            }
+            if (SystemBuffer && InputSize)
+                InputMdl = Mdl::AllocMdlAndLockPages(SystemBuffer, InputSize);
+            if (SystemBuffer && OutputSize)
+                OutputMdl = Mdl::AllocMdlAndLockPages(SystemBuffer, InputSize, KernelMode, IoWriteAccess);
             break;
         }
         case METHOD_IN_DIRECT:
         case METHOD_OUT_DIRECT: {
             PVOID InputSystemBuffer = Data->Iopb->Parameters.DeviceIoControl.Direct.InputSystemBuffer;
-            if (InputSystemBuffer && InputSize) {
-                InputMdl = IoAllocateMdl(InputSystemBuffer, InputSize, FALSE, FALSE, NULL);
-                __try {
-                    MmProbeAndLockPages(InputMdl, KernelMode, IoReadAccess);
-                } __except (EXCEPTION_EXECUTE_HANDLER) {
-                    IoFreeMdl(InputMdl);
-                    InputMdl = NULL;
-                }
-            }
+            if (InputSystemBuffer && InputSize)
+                InputMdl = Mdl::AllocMdlAndLockPages(InputSystemBuffer, InputSize);
             if (NT_SUCCESS(FltLockUserBuffer(Data)))
                 OutputMdl = Data->Iopb->Parameters.DeviceIoControl.Direct.OutputMdlAddress;
             break;
         }
         case METHOD_NEITHER:
             PVOID InputUserBuffer = Data->Iopb->Parameters.DeviceIoControl.Neither.InputBuffer;
-            if (InputUserBuffer && InputSize) {
-                InputMdl = IoAllocateMdl(InputUserBuffer, InputSize, FALSE, FALSE, NULL);
-                __try {
-                    MmProbeAndLockPages(InputMdl, KernelMode, IoReadAccess);
-                } __except (EXCEPTION_EXECUTE_HANDLER) {
-                    IoFreeMdl(InputMdl);
-                    InputMdl = NULL;
-                }
-            }
+            if (InputUserBuffer && InputSize)
+                InputMdl = Mdl::AllocMdlAndLockPages(InputUserBuffer, InputSize);
             if (NT_SUCCESS(FltLockUserBuffer(Data)))
                 OutputMdl = Data->Iopb->Parameters.DeviceIoControl.Neither.OutputMdlAddress;
             break;
@@ -550,18 +522,14 @@ namespace FltHandlers {
 
         switch (EXTRACT_CTL_METHOD(Ioctl)) {
         case METHOD_BUFFERED:
-            if (OutputMdl) {
-                MmUnlockPages(OutputMdl);
-                IoFreeMdl(OutputMdl);
-            }
+            if (OutputMdl) 
+                Mdl::UnlockPagesAndFreeMdl(OutputMdl);
             [[fallthrough]];
         case METHOD_IN_DIRECT:
         case METHOD_OUT_DIRECT:
         case METHOD_NEITHER:
-            if (InputMdl) {
-                MmUnlockPages(InputMdl);
-                IoFreeMdl(InputMdl);
-            }
+            if (InputMdl) 
+                Mdl::UnlockPagesAndFreeMdl(InputMdl);
             break;
         }
 

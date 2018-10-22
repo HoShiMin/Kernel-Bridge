@@ -168,6 +168,18 @@ namespace PhysicalMemory {
 }
 
 namespace Mdl {
+    _IRQL_requires_max_(APC_LEVEL)
+    PMDL AllocMdlAndLockPages(
+        PVOID Address,
+        ULONG Size,
+        KPROCESSOR_MODE AccessMode = KernelMode,
+        LOCK_OPERATION Operation = IoReadAccess,
+        OPTIONAL PEPROCESS Process = NULL
+    );
+
+    _IRQL_requires_max_(APC_LEVEL)
+    VOID UnlockPagesAndFreeMdl(PMDL Mdl);
+
     // Maps the specified Mdl from specified process (or from kernel) 
     // to address space of desired process:
     //    - Mdl            : Mdl you want to map
