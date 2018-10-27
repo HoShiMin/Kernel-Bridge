@@ -109,7 +109,7 @@ namespace Mdl {
         WdkTypes::PMDL Mdl,
         BOOLEAN NeedLock,
         WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode,
-        ULONG Protect = PAGE_EXECUTE_READWRITE,
+        ULONG Protect = PAGE_READWRITE,
         WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
         OPTIONAL WdkTypes::PVOID UserRequestedAddress = NULL
     );
@@ -127,7 +127,7 @@ namespace Mdl {
         WdkTypes::PVOID VirtualAddress,
         ULONG Size,
         WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode,
-        ULONG Protect = PAGE_EXECUTE_READWRITE,
+        ULONG Protect = PAGE_READWRITE,
         WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
         OPTIONAL WdkTypes::PVOID UserRequestedAddress = NULL
     );
@@ -250,9 +250,23 @@ namespace KernelShells {
     BOOL WINAPI KbExecuteShellCode(_ShellCode ShellCode, PVOID Argument = NULL, OUT OPTIONAL PULONG Result = NULL);
 }
 
+namespace LoadableModules {
+    BOOL WINAPI KbCreateDriver(LPCWSTR DriverName, WdkTypes::PVOID DriverEntry);
+    BOOL WINAPI KbLoadModule(
+        WdkTypes::HMODULE hModule,
+        LPCWSTR ModuleName,
+        OPTIONAL WdkTypes::PVOID OnLoad = NULL,
+        OPTIONAL WdkTypes::PVOID OnUnload = NULL,
+        OPTIONAL WdkTypes::PVOID OnDeviceControl = NULL,
+        OPTIONAL WdkTypes::PVOID OnException = NULL
+    );
+    BOOL WINAPI KbUnloadModule(WdkTypes::HMODULE hModule);
+    BOOL WINAPI KbGetModuleHandle(LPCWSTR ModuleName, OUT WdkTypes::HMODULE* hModule);
+    BOOL WINAPI KbCallModule(WdkTypes::HMODULE hModule, UINT64 CtlCode, OPTIONAL WdkTypes::PVOID Argument = NULL);
+}
+
 namespace Stuff {
     BOOL WINAPI KbGetKernelProcAddress(LPCWSTR RoutineName, WdkTypes::PVOID* KernelAddress);
     BOOL WINAPI KbStallExecutionProcessor(ULONG Microseconds);
     BOOL WINAPI KbBugCheck(ULONG Status);
-    BOOL WINAPI KbCreateDriver(LPCWSTR DriverName, WdkTypes::PVOID DriverEntry);
 }

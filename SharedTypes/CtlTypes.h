@@ -82,12 +82,18 @@ namespace Ctls {
         /* 58 */ KbRaiseIopl,
         /* 59 */ KbResetIopl,
 
+        // Loadable modules:
+        /* 60 */ KbCreateDriver,
+        /* 61 */ KbLoadModule,
+        /* 62 */ KbGetModuleHandle,
+        /* 63 */ KbCallModule,
+        /* 64 */ KbUnloadModule,
+
         // Stuff u kn0w:
-        /* 60 */ KbExecuteShellCode,
-        /* 61 */ KbGetKernelProcAddress,
-        /* 62 */ KbStallExecutionProcessor,
-        /* 63 */ KbBugCheck,
-        /* 64 */ KbCreateDriver
+        /* 65 */ KbExecuteShellCode,
+        /* 66 */ KbGetKernelProcAddress,
+        /* 67 */ KbStallExecutionProcessor,
+        /* 68 */ KbBugCheck
     };
 }
 
@@ -481,4 +487,31 @@ DECLARE_STRUCT(KB_CREATE_DRIVER_IN, {
     WdkTypes::PVOID DriverEntry;
     WdkTypes::LPCWSTR DriverName;
     ULONG DriverNameSizeInBytes;
+});
+
+DECLARE_STRUCT(KB_LOAD_MODULE_IN, {
+    WdkTypes::HMODULE hModule;
+    WdkTypes::LPCWSTR ModuleName;
+    WdkTypes::PVOID OnLoad;
+    WdkTypes::PVOID OnUnload;
+    WdkTypes::PVOID OnDeviceControl;
+    WdkTypes::PVOID OnException;
+});
+
+DECLARE_STRUCT(KB_GET_MODULE_HANDLE_IN, {
+    WdkTypes::LPCWSTR ModuleName;    
+});
+
+DECLARE_STRUCT(KB_GET_MODULE_HANDLE_OUT, {
+    WdkTypes::HMODULE hModule;    
+});
+
+DECLARE_STRUCT(KB_CALL_MODULE_IN, {
+    WdkTypes::HMODULE hModule;
+    WdkTypes::PVOID Argument;
+    UINT64 CtlCode;
+});
+
+DECLARE_STRUCT(KB_UNLOAD_MODULE_IN, {
+    WdkTypes::HMODULE hModule;    
 });

@@ -33,6 +33,7 @@
     <ClCompile Include="Kernel-Bridge\DriverEvents.cpp" />
     <ClCompile Include="Kernel-Bridge\FilterCallbacks.cpp" />
     <ClCompile Include="Kernel-Bridge\IOCTLHandlers.cpp" />
+    <ClCompile Include="Kernel-Bridge\LoadableModules.cpp" />
     <ResourceCompile Include="Kernel-Bridge.rc" />
     <ClCompile Include="Kernel-Bridge.cpp" />
     <Inf Include="Kernel-Bridge.inf" />
@@ -199,6 +200,7 @@
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h" />
     <ClInclude Include="Kernel-Bridge\IOCTLHandlers.h" />
     <ClInclude Include="Kernel-Bridge\IOCTLs.h" />
+    <ClInclude Include="Kernel-Bridge\LoadableModules.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Exports.def" />

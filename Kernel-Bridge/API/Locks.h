@@ -241,12 +241,8 @@ class Atomic32 final {
 private:
     volatile ALIGNED LONG AtomicValue;
 public:
-    Atomic32(const Atomic32&) = delete;
-    Atomic32(Atomic32&&) = delete;
-    Atomic32& operator = (const Atomic32&) = delete;
-    Atomic32& operator = (Atomic32&&) = delete;
-
-    explicit Atomic32(LONG InitialValue = 0) : AtomicValue(InitialValue) {}
+    Atomic32() : AtomicValue(0) {};
+    explicit Atomic32(LONG InitialValue) : AtomicValue(InitialValue) {}
     ~Atomic32() = default;
 
     LONG Equals(LONG Value) { return Get() == Value; }
@@ -289,12 +285,8 @@ class Atomic64 final {
 private:
     volatile ALIGNED LONG64 AtomicValue;
 public:
-    Atomic64(const Atomic64&) = delete;
-    Atomic64(Atomic64&&) = delete;
-    Atomic64& operator = (const Atomic64&) = delete;
-    Atomic64& operator = (Atomic64&&) = delete;
-
-    explicit Atomic64(LONG64 InitialValue = 0) : AtomicValue(InitialValue) {}
+    Atomic64() : AtomicValue(0) {}
+    explicit Atomic64(LONG64 InitialValue) : AtomicValue(InitialValue) {}
     ~Atomic64() = default;
 
     LONG64 Equals(LONG64 Value) { return Get() == Value; } 

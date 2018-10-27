@@ -76,4 +76,11 @@ EXPORTS
 	KbStallExecutionProcessor
 	KbBugCheck
 	KbCreateDriver
-	KbMapDriver
+	KbMapDriverMemory
+	KbMapDriverFile
+	KbLoadModule
+	KbCallModule
+	KbGetModuleHandle
+	KbUnloadModule
+	KbLoadModuleMemory
+	KbLoadModuleFile

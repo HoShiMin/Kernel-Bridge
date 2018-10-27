@@ -12,15 +12,14 @@
 
 #ifndef _NTDDK_
 #pragma comment(lib, "ntdll.lib")
+#endif
 
 extern "C" {
     NTSYSAPI NTSTATUS NTAPI RtlDowncaseUnicodeString(PUNICODE_STRING Dest, PCUNICODE_STRING Src, BOOLEAN AllocateDest);
     NTSYSAPI NTSTATUS NTAPI RtlUpcaseUnicodeString(PUNICODE_STRING Dest, PCUNICODE_STRING Src, BOOLEAN AllocateDest);
+    int __cdecl _vsnprintf_s(char* dest, size_t size, size_t max_count, const char* format, va_list args);
+    int __cdecl _vsnwprintf_s(wchar_t* dest, size_t size, size_t max_count, const wchar_t* format, va_list args);
 }
-#endif
-
-extern "C" int __cdecl _vsnprintf_s(char* dest, size_t size, size_t max_count, const char* format, va_list args);
-extern "C" int __cdecl _vsnwprintf_s(wchar_t* dest, size_t size, size_t max_count, const wchar_t* format, va_list args);
 
 template<typename TChar> class String {
 private:
@@ -334,18 +333,18 @@ public:
         SetupSso(&Data, SsoBuffer);
     }
 
-    String<CHAR> GetAnsi() const;
-    String<WCHAR> GetWide() const;
+    inline String<CHAR> GetAnsi() const;
+    inline String<WCHAR> GetWide() const;
 
-    String& ToLowerCase();
-    String& ToUpperCase();
+    inline String& ToLowerCase();
+    inline String& ToUpperCase();
 
-    String GetLowerCase() const {
+    inline String GetLowerCase() const {
         String Str(*this);
         Str.ToLowerCase();
         return Str;
     }
-    String GetUpperCase() const {
+    inline String GetUpperCase() const {
         String Str(*this);
         Str.ToUpperCase();
         return Str;
@@ -720,12 +719,12 @@ static inline size_t String<WCHAR>::Length(const WCHAR* String) {
 }
 
 template<>
-String<CHAR> String<CHAR>::GetAnsi() const {
+inline String<CHAR> String<CHAR>::GetAnsi() const {
     return *this;
 }
 
 template<>
-String<WCHAR> String<CHAR>::GetWide() const {
+inline String<WCHAR> String<CHAR>::GetWide() const {
     ANSI_STRING AnsiString = {};
     RtlInitAnsiString(&AnsiString, Data.Buffer);
     UNICODE_STRING UnicodeString = {};
@@ -736,7 +735,7 @@ String<WCHAR> String<CHAR>::GetWide() const {
 }
 
 template<>
-String<CHAR> String<WCHAR>::GetAnsi() const {
+inline String<CHAR> String<WCHAR>::GetAnsi() const {
     UNICODE_STRING UnicodeString = {};
     RtlInitUnicodeString(&UnicodeString, Data.Buffer);
     ANSI_STRING AnsiString = {};
@@ -747,12 +746,12 @@ String<CHAR> String<WCHAR>::GetAnsi() const {
 }
 
 template<>
-String<WCHAR> String<WCHAR>::GetWide() const {
+inline String<WCHAR> String<WCHAR>::GetWide() const {
     return *this;
 }
 
 template<>
-String<CHAR>& String<CHAR>::ToLowerCase() {
+inline String<CHAR>& String<CHAR>::ToLowerCase() {
     UNICODE_STRING UnicodeString;
     ANSI_STRING AnsiString;
     RtlInitAnsiString(&AnsiString, Data.Buffer);
@@ -764,7 +763,7 @@ String<CHAR>& String<CHAR>::ToLowerCase() {
 }
 
 template<>
-String<CHAR>& String<CHAR>::ToUpperCase() {
+inline String<CHAR>& String<CHAR>::ToUpperCase() {
     UNICODE_STRING UnicodeString;
     ANSI_STRING AnsiString;
     RtlInitAnsiString(&AnsiString, Data.Buffer);
@@ -776,7 +775,7 @@ String<CHAR>& String<CHAR>::ToUpperCase() {
 }
 
 template<>
-String<WCHAR>& String<WCHAR>::ToLowerCase() {
+inline String<WCHAR>& String<WCHAR>::ToLowerCase() {
     UNICODE_STRING UnicodeString;
     RtlInitUnicodeString(&UnicodeString, Data.Buffer);
     RtlDowncaseUnicodeString(&UnicodeString, &UnicodeString, FALSE);
@@ -784,7 +783,7 @@ String<WCHAR>& String<WCHAR>::ToLowerCase() {
 }
 
 template<>
-String<WCHAR>& String<WCHAR>::ToUpperCase() {
+inline String<WCHAR>& String<WCHAR>::ToUpperCase() {
     UNICODE_STRING UnicodeString;
     RtlInitUnicodeString(&UnicodeString, Data.Buffer);
     RtlUpcaseUnicodeString(&UnicodeString, &UnicodeString, FALSE);
@@ -802,7 +801,7 @@ inline const WCHAR* String<WCHAR>::Find(const WCHAR* Str, const WCHAR* Substr, s
 }
 
 
-String<CHAR> FormatAnsi(LPCSTR Format, ...) {
+inline String<CHAR> FormatAnsi(LPCSTR Format, ...) {
     va_list args;
     va_start(args, Format);
     constexpr int BufferSize = 64;
@@ -824,7 +823,7 @@ String<CHAR> FormatAnsi(LPCSTR Format, ...) {
     return Result;
 }
 
-String<WCHAR> FormatWide(LPCWSTR Format, ...) {
+inline String<WCHAR> FormatWide(LPCWSTR Format, ...) {
     va_list args;
     va_start(args, Format);
     constexpr int BufferSize = 64;

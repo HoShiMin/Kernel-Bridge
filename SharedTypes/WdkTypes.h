@@ -41,6 +41,7 @@ namespace WdkTypes {
     using PEPROCESS = PVOID;
     using PETHREAD  = PVOID;
     using PMDL      = PVOID;
+    using HMODULE   = PVOID;
     using LPCWSTR   = PVOID;
     using PBYTE     = PVOID;
     using PSHORT    = PVOID;

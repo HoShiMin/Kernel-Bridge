@@ -441,6 +441,9 @@ namespace FltHandlers {
             case IRP_MJ_INTERNAL_DEVICE_CONTROL:
                 HandlerType = KbFltPreInternalDeviceControl;
                 break;
+            case IRP_MJ_FILE_SYSTEM_CONTROL:
+                HandlerType = KbFltPreFileSystemControl;
+                break;
             default:
                 return STATUS_SUCCESS; // Invalid IRP_MJ_*** for this handler
             }
@@ -452,6 +455,9 @@ namespace FltHandlers {
                 break;
             case IRP_MJ_INTERNAL_DEVICE_CONTROL:
                 HandlerType = KbFltPostInternalDeviceControl;
+                break;
+            case IRP_MJ_FILE_SYSTEM_CONTROL:
+                HandlerType = KbFltPostFileSystemControl;
                 break;
             default:
                 return STATUS_SUCCESS; // Invalid IRP_MJ_*** for this handler
@@ -562,6 +568,7 @@ FilterPreOperation(
         break;
     case IRP_MJ_DEVICE_CONTROL:
     case IRP_MJ_INTERNAL_DEVICE_CONTROL:
+    case IRP_MJ_FILE_SYSTEM_CONTROL:
         Status = FltHandlers::FltDeviceControlHandler(FltHandlers::FltPreOp, Data, FltObjects, CompletionContext);
         break;
     }
@@ -600,6 +607,7 @@ FilterPostOperation(
         break;
     case IRP_MJ_DEVICE_CONTROL:
     case IRP_MJ_INTERNAL_DEVICE_CONTROL:
+    case IRP_MJ_FILE_SYSTEM_CONTROL:
         Status = FltHandlers::FltDeviceControlHandler(FltHandlers::FltPostOp, Data, FltObjects, &CompletionContext);
         break;
     }

@@ -1,6 +1,6 @@
 #include "PEAnalyzer.h"
 
-#define RELOCS_OFFSET_MASK 0b0000111111111111 /* Младшие 12 бит */ 
+#define RELOCS_OFFSET_MASK 0b0000111111111111 /* Low 12 bit */ 
 
 #define FORCED_FILE_ALIGNMENT		0x200
 #define MINIMAL_SECTION_ALIGNMENT	0x1000
@@ -17,9 +17,9 @@ SIZE_T PEAnalyzer::Rva2Offset(SIZE_T Rva) const {
     if (!IsRawModule) return Rva;
 /*
     Offset = SectionRAW + (RVA - SectionRVA)
-    1. Находим, какой секции принадлежит RVA
-    2. Вычисляем смещение от начала секции
-    3. Прибавляем смещение к физическому адресу секции в файле
+    1. Find a section that contains the specified RVA
+    2. Calculate offset from beginning of section
+    3. Add offset to the physical address of section in file
 */
     for (const auto& Section : Sections) {
         SIZE_T SectionBase, SectionSize, SectionOffset;
@@ -45,7 +45,6 @@ SIZE_T PEAnalyzer::Rva2Offset(SIZE_T Rva) const {
 }
 
 void PEAnalyzer::FillSectionsInfo() {
-    // Собираем инфу о секциях:
     Sections.clear();
     WORD NumberOfSections = NtHeaders->FileHeader.NumberOfSections;
     PIMAGE_SECTION_HEADER SectionHeader = IMAGE_FIRST_SECTION(NtHeaders);
@@ -64,7 +63,6 @@ void PEAnalyzer::FillSectionsInfo() {
 }
 
 void PEAnalyzer::FillRelocsInfo() {
-    // Собираем инфу о релоках:
     Relocs.clear();
     PIMAGE_DATA_DIRECTORY RelocsDir =
         (PIMAGE_DATA_DIRECTORY)&OptionalHeader->DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
@@ -123,7 +121,6 @@ void PEAnalyzer::FillImportsSet(
 }
 
 void PEAnalyzer::FillImportsInfo() {
-    // Парсим таблицу импорта:
     Imports.clear();
     PIMAGE_DATA_DIRECTORY ImportDir =
         (PIMAGE_DATA_DIRECTORY)&OptionalHeader->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
@@ -146,7 +143,6 @@ void PEAnalyzer::FillImportsInfo() {
 }
 
 void PEAnalyzer::FillDelayedImportsInfo() {
-    // Парсим таблицу отложенного импорта:
     DelayedImports.clear();
     PIMAGE_DATA_DIRECTORY DelayedImportDir =
         (PIMAGE_DATA_DIRECTORY)&OptionalHeader->DataDirectory[IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT];
@@ -173,7 +169,6 @@ void PEAnalyzer::FillDelayedImportsInfo() {
 }
 
 void PEAnalyzer::FillExportsInfo() {
-    // Парсим экспорты:
     Exports.TimeStamp = 0;
     Exports.NumberOfNames = 0;
 
@@ -263,7 +258,6 @@ BOOL PEAnalyzer::LoadModule(HMODULE hModule, BOOL RawModule) {
 
     ImageSize = OptionalHeader->SizeOfImage;
 
-    //LocalBase = !RawModule ? hModule : (PVOID)OptionalHeader->ImageBase;
     LocalBase = hModule;
 
     ImageBase = (PVOID)OptionalHeader->ImageBase;

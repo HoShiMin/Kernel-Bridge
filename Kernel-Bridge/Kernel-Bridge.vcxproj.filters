@@ -86,6 +86,9 @@
     <ClCompile Include="API\Importer.cpp">
       <Filter>API</Filter>
     </ClCompile>
+    <ClCompile Include="Kernel-Bridge\LoadableModules.cpp">
+      <Filter>Kernel-Bridge</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h">
@@ -153,6 +156,9 @@
     </ClInclude>
     <ClInclude Include="API\Importer.h">
       <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="Kernel-Bridge\LoadableModules.h">
+      <Filter>Kernel-Bridge</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

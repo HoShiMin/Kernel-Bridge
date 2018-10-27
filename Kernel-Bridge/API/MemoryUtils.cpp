@@ -140,7 +140,7 @@ namespace VirtualMemory {
     }
 
     _IRQL_requires_max_(APC_LEVEL)
-    BOOLEAN CheckUserMemoryReadable(PEPROCESS Process, __in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size) {
+    BOOLEAN CheckProcessMemoryReadable(PEPROCESS Process, __in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size) {
         KAPC_STATE ApcState;
         KeStackAttachProcess(Process, &ApcState);
         BOOLEAN Status = CheckUserMemoryReadable(UserAddress, Size);
@@ -159,7 +159,7 @@ namespace VirtualMemory {
     }
 
     _IRQL_requires_max_(APC_LEVEL)
-    BOOLEAN CheckUserMemoryWriteable(PEPROCESS Process, __in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size) {
+    BOOLEAN CheckProcessMemoryWriteable(PEPROCESS Process, __in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size) {
         KAPC_STATE ApcState;
         KeStackAttachProcess(Process, &ApcState);
         BOOLEAN Status = CheckUserMemoryWriteable(UserAddress, Size);
@@ -286,21 +286,19 @@ namespace PhysicalMemory {
         MmUnmapIoSpace(MappedPhysicalMemory, Size);
     }
 
-    _IRQL_requires_max_(DISPATCH_LEVEL)
-    PVOID64 GetPhysicalAddress(PVOID VirtualAddress) {
-        return MmIsAddressValid(VirtualAddress)
-            ? reinterpret_cast<PVOID64>(MmGetPhysicalAddress(VirtualAddress).QuadPart)
-            : NULL;
-    }
-
     _IRQL_requires_max_(APC_LEVEL)
-    PVOID64 GetPhysicalAddress(PEPROCESS Process, PVOID VirtualAddress) {
-        if (!Process) return NULL;
-        if (Process == PsGetCurrentProcess()) 
-            return GetPhysicalAddress(VirtualAddress);
+    PVOID64 GetPhysicalAddress(PVOID VirtualAddress, OPTIONAL PEPROCESS Process) {
+        if (!Process || Process == PsGetCurrentProcess()) {
+            return MmIsAddressValid(VirtualAddress)
+                ? reinterpret_cast<PVOID64>(MmGetPhysicalAddress(VirtualAddress).QuadPart)
+                : NULL;
+        }
+
         KAPC_STATE ApcState;
         KeStackAttachProcess(Process, &ApcState);
-        PVOID64 PhysicalAddress = GetPhysicalAddress(VirtualAddress);
+        PVOID64 PhysicalAddress = MmIsAddressValid(VirtualAddress)
+            ? reinterpret_cast<PVOID64>(MmGetPhysicalAddress(VirtualAddress).QuadPart)
+            : NULL;
         KeUnstackDetachProcess(&ApcState);
         return PhysicalAddress;
     }

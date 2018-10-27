@@ -1,8 +1,11 @@
 #include <fltKernel.h>
+#include <ntstrsafe.h>
+#include <stdarg.h>
 
 #include "WdkTypes.h"
 #include "CtlTypes.h"
 #include "IOCTLHandlers.h"
+#include "LoadableModules.h"
 
 #include "../API/MemoryUtils.h"
 #include "../API/ProcessesUtils.h"
@@ -10,6 +13,7 @@
 #include "../API/CPU.h"
 #include "../API/Importer.h"
 #include "../API/KernelShells.h"
+#include "../API/StringsAPI.h"
 
 #include "IOCTLs.h"
 
@@ -669,14 +673,10 @@ namespace
         if (!Input || !Output) return STATUS_INVALID_PARAMETER;
 
         Output->PhysicalAddress = reinterpret_cast<WdkTypes::PVOID>(
-            Input->Process
-                ? PhysicalMemory::GetPhysicalAddress(
-                      reinterpret_cast<PEPROCESS>(Input->Process),
-                      reinterpret_cast<PVOID>(Input->VirtualAddress)
-                  )
-                : PhysicalMemory::GetPhysicalAddress(
-                      reinterpret_cast<PVOID>(Input->VirtualAddress)
-                  )
+            PhysicalMemory::GetPhysicalAddress(
+                reinterpret_cast<PVOID>(Input->VirtualAddress),
+                reinterpret_cast<PEPROCESS>(Input->Process)
+            )
         );
 
         *ResponseLength = RequestInfo->OutputBufferSize;
@@ -1610,6 +1610,107 @@ namespace
 
         return Status;
     }
+
+    NTSTATUS FASTCALL KbLoadModule(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_LOAD_MODULE_IN)) 
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_LOAD_MODULE_IN>(RequestInfo->InputBuffer);
+        
+        if (!Input || !Input->hModule || !Input->ModuleName)
+            return STATUS_INVALID_PARAMETER;
+
+        LPCWSTR UserModuleName = reinterpret_cast<LPCWSTR>(Input->ModuleName);
+
+        SIZE_T NameLength = WideString::Length(UserModuleName);
+        if (!NameLength) return STATUS_INVALID_PARAMETER;
+
+        HANDLE hSecure = NULL;
+        BOOLEAN SecureStatus = VirtualMemory::SecureMemory(const_cast<LPWSTR>(UserModuleName), (NameLength + 1) * sizeof(WCHAR), PAGE_READONLY, &hSecure);
+        if (!SecureStatus)
+            return STATUS_UNSUCCESSFUL;
+
+        NTSTATUS Status = LoadableModules::LoadModule(
+            reinterpret_cast<PVOID>(Input->hModule),
+            UserModuleName,
+            reinterpret_cast<LoadableModules::_OnLoad>(Input->OnLoad),
+            reinterpret_cast<LoadableModules::_OnUnload>(Input->OnUnload),
+            reinterpret_cast<LoadableModules::_OnDeviceControl>(Input->OnDeviceControl),
+            reinterpret_cast<LoadableModules::_OnException>(Input->OnException)
+        );
+
+        VirtualMemory::UnsecureMemory(hSecure);
+
+        return Status;
+    }
+
+    NTSTATUS FASTCALL KbGetModuleHandle(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        if (
+            RequestInfo->InputBufferSize != sizeof(KB_GET_MODULE_HANDLE_IN) || 
+            RequestInfo->OutputBufferSize != sizeof(KB_GET_MODULE_HANDLE_OUT)
+        ) return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_GET_MODULE_HANDLE_IN>(RequestInfo->InputBuffer);
+        auto Output = static_cast<PKB_GET_MODULE_HANDLE_OUT>(RequestInfo->OutputBuffer);
+
+        if (!Input || !Output || !Input->ModuleName)
+            return STATUS_INVALID_PARAMETER;
+
+        LPCWSTR UserModuleName = reinterpret_cast<LPCWSTR>(Input->ModuleName);
+
+        SIZE_T NameLength = WideString::Length(UserModuleName);
+        if (!NameLength) return STATUS_INVALID_PARAMETER;
+
+        HANDLE hSecure = NULL;
+        BOOLEAN SecureStatus = VirtualMemory::SecureMemory(const_cast<LPWSTR>(UserModuleName), (NameLength + 1) * sizeof(WCHAR), PAGE_READONLY, &hSecure);
+        if (!SecureStatus)
+            return STATUS_UNSUCCESSFUL;
+
+        Output->hModule = reinterpret_cast<WdkTypes::PVOID>(LoadableModules::GetModuleHandle(UserModuleName));
+
+        VirtualMemory::UnsecureMemory(hSecure);
+
+        *ResponseLength = sizeof(*Output);
+        return STATUS_SUCCESS;
+    }
+
+    NTSTATUS FASTCALL KbCallModule(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_CALL_MODULE_IN)) 
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_CALL_MODULE_IN>(RequestInfo->InputBuffer);
+        
+        if (!Input || !Input->hModule)
+            return STATUS_INVALID_PARAMETER;
+
+        return LoadableModules::CallModule(
+            reinterpret_cast<PVOID>(Input->hModule),
+            Input->CtlCode,
+            reinterpret_cast<PVOID>(Input->Argument)
+        );
+    }
+
+    NTSTATUS FASTCALL KbUnloadModule(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_UNLOAD_MODULE_IN)) 
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_UNLOAD_MODULE_IN>(RequestInfo->InputBuffer);
+        
+        if (!Input || !Input->hModule)
+            return STATUS_INVALID_PARAMETER;
+
+        return LoadableModules::UnloadModule(reinterpret_cast<PVOID>(Input->hModule));
+    }
 }
 
 NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
@@ -1696,12 +1797,18 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 58 */ KbRaiseIopl,
         /* 59 */ KbResetIopl,
 
+        // Loadable modules:
+        /* 60 */ KbCreateDriver,
+        /* 61 */ KbLoadModule,
+        /* 62 */ KbGetModuleHandle,
+        /* 63 */ KbCallModule,
+        /* 64 */ KbUnloadModule,
+
         // Stuff u kn0w:
-        /* 60 */ KbExecuteShellCode,
-        /* 61 */ KbGetKernelProcAddress,
-        /* 62 */ KbStallExecutionProcessor,
-        /* 63 */ KbBugCheck,
-        /* 64 */ KbCreateDriver
+        /* 65 */ KbExecuteShellCode,
+        /* 66 */ KbGetKernelProcAddress,
+        /* 67 */ KbStallExecutionProcessor,
+        /* 68 */ KbBugCheck
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;

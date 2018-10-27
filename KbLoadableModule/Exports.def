@@ -1,0 +1,6 @@
+NAME KbLoadableModule
+EXPORTS
+	OnLoad
+	OnUnload
+	OnDeviceControl
+	OnException

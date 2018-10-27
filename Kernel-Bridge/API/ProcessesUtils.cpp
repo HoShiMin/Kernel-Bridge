@@ -435,16 +435,8 @@ namespace Processes {
                 Process,
                 NULL,
                 BaseAddress,
-                Size,
-                KernelMode,
-                IoReadAccess,
-                MmNonCached,
-                NULL
+                Size
             );
-
-            if (NT_SUCCESS(Status) && (Operation == MemWrite)) {
-                Status = MmProtectMdlSystemAddress(ProcessMapping.Mdl, PAGE_READWRITE);
-            }
 
             if (!NT_SUCCESS(Status)) { 
                 VirtualMemory::UnsecureProcessMemory(Process, hProcessSecure);
@@ -459,11 +451,7 @@ namespace Processes {
                 NULL,
                 NULL,
                 Buffer,
-                Size,
-                KernelMode,
-                Operation == MemRead ? IoModifyAccess : IoReadAccess,
-                MmNonCached,
-                NULL
+                Size
             );
 
             if (!NT_SUCCESS(Status)) {

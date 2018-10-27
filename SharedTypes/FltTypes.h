@@ -15,6 +15,8 @@ enum KbFltTypes {
     KbFltPostDeviceControl,
     KbFltPreInternalDeviceControl,
     KbFltPostInternalDeviceControl,
+    KbFltPreFileSystemControl,
+    KbFltPostFileSystemControl,
     KbFltNone
 };
 

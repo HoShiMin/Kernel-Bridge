@@ -792,6 +792,75 @@ namespace KernelShells {
     }
 }
 
+namespace LoadableModules {
+    BOOL WINAPI KbCreateDriver(LPCWSTR DriverName, WdkTypes::PVOID DriverEntry)
+    {
+        KB_CREATE_DRIVER_IN Input = {};
+        SIZE_T NameLength = 0;
+        __try {
+            NameLength = wcslen(DriverName);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            return FALSE;
+        }
+        if (NameLength > 64) {
+            SetLastError(ERROR_INVALID_NAME);
+            return FALSE; // Very long name, seems like invalid data buffer
+        }
+        Input.DriverEntry = DriverEntry;
+        Input.DriverName = reinterpret_cast<WdkTypes::PVOID>(DriverName);
+        Input.DriverNameSizeInBytes = static_cast<ULONG>(NameLength) * sizeof(WCHAR); // We're sure that Length <= 64
+        return KbSendRequest(Ctls::KbCreateDriver, &Input, sizeof(Input));
+    }
+
+    BOOL WINAPI KbLoadModule(
+        WdkTypes::HMODULE hModule,
+        LPCWSTR ModuleName,
+        OPTIONAL WdkTypes::PVOID OnLoad,
+        OPTIONAL WdkTypes::PVOID OnUnload,
+        OPTIONAL WdkTypes::PVOID OnDeviceControl,
+        OPTIONAL WdkTypes::PVOID OnException
+    ) {
+        if (!hModule || !ModuleName) return FALSE;
+        KB_LOAD_MODULE_IN Input = {};
+        Input.hModule = hModule;
+        Input.ModuleName = reinterpret_cast<WdkTypes::LPCWSTR>(ModuleName);
+        Input.OnLoad = OnLoad;
+        Input.OnUnload = OnUnload;
+        Input.OnDeviceControl = OnDeviceControl;
+        Input.OnException = OnException;
+        return KbSendRequest(Ctls::KbLoadModule, &Input, sizeof(Input));
+    }
+
+    BOOL WINAPI KbUnloadModule(WdkTypes::HMODULE hModule)
+    {
+        if (!hModule) return FALSE;
+        KB_UNLOAD_MODULE_IN Input = {};
+        Input.hModule = hModule;
+        return KbSendRequest(Ctls::KbUnloadModule, &Input, sizeof(Input));
+    }
+
+    BOOL WINAPI KbGetModuleHandle(LPCWSTR ModuleName, OUT WdkTypes::HMODULE* hModule)
+    {
+        if (!ModuleName || !hModule) return FALSE;
+        KB_GET_MODULE_HANDLE_IN Input = {};
+        KB_GET_MODULE_HANDLE_OUT Output = {};
+        Input.ModuleName = reinterpret_cast<WdkTypes::LPCWSTR>(ModuleName);
+        BOOL Status = KbSendRequest(Ctls::KbGetModuleHandle, &Input, sizeof(Input), &Output, sizeof(Output));
+        *hModule = Output.hModule;
+        return Status;
+    }
+
+    BOOL WINAPI KbCallModule(WdkTypes::HMODULE hModule, UINT64 CtlCode, OPTIONAL WdkTypes::PVOID Argument)
+    {
+        if (!hModule) return FALSE;
+        KB_CALL_MODULE_IN Input = {};
+        Input.hModule = hModule;
+        Input.CtlCode = CtlCode;
+        Input.Argument = Argument;
+        return KbSendRequest(Ctls::KbCallModule, &Input, sizeof(Input));
+    }
+}
+
 namespace Stuff {
     BOOL WINAPI KbGetKernelProcAddress(LPCWSTR RoutineName, WdkTypes::PVOID* KernelAddress) {
         if (!RoutineName || !KernelAddress) return FALSE;
@@ -824,24 +893,5 @@ namespace Stuff {
         KB_BUG_CHECK_IN Input = {};
         Input.Status = Status;
         return KbSendRequest(Ctls::KbBugCheck, &Input, sizeof(Input));
-    }
-
-    BOOL WINAPI KbCreateDriver(LPCWSTR DriverName, WdkTypes::PVOID DriverEntry)
-    {
-        KB_CREATE_DRIVER_IN Input = {};
-        SIZE_T NameLength = 0;
-        __try {
-            NameLength = wcslen(DriverName);
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
-            return FALSE;
-        }
-        if (NameLength > 64) {
-            SetLastError(ERROR_INVALID_NAME);
-            return FALSE; // Very long name, seems like invalid data buffer
-        }
-        Input.DriverEntry = DriverEntry;
-        Input.DriverName = reinterpret_cast<WdkTypes::PVOID>(DriverName);
-        Input.DriverNameSizeInBytes = static_cast<ULONG>(NameLength) * sizeof(WCHAR); // We're sure that Length <= 64
-        return KbSendRequest(Ctls::KbCreateDriver, &Input, sizeof(Input));
     }
 }

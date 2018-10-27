@@ -74,13 +74,13 @@ namespace VirtualMemory {
     BOOLEAN CheckUserMemoryReadable(__in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size);
 
     _IRQL_requires_max_(APC_LEVEL)
-    BOOLEAN CheckUserMemoryReadable(PEPROCESS Process, __in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size);
+    BOOLEAN CheckProcessMemoryReadable(PEPROCESS Process, __in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size);
 
     _IRQL_requires_max_(APC_LEVEL)
     BOOLEAN CheckUserMemoryWriteable(__in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size);
 
     _IRQL_requires_max_(APC_LEVEL)
-    BOOLEAN CheckUserMemoryWriteable(PEPROCESS Process, __in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size);
+    BOOLEAN CheckProcessMemoryWriteable(PEPROCESS Process, __in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size);
 }
 
 namespace Heap {
@@ -153,12 +153,8 @@ namespace PhysicalMemory {
     VOID UnmapPhysicalMemory(PVOID64 MappedPhysicalMemory, SIZE_T Size);
 
     // Get the physical address for non-paged virtual memory:
-    _IRQL_requires_max_(DISPATCH_LEVEL)
-    PVOID64 GetPhysicalAddress(PVOID VirtualAddress);
-
-    // Get the physical address for non-paged virtual memory in specified process:
     _IRQL_requires_max_(APC_LEVEL)
-    PVOID64 GetPhysicalAddress(PEPROCESS Process, PVOID VirtualAddress);
+    PVOID64 GetPhysicalAddress(PVOID VirtualAddress, OPTIONAL PEPROCESS Process = NULL);
 
     _IRQL_requires_max_(DISPATCH_LEVEL)
     BOOLEAN ReadPhysicalMemory(IN PVOID64 PhysicalAddress, OUT PVOID Buffer, SIZE_T Length);
@@ -201,7 +197,7 @@ namespace Mdl {
         OPTIONAL PEPROCESS DestProcess,
         BOOLEAN NeedLock,
         KPROCESSOR_MODE AccessMode = KernelMode, 
-        ULONG Protect = PAGE_EXECUTE_READWRITE,
+        ULONG Protect = PAGE_READWRITE,
         MEMORY_CACHING_TYPE CacheType = MmNonCached,
         OPTIONAL PVOID UserRequestedAddress = NULL    
     );
@@ -237,7 +233,7 @@ namespace Mdl {
         IN PVOID VirtualAddress,
         ULONG Size,
         KPROCESSOR_MODE AccessMode = KernelMode,
-        ULONG Protect = PAGE_EXECUTE_READWRITE,
+        ULONG Protect = PAGE_READWRITE,
         MEMORY_CACHING_TYPE CacheType = MmNonCached,
         OPTIONAL PVOID UserRequestedAddress = NULL
     );

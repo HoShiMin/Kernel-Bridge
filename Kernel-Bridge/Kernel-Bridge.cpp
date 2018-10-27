@@ -95,6 +95,12 @@ static CONST FLT_OPERATION_REGISTRATION Callbacks[] =
         reinterpret_cast<PFLT_POST_OPERATION_CALLBACK>(FilterPostOperation)
     },
     {
+        IRP_MJ_FILE_SYSTEM_CONTROL,
+        0,
+        reinterpret_cast<PFLT_PRE_OPERATION_CALLBACK>(FilterPreOperation),
+        reinterpret_cast<PFLT_POST_OPERATION_CALLBACK>(FilterPostOperation)
+    },
+    {
         IRP_MJ_OPERATION_END
     }
 };
@@ -230,9 +236,9 @@ NTSTATUS CallIoctlDispatcher(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLen
         Status = STATUS_UNSUCCESSFUL;
         KdPrint((
             "[Kernel-Bridge]: Exception catched in IOCTL handler!\r\n"
-            "\tCode: 0x%llX\r\n"
-            "\tAddress: 0x%llX\r\n"
-            "\tCTL: 0x%llX\r\n",
+            "\tCode: 0x%X\r\n"
+            "\tAddress: 0x%p\r\n"
+            "\tCTL: 0x%X\r\n",
             ExceptionCode,
             ExceptionPointers->ExceptionRecord->ExceptionAddress,
             RequestInfo->ControlCode
