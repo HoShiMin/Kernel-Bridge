@@ -17,12 +17,12 @@ public:
     ~KernelTests() = default;
 
     void Log(LPCWSTR Text) {
-        std::wcout << L"\t[ " << TestName << L" ]: " << Text << std::endl; 
+        //std::wcout << L"\t[ " << TestName << L" ]: " << Text << std::endl; 
     }
 
     void PrintStatus() {
-        if (!Passed) std::wcout << std::endl;
-        std::wcout << L"[ " << (Passed ? L"PASSED" : L"FAILED") << L" ] " << TestName << std::endl; 
+        //if (!Passed) std::wcout << std::endl;
+        //std::wcout << L"[ " << (Passed ? L"PASSED" : L"FAILED") << L" ] " << TestName << std::endl; 
     }
 };
 

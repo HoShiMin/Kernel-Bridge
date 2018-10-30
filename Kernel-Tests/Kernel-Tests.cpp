@@ -225,7 +225,7 @@ bool ProcessesTest::RunTest() {
     TestStatus &= KbQueueUserApc(
         ThreadId, 
         [](PVOID Argument) -> VOID {
-            std::cout << "Called from APC: " << Argument << std::endl;
+            //std::cout << "Called from APC: " << Argument << std::endl;
         }, 
         reinterpret_cast<PVOID>(0x12345)
     );
@@ -241,7 +241,7 @@ bool ShellTest::RunTest() {
             ULONG Value = *static_cast<PULONG>(Argument);
             using _KeStallExecutionProcessor = VOID(WINAPI*)(ULONG Microseconds);
             auto Stall = reinterpret_cast<_KeStallExecutionProcessor>(GetKernelProcAddress(L"KeStallExecutionProcessor"));
-            Stall(1000000);
+            Stall(1);
             return Value == 1337 ? 10 : 0;
         },
         &Result,
@@ -256,7 +256,6 @@ bool StuffTest::RunTest() {
     BOOL TestStatus = TRUE;
     BOOL Status = FALSE;
 
-    std::cout << "GKPA Testing" << std::endl;
     WdkTypes::PVOID KernelAddress = NULL;
     TestStatus &= Status = KbGetKernelProcAddress(L"KeStallExecutionProcessor", &KernelAddress);
     if (!Status) Log(L"KbGetKernelProcAddress == FALSE");
