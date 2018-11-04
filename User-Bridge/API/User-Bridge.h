@@ -268,4 +268,12 @@ namespace Stuff {
     BOOL WINAPI KbGetKernelProcAddress(LPCWSTR RoutineName, WdkTypes::PVOID* KernelAddress);
     BOOL WINAPI KbStallExecutionProcessor(ULONG Microseconds);
     BOOL WINAPI KbBugCheck(ULONG Status);
+    BOOL WINAPI KbFindSignature(
+        OPTIONAL ULONG ProcessId,
+        WdkTypes::PVOID Memory, // Both user and kernel
+        ULONG Size,
+        LPCSTR Signature, // "\x11\x22\x33\x00\x44"
+        LPCSTR Mask, // "...?."
+        OUT WdkTypes::PVOID* FoundAddress
+    );
 }

@@ -14,6 +14,7 @@
 #include "../API/Importer.h"
 #include "../API/KernelShells.h"
 #include "../API/StringsAPI.h"
+#include "../API/Signatures.h"
 
 #include "IOCTLs.h"
 
@@ -1710,6 +1711,92 @@ namespace
 
         return LoadableModules::UnloadModule(reinterpret_cast<PVOID>(Input->hModule));
     }
+
+    NTSTATUS FASTCALL KbFindSignature(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        if (
+            RequestInfo->InputBufferSize != sizeof(KB_FIND_SIGNATURE_IN) || 
+            RequestInfo->OutputBufferSize != sizeof(KB_FIND_SIGNATURE_OUT)
+        ) return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_FIND_SIGNATURE_IN>(RequestInfo->InputBuffer);
+        auto Output = static_cast<PKB_FIND_SIGNATURE_OUT>(RequestInfo->OutputBuffer);
+
+        if (!Input || !Output || !Input->Memory || !Input->Signature || !Input->Mask)
+            return STATUS_INVALID_PARAMETER;
+
+        SIZE_T SigLength = strlen(reinterpret_cast<char*>(Input->Mask));
+        LPSTR MaskBuffer = VirtualMemory::AllocAnsiString(SigLength);
+        LPSTR SigBuffer = VirtualMemory::AllocAnsiString(SigLength);
+        if (!MaskBuffer || !SigBuffer) {
+            if (MaskBuffer) VirtualMemory::FreePoolMemory(MaskBuffer);
+            if (SigBuffer) VirtualMemory::FreePoolMemory(SigBuffer);
+            return STATUS_MEMORY_NOT_ALLOCATED;
+        }
+
+        __try {
+            RtlCopyMemory(MaskBuffer, reinterpret_cast<char*>(Input->Mask), SigLength);
+            RtlCopyMemory(SigBuffer, reinterpret_cast<char*>(Input->Signature), SigLength);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            if (MaskBuffer) VirtualMemory::FreePoolMemory(MaskBuffer);
+            if (SigBuffer) VirtualMemory::FreePoolMemory(SigBuffer);
+            return STATUS_UNSUCCESSFUL;
+        }
+
+        NTSTATUS Status = STATUS_SUCCESS;
+        PVOID FoundAddress = NULL;
+        PVOID Memory = reinterpret_cast<PVOID>(Input->Memory);
+        SIZE_T Size = Input->Size;
+        switch (AddressRange::IsUserAddress(Memory)) {
+        case TRUE: {
+            PEPROCESS Process = NULL;
+            if (Input->ProcessId != 0 && Input->ProcessId != reinterpret_cast<UINT64>(PsGetCurrentProcessId())) {
+                Process = Processes::Descriptors::GetEPROCESS(reinterpret_cast<HANDLE>(Input->ProcessId));
+                if (!Process) {
+                    Status = STATUS_NOT_FOUND;
+                    break;
+                }
+            }
+
+            HANDLE hSecure = NULL;
+            if (!VirtualMemory::SecureProcessMemory(Process, Memory, Size, PAGE_READONLY, &hSecure)) {
+                if (Process) ObDereferenceObject(Process);
+                Status = STATUS_NOT_LOCKED;
+                break;
+            }
+
+            KAPC_STATE ApcState;
+            __try {
+                if (Process) KeStackAttachProcess(Process, &ApcState);
+                FoundAddress = find_signature(Memory, Size, SigBuffer, MaskBuffer);
+                Status = STATUS_SUCCESS;
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                if (Process) KeUnstackDetachProcess(&ApcState);
+                Status = STATUS_UNSUCCESSFUL;
+            }
+
+            VirtualMemory::UnsecureProcessMemory(Process, hSecure);
+            if (Process) ObDereferenceObject(Process);
+            break;
+        }
+        case FALSE: {
+            __try {
+                FoundAddress = find_signature(Memory, Size, SigBuffer, MaskBuffer);
+                Status = STATUS_SUCCESS;
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                Status = STATUS_UNSUCCESSFUL;
+            }
+            break;
+        }
+        }
+
+        if (MaskBuffer) VirtualMemory::FreePoolMemory(MaskBuffer);
+        if (SigBuffer) VirtualMemory::FreePoolMemory(SigBuffer);
+
+        Output->Address = reinterpret_cast<WdkTypes::PVOID>(FoundAddress);
+        *ResponseLength = sizeof(KB_FIND_SIGNATURE_OUT);
+        return Status;
+    }
 }
 
 NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
@@ -1807,7 +1894,8 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 65 */ KbExecuteShellCode,
         /* 66 */ KbGetKernelProcAddress,
         /* 67 */ KbStallExecutionProcessor,
-        /* 68 */ KbBugCheck
+        /* 68 */ KbBugCheck,
+        /* 69 */ KbFindSignature
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;

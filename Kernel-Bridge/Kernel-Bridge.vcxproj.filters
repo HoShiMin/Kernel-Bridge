@@ -89,6 +89,9 @@
     <ClCompile Include="Kernel-Bridge\LoadableModules.cpp">
       <Filter>Kernel-Bridge</Filter>
     </ClCompile>
+    <ClCompile Include="API\Signatures.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h">
@@ -159,6 +162,9 @@
     </ClInclude>
     <ClInclude Include="Kernel-Bridge\LoadableModules.h">
       <Filter>Kernel-Bridge</Filter>
+    </ClInclude>
+    <ClInclude Include="API\Signatures.h">
+      <Filter>API</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

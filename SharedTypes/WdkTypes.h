@@ -43,6 +43,9 @@ namespace WdkTypes {
     using PMDL      = PVOID;
     using HMODULE   = PVOID;
     using LPCWSTR   = PVOID;
+    using LPWSTR    = PVOID;
+    using LPCSTR    = PVOID;
+    using LPSTR     = PVOID;
     using PBYTE     = PVOID;
     using PSHORT    = PVOID;
     using PULONG    = PVOID;

@@ -9,6 +9,11 @@
 
 #include "LoadableModules.h"
 
+//#pragma section(".storage",execute,nopage)
+//
+//static constexpr unsigned int STORAGE_SIZE = 640 * 1024;
+//__declspec(allocate(".storage")) unsigned char Storage[STORAGE_SIZE] = {};
+
 class ModulesStorage {
 private:
     using MODULE_INFO = struct {

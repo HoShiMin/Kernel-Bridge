@@ -860,7 +860,8 @@ namespace LoadableModules {
 }
 
 namespace Stuff {
-    BOOL WINAPI KbGetKernelProcAddress(LPCWSTR RoutineName, WdkTypes::PVOID* KernelAddress) {
+    BOOL WINAPI KbGetKernelProcAddress(LPCWSTR RoutineName, WdkTypes::PVOID* KernelAddress)
+    {
         if (!RoutineName || !KernelAddress) return FALSE;
         SIZE_T NameLength = 0;
         __try {
@@ -881,15 +882,38 @@ namespace Stuff {
         return Status;
     }
 
-    BOOL WINAPI KbStallExecutionProcessor(ULONG Microseconds) {
+    BOOL WINAPI KbStallExecutionProcessor(ULONG Microseconds)
+    {
         KB_STALL_EXECUTION_PROCESSOR_IN Input = {};
         Input.Microseconds = Microseconds;
         return KbSendRequest(Ctls::KbStallExecutionProcessor, &Input, sizeof(Input));
     }
 
-    BOOL WINAPI KbBugCheck(ULONG Status) {
+    BOOL WINAPI KbBugCheck(ULONG Status)
+    {
         KB_BUG_CHECK_IN Input = {};
         Input.Status = Status;
         return KbSendRequest(Ctls::KbBugCheck, &Input, sizeof(Input));
+    }
+
+    BOOL WINAPI KbFindSignature(
+        OPTIONAL ULONG ProcessId,
+        WdkTypes::PVOID Memory,
+        ULONG Size,
+        LPCSTR Signature,
+        LPCSTR Mask, 
+        OUT WdkTypes::PVOID* FoundAddress
+    ) {
+        if (!FoundAddress) return FALSE;
+        KB_FIND_SIGNATURE_IN Input = {};
+        KB_FIND_SIGNATURE_OUT Output = {};
+        Input.ProcessId = ProcessId;
+        Input.Memory = Memory;
+        Input.Size = Size;
+        Input.Signature = reinterpret_cast<WdkTypes::LPCSTR>(Signature);
+        Input.Mask = reinterpret_cast<WdkTypes::LPCSTR>(Mask);
+        BOOL Status = KbSendRequest(Ctls::KbFindSignature, &Input, sizeof(Input), &Output, sizeof(Output));
+        *FoundAddress = Output.Address;
+        return Status;
     }
 }

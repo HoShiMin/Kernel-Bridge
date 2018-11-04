@@ -93,7 +93,8 @@ namespace Ctls {
         /* 65 */ KbExecuteShellCode,
         /* 66 */ KbGetKernelProcAddress,
         /* 67 */ KbStallExecutionProcessor,
-        /* 68 */ KbBugCheck
+        /* 68 */ KbBugCheck,
+        /* 69 */ KbFindSignature
     };
 }
 
@@ -513,4 +514,16 @@ DECLARE_STRUCT(KB_CALL_MODULE_IN, {
 
 DECLARE_STRUCT(KB_UNLOAD_MODULE_IN, {
     WdkTypes::HMODULE hModule;    
+});
+
+DECLARE_STRUCT(KB_FIND_SIGNATURE_IN, {
+    OPTIONAL UINT64 ProcessId;
+    WdkTypes::PVOID Memory;
+    ULONG Size;
+    WdkTypes::LPCSTR Signature;
+    WdkTypes::LPCSTR Mask;
+});
+
+DECLARE_STRUCT(KB_FIND_SIGNATURE_OUT, {
+    WdkTypes::PVOID Address;    
 });
