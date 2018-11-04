@@ -161,7 +161,7 @@ namespace KbRtl {
             }
 
             WdkTypes::PVOID ModuleBase = reinterpret_cast<WdkTypes::PVOID>(Module.GetImageBase());
-            WdkTypes::PVOID OnLoad = NULL, OnUnload = NULL, OnDeviceControl = NULL, OnException = NULL;
+            WdkTypes::PVOID OnLoad = NULL, OnUnload = NULL, OnDeviceControl = NULL;
             const auto& Exports = Module.GetExportsInfo();
             for (const auto& Export : Exports.Exports) {
                 WdkTypes::PVOID VA = hModule + static_cast<WdkTypes::PVOID>(Export.RVA);
@@ -171,8 +171,6 @@ namespace KbRtl {
                     OnUnload = VA;
                 } else if (Export.Name == "OnDeviceControl") {
                     OnDeviceControl = VA;
-                } else if (Export.Name == "OnException") {
-                    OnException = VA;
                 }
             }
 
@@ -181,8 +179,7 @@ namespace KbRtl {
                 ModuleName,
                 OnLoad,
                 OnUnload,
-                OnDeviceControl,
-                OnException
+                OnDeviceControl
             );
 
             if (!Status) {

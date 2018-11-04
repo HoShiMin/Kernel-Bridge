@@ -817,8 +817,7 @@ namespace LoadableModules {
         LPCWSTR ModuleName,
         OPTIONAL WdkTypes::PVOID OnLoad,
         OPTIONAL WdkTypes::PVOID OnUnload,
-        OPTIONAL WdkTypes::PVOID OnDeviceControl,
-        OPTIONAL WdkTypes::PVOID OnException
+        OPTIONAL WdkTypes::PVOID OnDeviceControl
     ) {
         if (!hModule || !ModuleName) return FALSE;
         KB_LOAD_MODULE_IN Input = {};
@@ -827,7 +826,6 @@ namespace LoadableModules {
         Input.OnLoad = OnLoad;
         Input.OnUnload = OnUnload;
         Input.OnDeviceControl = OnDeviceControl;
-        Input.OnException = OnException;
         return KbSendRequest(Ctls::KbLoadModule, &Input, sizeof(Input));
     }
 
@@ -850,7 +848,7 @@ namespace LoadableModules {
         return Status;
     }
 
-    BOOL WINAPI KbCallModule(WdkTypes::HMODULE hModule, UINT64 CtlCode, OPTIONAL WdkTypes::PVOID Argument)
+    BOOL WINAPI KbCallModule(WdkTypes::HMODULE hModule, ULONG CtlCode, OPTIONAL WdkTypes::PVOID Argument)
     {
         if (!hModule) return FALSE;
         KB_CALL_MODULE_IN Input = {};

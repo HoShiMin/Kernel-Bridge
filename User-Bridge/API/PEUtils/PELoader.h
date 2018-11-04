@@ -9,6 +9,7 @@ private:
     PBYTE hModule;
     ULONG DeployedSize;
 
+    SIZE_T OriginalImageBase;
     SIZE_T PreviousLoadDelta;
 
     PIMAGE_DOS_HEADER DosHeader;

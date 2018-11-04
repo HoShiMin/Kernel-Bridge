@@ -495,7 +495,6 @@ DECLARE_STRUCT(KB_LOAD_MODULE_IN, {
     WdkTypes::PVOID OnLoad;
     WdkTypes::PVOID OnUnload;
     WdkTypes::PVOID OnDeviceControl;
-    WdkTypes::PVOID OnException;
 });
 
 DECLARE_STRUCT(KB_GET_MODULE_HANDLE_IN, {
@@ -509,7 +508,7 @@ DECLARE_STRUCT(KB_GET_MODULE_HANDLE_OUT, {
 DECLARE_STRUCT(KB_CALL_MODULE_IN, {
     WdkTypes::HMODULE hModule;
     WdkTypes::PVOID Argument;
-    UINT64 CtlCode;
+    ULONG CtlCode;
 });
 
 DECLARE_STRUCT(KB_UNLOAD_MODULE_IN, {

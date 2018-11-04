@@ -22,7 +22,7 @@
 #include "SymParser.h"
 
 void RunTests() {
-    //BeeperTest tBeeper(L"Beeper");
+    BeeperTest tBeeper(L"Beeper");
     IoplTest tIopl(L"IOPL");
     VirtualMemoryTest tVirtualMemory(L"VirtualMemory");
     MdlTest tMdl(L"Mdl");
@@ -32,14 +32,15 @@ void RunTests() {
     StuffTest tStuff(L"Stuff");
 }
 
+
 int main() {
     KbLoader::KbUnload();
     if (KbLoader::KbLoadAsFilter(
         L"C:\\Temp\\Kernel-Bridge\\Kernel-Bridge.sys",
         L"260000" // Altitude of minifilter
     )) {
-        for (int i = 0; i < 3000; i++) {
-            WdkTypes::HMODULE hModule = NULL, hModule2 = NULL;
+        for (int i = 0; i < 1; i++) {
+            WdkTypes::HMODULE hModule = NULL;
             KbRtl::KbLdrStatus LdrStatus = KbRtl::KbLoadModuleFile(L"C:\\Temp\\Kernel-Bridge\\KbLoadableModule.dll", L"LdMd", &hModule);
             if (LdrStatus == KbRtl::KbLdrSuccess) {
                 LoadableModules::KbCallModule(hModule, 1, 0x11223344);

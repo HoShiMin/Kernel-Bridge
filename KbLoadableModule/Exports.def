@@ -3,4 +3,3 @@ EXPORTS
 	OnLoad
 	OnUnload
 	OnDeviceControl
-	OnException

@@ -81,8 +81,7 @@
     <DriverTargetPlatform>Desktop</DriverTargetPlatform>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -94,6 +93,7 @@
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <EnableInf2cat>true</EnableInf2cat>
     <IncludePath>../SharedTypes;$(IncludePath)</IncludePath>
+    <Inf2CatUseLocalTime>true</Inf2CatUseLocalTime>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -101,6 +101,7 @@
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <EnableInf2cat>true</EnableInf2cat>
     <IncludePath>../SharedTypes;$(IncludePath)</IncludePath>
+    <Inf2CatUseLocalTime>true</Inf2CatUseLocalTime>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -108,6 +109,7 @@
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <EnableInf2cat>true</EnableInf2cat>
     <IncludePath>../SharedTypes;$(IncludePath)</IncludePath>
+    <Inf2CatUseLocalTime>true</Inf2CatUseLocalTime>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -115,6 +117,7 @@
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <EnableInf2cat>true</EnableInf2cat>
     <IncludePath>../SharedTypes;$(IncludePath)</IncludePath>
+    <Inf2CatUseLocalTime>true</Inf2CatUseLocalTime>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Link>
@@ -131,6 +134,9 @@
     <PostBuildEvent>
       <Command>makecab /f ../x32-debug.ddf</Command>
     </PostBuildEvent>
+    <MASM>
+      <UseSafeExceptionHandlers>true</UseSafeExceptionHandlers>
+    </MASM>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Link>
@@ -150,6 +156,9 @@
     <PostBuildEvent>
       <Command>makecab /f ../x32-release.ddf</Command>
     </PostBuildEvent>
+    <MASM>
+      <UseSafeExceptionHandlers>true</UseSafeExceptionHandlers>
+    </MASM>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
@@ -218,6 +227,5 @@
     <None Include="Exports.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets" />
 </Project>

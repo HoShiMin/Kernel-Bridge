@@ -12,15 +12,8 @@ NTSTATUS NTAPI OnUnload()
     return STATUS_SUCCESS;
 }
 
-NTSTATUS NTAPI OnDeviceControl(UINT64 CtlCode, OPTIONAL PVOID Argument)
+NTSTATUS NTAPI OnDeviceControl(ULONG CtlCode, OPTIONAL PVOID Argument)
 {
     DbgPrint("[LOADABLE]: OnDeviceControl: 0x%X, 0x%p\r\n", CtlCode, Argument);
-    return STATUS_SUCCESS;
-}
-
-NTSTATUS NTAPI OnException(ULONG ExceptionCode, PEXCEPTION_POINTERS ExceptionPointers)
-{
-    UNREFERENCED_PARAMETER(ExceptionPointers);
-    DbgPrint("[LOADABLE]: Exception catched: 0x%X\r\n", ExceptionCode);
     return STATUS_SUCCESS;
 }

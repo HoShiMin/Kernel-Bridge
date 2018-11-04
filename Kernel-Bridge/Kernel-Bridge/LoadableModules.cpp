@@ -1,4 +1,4 @@
-#include <wdm.h>
+#include <fltKernel.h>
 #include <stdarg.h>
 #include <ntstrsafe.h>
 
@@ -16,7 +16,6 @@ private:
         PVOID hModule;
         OPTIONAL LoadableModules::_OnUnload OnUnload;
         OPTIONAL LoadableModules::_OnDeviceControl OnDeviceControl;
-        OPTIONAL LoadableModules::_OnException OnException;
         Atomic32 Refcount;
         PRKEVENT CompletionEvent;
         volatile bool Unloading;
@@ -24,6 +23,7 @@ private:
 
     FastMutex Lock;
     LinkedList<MODULE_INFO> Modules;
+
 public:
     ModulesStorage() : Lock(), Modules() {}
     ~ModulesStorage() {
@@ -42,13 +42,7 @@ public:
             if (!Module->Unloading) {
                 Module->Unloading = true;
                 KeWaitForSingleObject(Module->CompletionEvent, Executive, KernelMode, FALSE, NULL);
-                if (Module->OnUnload) {
-                    __try {
-                        Module->OnUnload();
-                    } __except (EXCEPTION_EXECUTE_HANDLER) {
-                        KdPrint(("Kernel-Bridge]: Exception catched in %ws.OnUnload!\r\n", Module->ModuleName.GetData()));
-                    }
-                }
+                if (Module->OnUnload) Module->OnUnload();
                 VirtualMemory::FreePoolMemory(Module->hModule);
                 Modules.Remove(Entry);
             }
@@ -61,8 +55,7 @@ public:
         LPCWSTR ModuleName,
         OPTIONAL LoadableModules::_OnLoad OnLoad = NULL,
         OPTIONAL LoadableModules::_OnUnload OnUnload = NULL,
-        OPTIONAL LoadableModules::_OnDeviceControl OnDeviceControl = NULL,
-        OPTIONAL LoadableModules::_OnException OnException = NULL
+        OPTIONAL LoadableModules::_OnDeviceControl OnDeviceControl = NULL
     ) {
         if (!hModule || !ModuleName) return STATUS_INVALID_PARAMETER;
 
@@ -81,30 +74,7 @@ public:
         if (AlreadyLoaded) 
             return STATUS_ALREADY_COMPLETE;
 
-        NTSTATUS Status = STATUS_SUCCESS;
-        ULONG ExceptionCode = 0;
-        PEXCEPTION_POINTERS ExceptionPointers = NULL;
-        if (OnLoad) {
-            __try {
-                Status = OnLoad(hModule, ModuleName);
-            } __except (
-                ExceptionCode = GetExceptionCode(),
-                ExceptionPointers = GetExceptionInformation(),
-                EXCEPTION_EXECUTE_HANDLER    
-            ) {
-                KdPrint(("[Kernel-Bridge]: Exception 0x%X catched in %ws.OnLoad!\r\n", ExceptionCode, ModuleName));
-                if (OnException) {
-                    __try {
-                        return OnException(ExceptionCode, ExceptionPointers);
-                    } __except (EXCEPTION_EXECUTE_HANDLER) {
-                        KdPrint(("[Kernel-Bridge]: Exception catched in %ws.OnException!\r\n", ModuleName));
-                        // Double fault, but we return the first exception:
-                        return ExceptionCode;
-                    }
-                }
-                return ExceptionCode;
-            }
-        }
+        NTSTATUS Status = OnLoad ? OnLoad(hModule, ModuleName) : STATUS_SUCCESS;
 
         if (Status == STATUS_SUCCESS) {
             Lock.Lock();
@@ -113,7 +83,6 @@ public:
             Module.hModule = hModule;
             Module.OnUnload = OnUnload;
             Module.OnDeviceControl = OnDeviceControl;
-            Module.OnException = OnException;
             Module.CompletionEvent = new KEVENT;
             KeInitializeEvent(Module.CompletionEvent, NotificationEvent, TRUE);
             Modules.InsertTail(Module);
@@ -123,7 +92,7 @@ public:
         return Status;
     }
 
-    NTSTATUS Call(PVOID hModule, UINT64 CtlCode, OPTIONAL PVOID Argument = NULL) {
+    NTSTATUS Call(PVOID hModule, ULONG CtlCode, OPTIONAL PVOID Argument = NULL) {
         if (!hModule) return STATUS_INVALID_PARAMETER;
 
         NTSTATUS Status = STATUS_NOT_FOUND;
@@ -161,26 +130,7 @@ public:
 
         if (!TargetModule) return Status;
 
-        ULONG ExceptionCode = 0;
-        PEXCEPTION_POINTERS ExceptionPointers = NULL;
-        __try {
-            Status = TargetModule->OnDeviceControl(CtlCode, Argument);
-        } __except (
-            ExceptionCode = GetExceptionCode(),
-            ExceptionPointers = GetExceptionInformation(),
-            EXCEPTION_EXECUTE_HANDLER       
-        ) {
-            KdPrint(("[Kernel-Bridge]: Exception 0x%X catched in %ws.OnDeviceControl!\r\n", ExceptionCode, TargetModule->ModuleName.GetData()));
-            Status = STATUS_UNSUCCESSFUL;
-            if (TargetModule->OnException) {
-                __try {
-                    Status = TargetModule->OnException(ExceptionCode, ExceptionPointers);
-                } __except (EXCEPTION_EXECUTE_HANDLER) {
-                    KdPrint(("[Kernel-Bridge]: Exception catched in %ws.OnException!\r\n", TargetModule->ModuleName.GetData()));
-                    Status = ExceptionCode;
-                }
-            }
-        }
+        Status = TargetModule->OnDeviceControl(CtlCode, Argument);
 
         TargetModule->Refcount--;
         if (TargetModule->Refcount.Get() == 0)
@@ -220,13 +170,7 @@ public:
         MODULE_INFO* TargetModule = TargetEntry->GetValue();
 
         KeWaitForSingleObject(TargetModule->CompletionEvent, Executive, KernelMode, FALSE, NULL);
-        if (TargetModule->OnUnload) {
-            __try {
-                TargetModule->OnUnload();
-            } __except (EXCEPTION_EXECUTE_HANDLER) {
-                KdPrint(("Kernel-Bridge]: Exception catched in %ws.OnUnload!\r\n", TargetModule->ModuleName.GetData()));
-            }
-        }
+        if (TargetModule->OnUnload) TargetModule->OnUnload();
 
         Lock.Lock();
         Modules.Remove(TargetEntry);
@@ -261,13 +205,12 @@ namespace LoadableModules {
         LPCWSTR ModuleName,
         OPTIONAL _OnLoad OnLoad,
         OPTIONAL _OnUnload OnUnload,
-        OPTIONAL _OnDeviceControl OnDeviceControl,
-        OPTIONAL _OnException OnException
+        OPTIONAL _OnDeviceControl OnDeviceControl
     ) {
-        return Modules.Load(hModule, ModuleName, OnLoad, OnUnload, OnDeviceControl, OnException);
+        return Modules.Load(hModule, ModuleName, OnLoad, OnUnload, OnDeviceControl);
     }
 
-    NTSTATUS CallModule(PVOID hModule, UINT64 CtlCode, OPTIONAL PVOID Argument) {
+    NTSTATUS CallModule(PVOID hModule, ULONG CtlCode, OPTIONAL PVOID Argument) {
         return Modules.Call(hModule, CtlCode, Argument);
     }
 

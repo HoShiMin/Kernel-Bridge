@@ -241,7 +241,7 @@ namespace Processes {
 namespace KernelShells {
     using _GetKernelProcAddress = PVOID(WINAPI*)(LPCWSTR RoutineName);
     using _ShellCode = ULONG(WINAPI*)(
-        _GetKernelProcAddress GetKernelProcAddress, // You can obtain any function address from ntoskrnl.exe/FltMgr.sys
+        _GetKernelProcAddress GetKernelProcAddress, // You can obtain any function address from ntoskrnl.exe/hal.dll
         OPTIONAL IN OUT PVOID Argument
     );
     // Execute specified function in Ring0 
@@ -257,12 +257,11 @@ namespace LoadableModules {
         LPCWSTR ModuleName,
         OPTIONAL WdkTypes::PVOID OnLoad = NULL,
         OPTIONAL WdkTypes::PVOID OnUnload = NULL,
-        OPTIONAL WdkTypes::PVOID OnDeviceControl = NULL,
-        OPTIONAL WdkTypes::PVOID OnException = NULL
+        OPTIONAL WdkTypes::PVOID OnDeviceControl = NULL
     );
     BOOL WINAPI KbUnloadModule(WdkTypes::HMODULE hModule);
     BOOL WINAPI KbGetModuleHandle(LPCWSTR ModuleName, OUT WdkTypes::HMODULE* hModule);
-    BOOL WINAPI KbCallModule(WdkTypes::HMODULE hModule, UINT64 CtlCode, OPTIONAL WdkTypes::PVOID Argument = NULL);
+    BOOL WINAPI KbCallModule(WdkTypes::HMODULE hModule, ULONG CtlCode, OPTIONAL WdkTypes::PVOID Argument = NULL);
 }
 
 namespace Stuff {

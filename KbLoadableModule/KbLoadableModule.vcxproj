@@ -91,6 +91,7 @@
       <NoEntryPoint>true</NoEntryPoint>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
+    <ClCompile />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Link>
@@ -102,6 +103,7 @@
       <NoEntryPoint>true</NoEntryPoint>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
+    <ClCompile />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
@@ -113,6 +115,7 @@
       <NoEntryPoint>true</NoEntryPoint>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
+    <ClCompile />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Link>
@@ -124,6 +127,7 @@
       <NoEntryPoint>true</NoEntryPoint>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
     </Link>
+    <ClCompile />
   </ItemDefinitionGroup>
   <ItemGroup>
     <Inf Include="KbLoadableModule.inf" />

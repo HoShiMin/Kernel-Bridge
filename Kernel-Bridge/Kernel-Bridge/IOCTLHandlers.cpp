@@ -1638,8 +1638,7 @@ namespace
             UserModuleName,
             reinterpret_cast<LoadableModules::_OnLoad>(Input->OnLoad),
             reinterpret_cast<LoadableModules::_OnUnload>(Input->OnUnload),
-            reinterpret_cast<LoadableModules::_OnDeviceControl>(Input->OnDeviceControl),
-            reinterpret_cast<LoadableModules::_OnException>(Input->OnException)
+            reinterpret_cast<LoadableModules::_OnDeviceControl>(Input->OnDeviceControl)
         );
 
         VirtualMemory::UnsecureMemory(hSecure);

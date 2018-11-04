@@ -225,7 +225,7 @@ bool ProcessesTest::RunTest() {
     TestStatus &= KbQueueUserApc(
         ThreadId, 
         [](PVOID Argument) -> VOID {
-            //std::cout << "Called from APC: " << Argument << std::endl;
+            std::cout << " > Called from APC: " << Argument << std::endl;
         }, 
         reinterpret_cast<PVOID>(0x12345)
     );

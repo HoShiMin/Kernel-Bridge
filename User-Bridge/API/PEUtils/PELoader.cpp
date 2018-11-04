@@ -26,6 +26,8 @@ PELoader::PELoader(HMODULE RawModule, _ImportNameCallback ImportNameCallback, _I
     NtHeaders = reinterpret_cast<PIMAGE_NT_HEADERS>(hModule + DosHeader->e_lfanew);
     OptionalHeader = static_cast<PIMAGE_OPTIONAL_HEADER>(&NtHeaders->OptionalHeader);
 
+    OriginalImageBase = OptionalHeader->ImageBase;
+
     // Filling imports and exports:
     FillImports(ImportNameCallback, ImportOrdinalCallback);
 
@@ -79,7 +81,8 @@ void PELoader::Relocate(HMODULE Base) {
 
     if (RelocsDir->Size == 0) return;
 
-    SIZE_T LoadDelta = reinterpret_cast<SIZE_T>(Base) - OptionalHeader->ImageBase;
+    OptionalHeader->ImageBase = reinterpret_cast<SIZE_T>(Base);
+    SIZE_T LoadDelta = reinterpret_cast<SIZE_T>(Base) - OriginalImageBase;
 
     auto Relocs = reinterpret_cast<PIMAGE_BASE_RELOCATION>(hModule + RelocsDir->VirtualAddress);
     auto RelocsFinalAddress = reinterpret_cast<PIMAGE_BASE_RELOCATION>(reinterpret_cast<PBYTE>(Relocs) + RelocsDir->Size);

@@ -233,7 +233,7 @@ NTSTATUS CallIoctlDispatcher(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLen
         ExceptionPointers = GetExceptionInformation(),
         EXCEPTION_EXECUTE_HANDLER
     ) {
-        Status = STATUS_UNSUCCESSFUL;
+        Status = ExceptionCode;
         KdPrint((
             "[Kernel-Bridge]: Exception catched in IOCTL handler!\r\n"
             "\tCode: 0x%X\r\n"
