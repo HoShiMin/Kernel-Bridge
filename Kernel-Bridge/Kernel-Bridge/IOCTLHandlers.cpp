@@ -1749,6 +1749,7 @@ namespace
         SIZE_T Size = Input->Size;
         switch (AddressRange::IsUserAddress(Memory)) {
         case TRUE: {
+            PEPROCESS CurrentProcess = PsGetCurrentProcess();
             PEPROCESS Process = NULL;
             if (Input->ProcessId != 0 && Input->ProcessId != reinterpret_cast<UINT64>(PsGetCurrentProcessId())) {
                 Process = Processes::Descriptors::GetEPROCESS(reinterpret_cast<HANDLE>(Input->ProcessId));
@@ -1759,7 +1760,7 @@ namespace
             }
 
             HANDLE hSecure = NULL;
-            if (!VirtualMemory::SecureProcessMemory(Process, Memory, Size, PAGE_READONLY, &hSecure)) {
+            if (!VirtualMemory::SecureProcessMemory(Process ? Process : CurrentProcess, Memory, Size, PAGE_READONLY, &hSecure)) {
                 if (Process) ObDereferenceObject(Process);
                 Status = STATUS_NOT_LOCKED;
                 break;
@@ -1771,11 +1772,12 @@ namespace
                 FoundAddress = find_signature(Memory, Size, SigBuffer, MaskBuffer);
                 Status = STATUS_SUCCESS;
             } __except (EXCEPTION_EXECUTE_HANDLER) {
-                if (Process) KeUnstackDetachProcess(&ApcState);
                 Status = STATUS_UNSUCCESSFUL;
             }
 
-            VirtualMemory::UnsecureProcessMemory(Process, hSecure);
+            if (Process) KeUnstackDetachProcess(&ApcState);
+
+            VirtualMemory::UnsecureProcessMemory(Process ? Process : CurrentProcess, hSecure);
             if (Process) ObDereferenceObject(Process);
             break;
         }

@@ -32,7 +32,6 @@ void RunTests() {
     StuffTest tStuff(L"Stuff");
 }
 
-
 int main() {
     KbLoader::KbUnload();
     if (KbLoader::KbLoadAsFilter(
