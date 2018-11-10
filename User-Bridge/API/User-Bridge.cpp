@@ -495,10 +495,11 @@ namespace PhysicalMemory {
         ULONG Size
     ) {
         if (!Buffer || !Size) return FALSE;
-        KB_READ_PHYSICAL_MEMORY_IN Input = {};
+        KB_READ_WRITE_PHYSICAL_MEMORY_IN Input = {};
         Input.PhysicalAddress = PhysicalAddress;
-        auto Output = reinterpret_cast<PKB_READ_PHYSICAL_MEMORY_OUT>(Buffer);
-        return KbSendRequest(Ctls::KbReadPhysicalMemory, &Input, sizeof(Input), Output, Size);
+        Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
+        Input.Size = Size;
+        return KbSendRequest(Ctls::KbReadPhysicalMemory, &Input, sizeof(Input));
     }
 
     BOOL WINAPI KbWritePhysicalMemory(
@@ -507,7 +508,7 @@ namespace PhysicalMemory {
         ULONG Size
     ) {
         if (!Buffer || !Size) return FALSE;
-        KB_WRITE_PHYSICAL_MEMORY_IN Input = {};
+        KB_READ_WRITE_PHYSICAL_MEMORY_IN Input = {};
         Input.PhysicalAddress = PhysicalAddress;
         Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
         Input.Size = Size;

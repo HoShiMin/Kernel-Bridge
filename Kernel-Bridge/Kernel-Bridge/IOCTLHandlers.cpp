@@ -691,18 +691,17 @@ namespace
     {
         UNREFERENCED_PARAMETER(ResponseLength);
 
-        auto Input = static_cast<PKB_READ_PHYSICAL_MEMORY_IN>(RequestInfo->InputBuffer);
-        auto Output = static_cast<PKB_READ_PHYSICAL_MEMORY_OUT>(RequestInfo->OutputBuffer);
-
-        if (!Input || !Output) return STATUS_INVALID_PARAMETER;
-
-        if (RequestInfo->InputBufferSize != sizeof(KB_READ_PHYSICAL_MEMORY_IN)) 
+        auto Input = static_cast<PKB_READ_WRITE_PHYSICAL_MEMORY_IN>(RequestInfo->InputBuffer);
+        
+        if (RequestInfo->InputBufferSize != sizeof(KB_READ_WRITE_PHYSICAL_MEMORY_IN)) 
             return STATUS_INFO_LENGTH_MISMATCH;
+
+        if (!Input || !Input->Buffer || !Input->Size) return STATUS_INVALID_PARAMETER;
 
         return PhysicalMemory::ReadPhysicalMemory(
             reinterpret_cast<PVOID64>(Input->PhysicalAddress),
-            reinterpret_cast<PVOID>(&Output->Buffer),
-            RequestInfo->OutputBufferSize
+            reinterpret_cast<PVOID>(Input->Buffer),
+            Input->Size
         ) ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
     }
 
@@ -710,10 +709,10 @@ namespace
     {
         UNREFERENCED_PARAMETER(ResponseLength);
 
-        if (RequestInfo->InputBufferSize < sizeof(KB_WRITE_PHYSICAL_MEMORY_IN))
+        if (RequestInfo->InputBufferSize < sizeof(KB_READ_WRITE_PHYSICAL_MEMORY_IN))
             return STATUS_INFO_LENGTH_MISMATCH;
 
-        auto Input = static_cast<PKB_WRITE_PHYSICAL_MEMORY_IN>(RequestInfo->InputBuffer);
+        auto Input = static_cast<PKB_READ_WRITE_PHYSICAL_MEMORY_IN>(RequestInfo->InputBuffer);
         if (!Input || !Input->Buffer || !Input->Size) return STATUS_INVALID_PARAMETER;
 
         return PhysicalMemory::WritePhysicalMemory(

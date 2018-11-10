@@ -71,7 +71,6 @@ VOID CommPort::StopServer() {
     for (auto& Client : Clients) {
         FltCloseClientPort(ParentFilter, &Client.ClientPort);
     }
-    Clients.Clear();
     Clients.Unlock();
 }
 

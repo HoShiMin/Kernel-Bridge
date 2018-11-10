@@ -216,6 +216,7 @@
     <ClInclude Include="API\OSVersion.h" />
     <ClInclude Include="API\ProcessesUtils.h" />
     <ClInclude Include="API\PsCallbacks.h" />
+    <ClInclude Include="API\PTE.h" />
     <ClInclude Include="API\RAII.h" />
     <ClInclude Include="API\Signatures.h" />
     <ClInclude Include="API\StringsAPI.h" />
