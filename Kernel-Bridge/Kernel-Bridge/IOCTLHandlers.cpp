@@ -617,6 +617,44 @@ namespace
         return STATUS_SUCCESS;
     }
 
+    NTSTATUS FASTCALL KbAllocPhysicalMemory(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        if (
+            RequestInfo->InputBufferSize != sizeof(KB_ALLOC_PHYSICAL_MEMORY_IN) || 
+            RequestInfo->OutputBufferSize != sizeof(KB_ALLOC_PHYSICAL_MEMORY_OUT)
+        ) return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_ALLOC_PHYSICAL_MEMORY_IN>(RequestInfo->InputBuffer);
+        auto Output = static_cast<PKB_ALLOC_PHYSICAL_MEMORY_OUT>(RequestInfo->OutputBuffer);
+
+        if (!Input || !Input->Size || !Output) return STATUS_INVALID_PARAMETER;
+
+        Output->Address = reinterpret_cast<WdkTypes::PVOID>(PhysicalMemory::AllocPhysicalMemorySpecifyCache(
+            reinterpret_cast<PVOID64>(Input->LowestAcceptableAddress),
+            reinterpret_cast<PVOID64>(Input->LowestAcceptableAddress),
+            reinterpret_cast<PVOID64>(Input->LowestAcceptableAddress),
+            Input->Size,
+            static_cast<MEMORY_CACHING_TYPE>(Input->CachingType)
+        ));
+
+        *ResponseLength = sizeof(*Output);
+        return Output->Address ? STATUS_SUCCESS : STATUS_MEMORY_NOT_ALLOCATED;
+    }
+
+    NTSTATUS FASTCALL KbFreePhysicalMemory(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_FREE_PHYSICAL_MEMORY_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_FREE_PHYSICAL_MEMORY_IN>(RequestInfo->InputBuffer);
+        if (!Input || !Input->Address) return STATUS_INVALID_PARAMETER;
+
+        PhysicalMemory::FreePhysicalMemory(reinterpret_cast<PVOID>(Input->Address));
+        return STATUS_SUCCESS;
+    }
+
     NTSTATUS FASTCALL KbMapPhysicalMemory(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
     {
         if (
@@ -632,7 +670,8 @@ namespace
         Output->VirtualAddress = reinterpret_cast<WdkTypes::PVOID>(
             PhysicalMemory::MapPhysicalMemory(
                 reinterpret_cast<PVOID64>(Input->PhysicalAddress),
-                Input->Size
+                Input->Size,
+                static_cast<MEMORY_CACHING_TYPE>(Input->CachingType)
             )
         );
 
@@ -701,7 +740,8 @@ namespace
         return PhysicalMemory::ReadPhysicalMemory(
             reinterpret_cast<PVOID64>(Input->PhysicalAddress),
             reinterpret_cast<PVOID>(Input->Buffer),
-            Input->Size
+            Input->Size,
+            static_cast<MEMORY_CACHING_TYPE>(Input->CachingType)
         ) ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
     }
 
@@ -718,7 +758,8 @@ namespace
         return PhysicalMemory::WritePhysicalMemory(
             reinterpret_cast<PVOID64>(Input->PhysicalAddress),
             reinterpret_cast<PVOID>(Input->Buffer),
-            Input->Size
+            Input->Size,
+            static_cast<MEMORY_CACHING_TYPE>(Input->CachingType)
         ) ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
     }
 
@@ -1852,51 +1893,53 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 30 */ KbUnmapMemory,
 
         // Physical memory:
-        /* 31 */ KbMapPhysicalMemory,
-        /* 32 */ KbUnmapPhysicalMemory,
-        /* 33 */ KbGetPhysicalAddress,
-        /* 34 */ KbReadPhysicalMemory,
-        /* 35 */ KbWritePhysicalMemory,
-        /* 36 */ KbReadDmiMemory,
+        /* 31 */ KbAllocPhysicalMemory,
+        /* 32 */ KbFreePhysicalMemory,
+        /* 33 */ KbMapPhysicalMemory,
+        /* 34 */ KbUnmapPhysicalMemory,
+        /* 35 */ KbGetPhysicalAddress,
+        /* 36 */ KbReadPhysicalMemory,
+        /* 37 */ KbWritePhysicalMemory,
+        /* 38 */ KbReadDmiMemory,
 
         // Processes & Threads:
-        /* 37 */ KbGetEprocess,
-        /* 38 */ KbGetEthread,
-        /* 39 */ KbOpenProcess,
-        /* 40 */ KbOpenProcessByPointer,
-        /* 41 */ KbOpenThread,
-        /* 42 */ KbOpenThreadByPointer,
-        /* 43 */ KbDereferenceObject,
-        /* 44 */ KbCloseHandle,
-        /* 45 */ KbAllocUserMemory,
-        /* 46 */ KbFreeUserMemory,
-        /* 47 */ KbSecureVirtualMemory,
-        /* 48 */ KbUnsecureVirtualMemory,
-        /* 49 */ KbReadProcessMemory,
-        /* 50 */ KbWriteProcessMemory,
-        /* 51 */ KbSuspendProcess,
-        /* 52 */ KbResumeProcess,
-        /* 53 */ KbGetThreadContext,
-        /* 54 */ KbSetThreadContext,
-        /* 55 */ KbCreateUserThread,
-        /* 56 */ KbCreateSystemThread,
-        /* 57 */ KbQueueUserApc,
-        /* 58 */ KbRaiseIopl,
-        /* 59 */ KbResetIopl,
+        /* 39 */ KbGetEprocess,
+        /* 40 */ KbGetEthread,
+        /* 41 */ KbOpenProcess,
+        /* 42 */ KbOpenProcessByPointer,
+        /* 43 */ KbOpenThread,
+        /* 44 */ KbOpenThreadByPointer,
+        /* 45 */ KbDereferenceObject,
+        /* 46 */ KbCloseHandle,
+        /* 47 */ KbAllocUserMemory,
+        /* 48 */ KbFreeUserMemory,
+        /* 49 */ KbSecureVirtualMemory,
+        /* 50 */ KbUnsecureVirtualMemory,
+        /* 51 */ KbReadProcessMemory,
+        /* 52 */ KbWriteProcessMemory,
+        /* 53 */ KbSuspendProcess,
+        /* 54 */ KbResumeProcess,
+        /* 55 */ KbGetThreadContext,
+        /* 56 */ KbSetThreadContext,
+        /* 57 */ KbCreateUserThread,
+        /* 58 */ KbCreateSystemThread,
+        /* 59 */ KbQueueUserApc,
+        /* 60 */ KbRaiseIopl,
+        /* 61 */ KbResetIopl,
 
         // Loadable modules:
-        /* 60 */ KbCreateDriver,
-        /* 61 */ KbLoadModule,
-        /* 62 */ KbGetModuleHandle,
-        /* 63 */ KbCallModule,
-        /* 64 */ KbUnloadModule,
+        /* 62 */ KbCreateDriver,
+        /* 63 */ KbLoadModule,
+        /* 64 */ KbGetModuleHandle,
+        /* 65 */ KbCallModule,
+        /* 66 */ KbUnloadModule,
 
         // Stuff u kn0w:
-        /* 65 */ KbExecuteShellCode,
-        /* 66 */ KbGetKernelProcAddress,
-        /* 67 */ KbStallExecutionProcessor,
-        /* 68 */ KbBugCheck,
-        /* 69 */ KbFindSignature
+        /* 67 */ KbExecuteShellCode,
+        /* 68 */ KbGetKernelProcAddress,
+        /* 69 */ KbStallExecutionProcessor,
+        /* 70 */ KbBugCheck,
+        /* 71 */ KbFindSignature
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;

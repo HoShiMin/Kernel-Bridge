@@ -139,10 +139,27 @@ namespace Mdl {
 }
 
 namespace PhysicalMemory {
+    // Allocates contiguous physical memory in the specified range:
+    BOOL WINAPI KbAllocPhysicalMemory(
+        WdkTypes::PVOID LowestAcceptableAddress,
+        WdkTypes::PVOID HighestAcceptableAddress,
+        WdkTypes::PVOID BoundaryAddressMultiple,
+        ULONG Size,
+        WdkTypes::MEMORY_CACHING_TYPE CachingType,
+        OUT WdkTypes::PVOID* Address
+    );
+
+    BOOL WINAPI KbFreePhysicalMemory(WdkTypes::PVOID Address);
+
     // Maps physical memory to a KERNEL address-space, so if you
     // wants to work with it in usermode, you should map it to usermode
     // by Mdl::MapMemory:
-    BOOL WINAPI KbMapPhysicalMemory(IN WdkTypes::PVOID PhysicalAddress, ULONG Size, OUT WdkTypes::PVOID* VirtualAddress);
+    BOOL WINAPI KbMapPhysicalMemory(
+        IN WdkTypes::PVOID PhysicalAddress,
+        ULONG Size,
+        WdkTypes::MEMORY_CACHING_TYPE CachingType,
+        OUT WdkTypes::PVOID* VirtualAddress
+    );
     BOOL WINAPI KbUnmapPhysicalMemory(IN WdkTypes::PVOID VirtualAddress, ULONG Size);
     
     // Obtains physical address for specified virtual address 
@@ -154,8 +171,18 @@ namespace PhysicalMemory {
     );
     
     // Reads and writes raw physical memory to buffer in context of current process:
-    BOOL WINAPI KbReadPhysicalMemory(WdkTypes::PVOID64 PhysicalAddress, OUT PVOID Buffer, ULONG Size);
-    BOOL WINAPI KbWritePhysicalMemory(WdkTypes::PVOID64 PhysicalAddress, IN PVOID Buffer, ULONG Size);
+    BOOL WINAPI KbReadPhysicalMemory(
+        WdkTypes::PVOID64 PhysicalAddress,
+        OUT PVOID Buffer,
+        ULONG Size,
+        WdkTypes::MEMORY_CACHING_TYPE CachingType = WdkTypes::MmNonCached
+    );
+    BOOL WINAPI KbWritePhysicalMemory(
+        WdkTypes::PVOID64 PhysicalAddress,
+        IN PVOID Buffer,
+        ULONG Size,
+        WdkTypes::MEMORY_CACHING_TYPE CachingType = WdkTypes::MmNonCached
+    );
     
     BOOL WINAPI KbReadDmiMemory(OUT UCHAR DmiMemory[DmiSize], ULONG BufferSize);
 }

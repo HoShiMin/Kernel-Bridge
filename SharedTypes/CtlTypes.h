@@ -50,51 +50,53 @@ namespace Ctls {
         /* 30 */ KbUnmapMemory,
 
         // Physical memory:
-        /* 31 */ KbMapPhysicalMemory,
-        /* 32 */ KbUnmapPhysicalMemory,
-        /* 33 */ KbGetPhysicalAddress,
-        /* 34 */ KbReadPhysicalMemory,
-        /* 35 */ KbWritePhysicalMemory,
-        /* 36 */ KbReadDmiMemory,
+        /* 31 */ KbAllocPhysicalMemory,
+        /* 32 */ KbFreePhysicalMemory,
+        /* 33 */ KbMapPhysicalMemory,
+        /* 34 */ KbUnmapPhysicalMemory,
+        /* 35 */ KbGetPhysicalAddress,
+        /* 36 */ KbReadPhysicalMemory,
+        /* 37 */ KbWritePhysicalMemory,
+        /* 38 */ KbReadDmiMemory,
 
         // Processes & Threads:
-        /* 37 */ KbGetEprocess,
-        /* 38 */ KbGetEthread,
-        /* 39 */ KbOpenProcess,
-        /* 40 */ KbOpenProcessByPointer,
-        /* 41 */ KbOpenThread,
-        /* 42 */ KbOpenThreadByPointer,
-        /* 43 */ KbDereferenceObject,
-        /* 44 */ KbCloseHandle,
-        /* 45 */ KbAllocUserMemory,
-        /* 46 */ KbFreeUserMemory,
-        /* 47 */ KbSecureVirtualMemory,
-        /* 48 */ KbUnsecureVirtualMemory,
-        /* 49 */ KbReadProcessMemory,
-        /* 50 */ KbWriteProcessMemory,
-        /* 51 */ KbSuspendProcess,
-        /* 52 */ KbResumeProcess,
-        /* 53 */ KbGetThreadContext,
-        /* 54 */ KbSetThreadContext,
-        /* 55 */ KbCreateUserThread,
-        /* 56 */ KbCreateSystemThread,
-        /* 57 */ KbQueueUserApc,
-        /* 58 */ KbRaiseIopl,
-        /* 59 */ KbResetIopl,
+        /* 39 */ KbGetEprocess,
+        /* 40 */ KbGetEthread,
+        /* 41 */ KbOpenProcess,
+        /* 42 */ KbOpenProcessByPointer,
+        /* 43 */ KbOpenThread,
+        /* 44 */ KbOpenThreadByPointer,
+        /* 45 */ KbDereferenceObject,
+        /* 46 */ KbCloseHandle,
+        /* 47 */ KbAllocUserMemory,
+        /* 48 */ KbFreeUserMemory,
+        /* 49 */ KbSecureVirtualMemory,
+        /* 50 */ KbUnsecureVirtualMemory,
+        /* 51 */ KbReadProcessMemory,
+        /* 52 */ KbWriteProcessMemory,
+        /* 53 */ KbSuspendProcess,
+        /* 54 */ KbResumeProcess,
+        /* 55 */ KbGetThreadContext,
+        /* 56 */ KbSetThreadContext,
+        /* 57 */ KbCreateUserThread,
+        /* 58 */ KbCreateSystemThread,
+        /* 59 */ KbQueueUserApc,
+        /* 60 */ KbRaiseIopl,
+        /* 61 */ KbResetIopl,
 
         // Loadable modules:
-        /* 60 */ KbCreateDriver,
-        /* 61 */ KbLoadModule,
-        /* 62 */ KbGetModuleHandle,
-        /* 63 */ KbCallModule,
-        /* 64 */ KbUnloadModule,
+        /* 62 */ KbCreateDriver,
+        /* 63 */ KbLoadModule,
+        /* 64 */ KbGetModuleHandle,
+        /* 65 */ KbCallModule,
+        /* 66 */ KbUnloadModule,
 
         // Stuff u kn0w:
-        /* 65 */ KbExecuteShellCode,
-        /* 66 */ KbGetKernelProcAddress,
-        /* 67 */ KbStallExecutionProcessor,
-        /* 68 */ KbBugCheck,
-        /* 69 */ KbFindSignature
+        /* 67 */ KbExecuteShellCode,
+        /* 68 */ KbGetKernelProcAddress,
+        /* 69 */ KbStallExecutionProcessor,
+        /* 70 */ KbBugCheck,
+        /* 71 */ KbFindSignature
     };
 }
 
@@ -284,9 +286,26 @@ DECLARE_STRUCT(KB_UNMAP_MEMORY_IN, {
     WdkTypes::PMDL Mdl;
 });
 
+DECLARE_STRUCT(KB_ALLOC_PHYSICAL_MEMORY_IN, {
+    WdkTypes::PVOID LowestAcceptableAddress;
+    WdkTypes::PVOID HighestAcceptableAddress;
+    WdkTypes::PVOID BoundaryAddressMultiple;
+    ULONG Size;
+    WdkTypes::MEMORY_CACHING_TYPE CachingType;
+});
+
+DECLARE_STRUCT(KB_ALLOC_PHYSICAL_MEMORY_OUT, {
+    WdkTypes::PVOID Address;
+});
+
+DECLARE_STRUCT(KB_FREE_PHYSICAL_MEMORY_IN, {
+    WdkTypes::PVOID Address;    
+});
+
 DECLARE_STRUCT(KB_MAP_PHYSICAL_MEMORY_IN, {
     WdkTypes::PVOID PhysicalAddress;
     ULONG Size;
+    WdkTypes::MEMORY_CACHING_TYPE CachingType;
 });
 
 DECLARE_STRUCT(KB_MAP_PHYSICAL_MEMORY_OUT, {
@@ -311,6 +330,7 @@ DECLARE_STRUCT(KB_READ_WRITE_PHYSICAL_MEMORY_IN, {
     WdkTypes::PVOID PhysicalAddress;
     WdkTypes::PVOID Buffer;
     ULONG Size;
+    WdkTypes::MEMORY_CACHING_TYPE CachingType;
 });
 
 constexpr int DmiSize = 65536;

@@ -1,5 +1,7 @@
 #pragma once
 
+#define PFN_TO_PAGE(pfn) (pfn << 12)
+
 #pragma pack(push, 1)
 using VIRTUAL_ADDRESS = union {
     unsigned long long Value;

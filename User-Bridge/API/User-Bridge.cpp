@@ -455,12 +455,46 @@ namespace Mdl {
 }
 
 namespace PhysicalMemory {
-    BOOL WINAPI KbMapPhysicalMemory(IN WdkTypes::PVOID PhysicalAddress, ULONG Size, OUT WdkTypes::PVOID* VirtualAddress) {
+    BOOL WINAPI KbAllocPhysicalMemory(
+        WdkTypes::PVOID LowestAcceptableAddress,
+        WdkTypes::PVOID HighestAcceptableAddress,
+        WdkTypes::PVOID BoundaryAddressMultiple,
+        ULONG Size,
+        WdkTypes::MEMORY_CACHING_TYPE CachingType,
+        OUT WdkTypes::PVOID* Address
+    ) {
+        if (!Size || !Address) return FALSE;
+        KB_ALLOC_PHYSICAL_MEMORY_IN Input = {};
+        KB_ALLOC_PHYSICAL_MEMORY_OUT Output = {};
+        Input.LowestAcceptableAddress = LowestAcceptableAddress;
+        Input.HighestAcceptableAddress = HighestAcceptableAddress;
+        Input.BoundaryAddressMultiple = BoundaryAddressMultiple;
+        Input.Size = Size;
+        Input.CachingType = CachingType;
+        BOOL Status = KbSendRequest(Ctls::KbAllocPhysicalMemory, &Input, sizeof(Input), &Output, sizeof(Output));
+        *Address = Output.Address;
+        return Status;
+    }
+
+    BOOL WINAPI KbFreePhysicalMemory(WdkTypes::PVOID Address) {
+        if (!Address) return FALSE;
+        KB_FREE_PHYSICAL_MEMORY_IN Input = {};
+        Input.Address = Address;
+        return KbSendRequest(Ctls::KbFreePhysicalMemory, &Input, sizeof(Input));
+    }
+
+    BOOL WINAPI KbMapPhysicalMemory(
+        IN WdkTypes::PVOID PhysicalAddress, 
+        ULONG Size, 
+        WdkTypes::MEMORY_CACHING_TYPE CachingType,
+        OUT WdkTypes::PVOID* VirtualAddress
+    ) {
         if (!Size || !VirtualAddress) return FALSE;
         KB_MAP_PHYSICAL_MEMORY_IN Input = {};
         KB_MAP_PHYSICAL_MEMORY_OUT Output = {};
         Input.PhysicalAddress = PhysicalAddress;
         Input.Size = Size;
+        Input.CachingType = CachingType;
         BOOL Status = KbSendRequest(Ctls::KbMapPhysicalMemory, &Input, sizeof(Input), &Output, sizeof(Output));
         *VirtualAddress = Output.VirtualAddress;
         return Status;
@@ -492,26 +526,30 @@ namespace PhysicalMemory {
     BOOL WINAPI KbReadPhysicalMemory(
         WdkTypes::PVOID64 PhysicalAddress,
         OUT PVOID Buffer,
-        ULONG Size
+        ULONG Size,
+        WdkTypes::MEMORY_CACHING_TYPE CachingType
     ) {
         if (!Buffer || !Size) return FALSE;
         KB_READ_WRITE_PHYSICAL_MEMORY_IN Input = {};
         Input.PhysicalAddress = PhysicalAddress;
         Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
         Input.Size = Size;
+        Input.CachingType = CachingType;
         return KbSendRequest(Ctls::KbReadPhysicalMemory, &Input, sizeof(Input));
     }
 
     BOOL WINAPI KbWritePhysicalMemory(
         WdkTypes::PVOID64 PhysicalAddress,
         IN PVOID Buffer,
-        ULONG Size
+        ULONG Size,
+        WdkTypes::MEMORY_CACHING_TYPE CachingType
     ) {
         if (!Buffer || !Size) return FALSE;
         KB_READ_WRITE_PHYSICAL_MEMORY_IN Input = {};
         Input.PhysicalAddress = PhysicalAddress;
         Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
         Input.Size = Size;
+        Input.CachingType = CachingType;
         return KbSendRequest(Ctls::KbWritePhysicalMemory, &Input, sizeof(Input));
     }
 

@@ -272,13 +272,30 @@ namespace PhysicalMemory {
     }
 
     _IRQL_requires_max_(DISPATCH_LEVEL)
+    PVOID AllocPhysicalMemorySpecifyCache(
+        PVOID64 LowestAcceptableAddress,
+        PVOID64 HighestAcceptableAddress,
+        PVOID64 BoundaryAddressMultiple,
+        SIZE_T Size,
+        MEMORY_CACHING_TYPE CachingType
+    ) {
+        return MmAllocateContiguousMemorySpecifyCache(
+            Size, 
+            *reinterpret_cast<PHYSICAL_ADDRESS*>(LowestAcceptableAddress),
+            *reinterpret_cast<PHYSICAL_ADDRESS*>(HighestAcceptableAddress),
+            *reinterpret_cast<PHYSICAL_ADDRESS*>(BoundaryAddressMultiple),
+            CachingType
+        );
+    }
+
+    _IRQL_requires_max_(DISPATCH_LEVEL)
     VOID FreePhysicalMemory(PVOID BaseVirtualAddress) {
         MmFreeContiguousMemory(BaseVirtualAddress);
     }
 
     _IRQL_requires_max_(DISPATCH_LEVEL)
-    PVOID MapPhysicalMemory(PVOID64 PhysicalAddress, SIZE_T Size) {
-        return MmMapIoSpace(*reinterpret_cast<PHYSICAL_ADDRESS*>(&PhysicalAddress), Size, MmNonCached);
+    PVOID MapPhysicalMemory(PVOID64 PhysicalAddress, SIZE_T Size, MEMORY_CACHING_TYPE CachingType) {
+        return MmMapIoSpace(*reinterpret_cast<PHYSICAL_ADDRESS*>(&PhysicalAddress), Size, CachingType);
     }
 
     _IRQL_requires_max_(DISPATCH_LEVEL)
@@ -304,8 +321,8 @@ namespace PhysicalMemory {
     }
 
     _IRQL_requires_max_(DISPATCH_LEVEL)
-    BOOLEAN ReadPhysicalMemory(IN PVOID64 PhysicalAddress, OUT PVOID Buffer, SIZE_T Length) {
-        PVOID MappedMemory = MapPhysicalMemory(PhysicalAddress, Length);
+    BOOLEAN ReadPhysicalMemory(IN PVOID64 PhysicalAddress, OUT PVOID Buffer, SIZE_T Length, MEMORY_CACHING_TYPE CachingType) {
+        PVOID MappedMemory = MapPhysicalMemory(PhysicalAddress, Length, CachingType);
         if (!MappedMemory) return FALSE;
         RtlCopyMemory(Buffer, MappedMemory, Length);
         UnmapPhysicalMemory(MappedMemory, Length);
@@ -313,8 +330,8 @@ namespace PhysicalMemory {
     }
 
     _IRQL_requires_max_(DISPATCH_LEVEL)
-    BOOLEAN WritePhysicalMemory(OUT PVOID64 PhysicalAddress, IN PVOID Buffer, SIZE_T Length) {
-        PVOID MappedMemory = MapPhysicalMemory(PhysicalAddress, Length);
+    BOOLEAN WritePhysicalMemory(OUT PVOID64 PhysicalAddress, IN PVOID Buffer, SIZE_T Length, MEMORY_CACHING_TYPE CachingType) {
+        PVOID MappedMemory = MapPhysicalMemory(PhysicalAddress, Length, CachingType);
         if (!MappedMemory) return FALSE;
         RtlCopyMemory(MappedMemory, Buffer, Length);
         UnmapPhysicalMemory(MappedMemory, Length);

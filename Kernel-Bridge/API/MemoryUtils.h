@@ -143,11 +143,20 @@ namespace PhysicalMemory {
     PVOID AllocPhysicalMemory(PVOID64 HighestAcceptableAddress, SIZE_T Size);
 
     _IRQL_requires_max_(DISPATCH_LEVEL)
+    PVOID AllocPhysicalMemorySpecifyCache(
+        PVOID64 LowestAcceptableAddress,
+        PVOID64 HighestAcceptableAddress,
+        PVOID64 BoundaryAddressMultiple,
+        SIZE_T Size,
+        MEMORY_CACHING_TYPE CachingType
+    );
+
+    _IRQL_requires_max_(DISPATCH_LEVEL)
     VOID FreePhysicalMemory(PVOID BaseVirtualAddress);
 
     // Map physical address-space to virtual memory:
     _IRQL_requires_max_(DISPATCH_LEVEL)
-    PVOID MapPhysicalMemory(PVOID64 PhysicalAddress, SIZE_T Size);
+    PVOID MapPhysicalMemory(PVOID64 PhysicalAddress, SIZE_T Size, MEMORY_CACHING_TYPE CachingType);
 
     _IRQL_requires_max_(DISPATCH_LEVEL)
     VOID UnmapPhysicalMemory(PVOID64 MappedPhysicalMemory, SIZE_T Size);
@@ -157,10 +166,10 @@ namespace PhysicalMemory {
     PVOID64 GetPhysicalAddress(PVOID VirtualAddress, OPTIONAL PEPROCESS Process = NULL);
 
     _IRQL_requires_max_(DISPATCH_LEVEL)
-    BOOLEAN ReadPhysicalMemory(IN PVOID64 PhysicalAddress, OUT PVOID Buffer, SIZE_T Length);
+    BOOLEAN ReadPhysicalMemory(IN PVOID64 PhysicalAddress, OUT PVOID Buffer, SIZE_T Length, MEMORY_CACHING_TYPE CachingType);
 
     _IRQL_requires_max_(DISPATCH_LEVEL)
-    BOOLEAN WritePhysicalMemory(OUT PVOID64 PhysicalAddress, IN PVOID Buffer, SIZE_T Length);
+    BOOLEAN WritePhysicalMemory(OUT PVOID64 PhysicalAddress, IN PVOID Buffer, SIZE_T Length, MEMORY_CACHING_TYPE CachingType);
 }
 
 namespace Mdl {
