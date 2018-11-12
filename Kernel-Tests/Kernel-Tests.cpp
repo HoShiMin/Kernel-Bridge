@@ -124,7 +124,7 @@ bool PhysicalMemoryTest::RunTest() {
         }
 
         WdkTypes::PVOID VirtualAddress = NULL;
-        Status = KbMapPhysicalMemory(PhysicalAddress, sizeof(Value), &VirtualAddress);
+        Status = KbMapPhysicalMemory(PhysicalAddress, sizeof(Value), WdkTypes::MmNonCached, &VirtualAddress);
         if (!Status) Log(L"KbMapPhysicalMemory == FALSE");
 
         Mdl::MAPPING_INFO MappingInfo = {};
@@ -144,13 +144,13 @@ bool PhysicalMemoryTest::RunTest() {
         KbUnmapMemory(&MappingInfo);
 
         UINT64 Buffer = 0;
-        Status = KbReadPhysicalMemory(PhysicalAddress, &Buffer, sizeof(Buffer));
+        Status = KbReadPhysicalMemory(PhysicalAddress, &Buffer, sizeof(Buffer), WdkTypes::MmNonCached);
         if (!Status) Log(L"KbReadPhysicalMemory == FALSE");
 
         if (Buffer != Value) Log(L"Buffer != Value");
 
         Buffer = 0x900DDA7E;
-        Status = KbWritePhysicalMemory(PhysicalAddress, &Buffer, sizeof(Buffer));
+        Status = KbWritePhysicalMemory(PhysicalAddress, &Buffer, sizeof(Buffer), WdkTypes::MmNonCached);
         if (!Status) Log(L"KbWritePhysicalMemory == FALSE");
 
         if (Value != Buffer) Log(L"Value != Buffer 0x900DDA7E");
