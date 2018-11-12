@@ -33,6 +33,11 @@ namespace WdkTypes {
         MmNotMapped = -1
     };
 
+    enum SECTION_INHERIT {
+        ViewShare = 1,
+        ViewUnmap = 2
+    };
+
     // Using universal x64 types for compatibility with x32 and x64:
     using NTSTATUS  = unsigned int;
     using HANDLE    = unsigned long long;

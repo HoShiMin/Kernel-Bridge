@@ -169,7 +169,12 @@ namespace PhysicalMemory {
         IN WdkTypes::PVOID VirtualAddress,
         OUT WdkTypes::PVOID* PhysicalAddress
     );
-    
+
+    BOOL WINAPI KbGetVirtualForPhysical(
+        IN WdkTypes::PVOID PhysicalAddress, 
+        OUT WdkTypes::PVOID* VirtualAddress    
+    );
+
     // Reads and writes raw physical memory to buffer in context of current process:
     BOOL WINAPI KbReadPhysicalMemory(
         WdkTypes::PVOID64 PhysicalAddress,
@@ -263,6 +268,43 @@ namespace Processes {
         using _ApcProc = VOID(WINAPI*)(PVOID Argument);
         BOOL WINAPI KbQueueUserApc(ULONG ThreadId, _ApcProc ApcProc, PVOID Argument);
     }
+}
+
+namespace Sections {
+    BOOL WINAPI KbCreateSection(
+        OUT WdkTypes::HANDLE* hSection,
+        OPTIONAL LPCWSTR Name,
+        UINT64 MaximumSize,
+        ACCESS_MASK DesiredAccess,
+        ULONG SecObjFlags, // OBJ_***
+        ULONG SecPageProtection, // SEC_***
+        ULONG AllocationAttributes,
+        OPTIONAL WdkTypes::HANDLE hFile
+    );
+
+    BOOL WINAPI KbOpenSection(
+        OUT WdkTypes::HANDLE* hSection,
+        LPCWSTR Name,
+        ACCESS_MASK DesiredAccess,
+        ULONG SecObjFlags // OBJ_***
+    );
+
+    BOOL WINAPI KbMapViewOfSection(
+        WdkTypes::HANDLE hSection,
+        WdkTypes::HANDLE hProcess,
+        IN OUT WdkTypes::PVOID* BaseAddress,
+        ULONG CommitSize,
+        IN OUT OPTIONAL UINT64* SectionOffset = NULL,
+        IN OUT OPTIONAL UINT64* ViewSize = NULL,
+        WdkTypes::SECTION_INHERIT SectionInherit = WdkTypes::ViewUnmap,
+        ULONG AllocationType = MEM_RESERVE,
+        ULONG Win32Protect = PAGE_READWRITE
+    );
+
+    BOOL WINAPI KbUnmapViewOfSection(
+        WdkTypes::HANDLE hProcess,
+        WdkTypes::PVOID BaseAddress
+    );
 }
 
 namespace KernelShells {

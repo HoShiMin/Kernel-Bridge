@@ -55,48 +55,55 @@ namespace Ctls {
         /* 33 */ KbMapPhysicalMemory,
         /* 34 */ KbUnmapPhysicalMemory,
         /* 35 */ KbGetPhysicalAddress,
-        /* 36 */ KbReadPhysicalMemory,
-        /* 37 */ KbWritePhysicalMemory,
-        /* 38 */ KbReadDmiMemory,
+        /* 36 */ KbGetVirtualForPhysical,
+        /* 37 */ KbReadPhysicalMemory,
+        /* 38 */ KbWritePhysicalMemory,
+        /* 39 */ KbReadDmiMemory,
 
         // Processes & Threads:
-        /* 39 */ KbGetEprocess,
-        /* 40 */ KbGetEthread,
-        /* 41 */ KbOpenProcess,
-        /* 42 */ KbOpenProcessByPointer,
-        /* 43 */ KbOpenThread,
-        /* 44 */ KbOpenThreadByPointer,
-        /* 45 */ KbDereferenceObject,
-        /* 46 */ KbCloseHandle,
-        /* 47 */ KbAllocUserMemory,
-        /* 48 */ KbFreeUserMemory,
-        /* 49 */ KbSecureVirtualMemory,
-        /* 50 */ KbUnsecureVirtualMemory,
-        /* 51 */ KbReadProcessMemory,
-        /* 52 */ KbWriteProcessMemory,
-        /* 53 */ KbSuspendProcess,
-        /* 54 */ KbResumeProcess,
-        /* 55 */ KbGetThreadContext,
-        /* 56 */ KbSetThreadContext,
-        /* 57 */ KbCreateUserThread,
-        /* 58 */ KbCreateSystemThread,
-        /* 59 */ KbQueueUserApc,
-        /* 60 */ KbRaiseIopl,
-        /* 61 */ KbResetIopl,
+        /* 40 */ KbGetEprocess,
+        /* 41 */ KbGetEthread,
+        /* 42 */ KbOpenProcess,
+        /* 43 */ KbOpenProcessByPointer,
+        /* 44 */ KbOpenThread,
+        /* 45 */ KbOpenThreadByPointer,
+        /* 46 */ KbDereferenceObject,
+        /* 47 */ KbCloseHandle,
+        /* 48 */ KbAllocUserMemory,
+        /* 49 */ KbFreeUserMemory,
+        /* 50 */ KbSecureVirtualMemory,
+        /* 51 */ KbUnsecureVirtualMemory,
+        /* 52 */ KbReadProcessMemory,
+        /* 53 */ KbWriteProcessMemory,
+        /* 54 */ KbSuspendProcess,
+        /* 55 */ KbResumeProcess,
+        /* 56 */ KbGetThreadContext,
+        /* 57 */ KbSetThreadContext,
+        /* 58 */ KbCreateUserThread,
+        /* 59 */ KbCreateSystemThread,
+        /* 60 */ KbQueueUserApc,
+        /* 61 */ KbRaiseIopl,
+        /* 62 */ KbResetIopl,
+
+        // Sections:
+        /* 63 */ KbCreateSection,
+        /* 64 */ KbOpenSection,
+        /* 65 */ KbMapViewOfSection,
+        /* 66 */ KbUnmapViewOfSection,
 
         // Loadable modules:
-        /* 62 */ KbCreateDriver,
-        /* 63 */ KbLoadModule,
-        /* 64 */ KbGetModuleHandle,
-        /* 65 */ KbCallModule,
-        /* 66 */ KbUnloadModule,
+        /* 67 */ KbCreateDriver,
+        /* 68 */ KbLoadModule,
+        /* 69 */ KbGetModuleHandle,
+        /* 70 */ KbCallModule,
+        /* 71 */ KbUnloadModule,
 
         // Stuff u kn0w:
-        /* 67 */ KbExecuteShellCode,
-        /* 68 */ KbGetKernelProcAddress,
-        /* 69 */ KbStallExecutionProcessor,
-        /* 70 */ KbBugCheck,
-        /* 71 */ KbFindSignature
+        /* 72 */ KbExecuteShellCode,
+        /* 73 */ KbGetKernelProcAddress,
+        /* 74 */ KbStallExecutionProcessor,
+        /* 75 */ KbBugCheck,
+        /* 76 */ KbFindSignature
     };
 }
 
@@ -326,6 +333,14 @@ DECLARE_STRUCT(KB_GET_PHYSICAL_ADDRESS_OUT, {
     WdkTypes::PVOID PhysicalAddress;
 });
 
+DECLARE_STRUCT(KB_GET_VIRTUAL_FOR_PHYSICAL_IN, {
+    WdkTypes::PVOID PhysicalAddress; 
+});
+
+DECLARE_STRUCT(KB_GET_VIRTUAL_FOR_PHYSICAL_OUT, {
+    WdkTypes::PVOID VirtualAddress;
+});
+
 DECLARE_STRUCT(KB_READ_WRITE_PHYSICAL_MEMORY_IN, {
     WdkTypes::PVOID PhysicalAddress;
     WdkTypes::PVOID Buffer;
@@ -468,6 +483,49 @@ DECLARE_STRUCT(KB_QUEUE_USER_APC_IN, {
     UINT64 ThreadId;
     WdkTypes::PVOID ApcProc;
     WdkTypes::PVOID Argument;
+});
+
+DECLARE_STRUCT(KB_CREATE_SECTION_IN, {
+    OPTIONAL WdkTypes::LPCWSTR Name;
+    UINT64 MaximumSize;
+    ACCESS_MASK DesiredAccess;
+    ULONG SecObjFlags; // OBJ_***
+    ULONG SecPageProtection;
+    ULONG AllocationAttributes;
+    OPTIONAL WdkTypes::HANDLE hFile;
+});
+
+DECLARE_STRUCT(KB_OPEN_SECTION_IN, {
+    WdkTypes::LPCWSTR Name;
+    ACCESS_MASK DesiredAccess;
+    ULONG SecObjFlags; // OBJ_***
+});
+
+DECLARE_STRUCT(KB_CREATE_OPEN_SECTION_OUT, {
+    WdkTypes::HANDLE hSection;
+});
+
+DECLARE_STRUCT(KB_MAP_VIEW_OF_SECTION_IN, {
+    WdkTypes::HANDLE hSection;
+    WdkTypes::HANDLE hProcess;
+    IN WdkTypes::PVOID BaseAddress;
+    ULONG CommitSize;
+    UINT64 SectionOffset;
+    UINT64 ViewSize;
+    WdkTypes::SECTION_INHERIT SectionInherit;
+    ULONG AllocationType;
+    ULONG Win32Protect;
+});
+
+DECLARE_STRUCT(KB_MAP_VIEW_OF_SECTION_OUT, {
+    WdkTypes::PVOID BaseAddress;
+    UINT64 SectionOffset;
+    UINT64 ViewSize;
+});
+
+DECLARE_STRUCT(KB_UNMAP_VIEW_OF_SECTION_IN, {
+    WdkTypes::HANDLE hProcess;
+    WdkTypes::PVOID BaseAddress;
 });
 
 DECLARE_STRUCT(KB_EXECUTE_SHELL_CODE_IN, {

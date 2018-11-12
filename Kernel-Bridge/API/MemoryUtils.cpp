@@ -320,6 +320,10 @@ namespace PhysicalMemory {
         return PhysicalAddress;
     }
 
+    PVOID GetVirtualForPhysical(PVOID64 PhysicalAddress) {
+        return MmGetVirtualForPhysical(*reinterpret_cast<PPHYSICAL_ADDRESS>(&PhysicalAddress));
+    }
+
     _IRQL_requires_max_(DISPATCH_LEVEL)
     BOOLEAN ReadPhysicalMemory(IN PVOID64 PhysicalAddress, OUT PVOID Buffer, SIZE_T Length, MEMORY_CACHING_TYPE CachingType) {
         PVOID MappedMemory = MapPhysicalMemory(PhysicalAddress, Length, CachingType);

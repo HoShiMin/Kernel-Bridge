@@ -30,6 +30,7 @@
     <ClCompile Include="API\OSVersion.cpp" />
     <ClCompile Include="API\ProcessesUtils.cpp" />
     <ClCompile Include="API\PsCallbacks.cpp" />
+    <ClCompile Include="API\SectionsUtils.cpp" />
     <ClCompile Include="API\Signatures.cpp" />
     <ClCompile Include="Kernel-Bridge\DriverEvents.cpp" />
     <ClCompile Include="Kernel-Bridge\FilterCallbacks.cpp" />
@@ -218,6 +219,7 @@
     <ClInclude Include="API\PsCallbacks.h" />
     <ClInclude Include="API\PTE.h" />
     <ClInclude Include="API\RAII.h" />
+    <ClInclude Include="API\SectionsUtils.h" />
     <ClInclude Include="API\Signatures.h" />
     <ClInclude Include="API\StringsAPI.h" />
     <ClInclude Include="Kernel-Bridge\DriverEvents.h" />
