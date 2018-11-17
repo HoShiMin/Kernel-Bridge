@@ -96,12 +96,27 @@ namespace VirtualMemory {
     // Supports both user- and kernel-memory in context of current process:
     BOOL WINAPI KbAllocKernelMemory(ULONG Size, BOOLEAN Executable, OUT WdkTypes::PVOID* KernelAddress);
     BOOL WINAPI KbFreeKernelMemory(IN WdkTypes::PVOID KernelAddress);
+    BOOL WINAPI KbAllocNonCachedMemory(ULONG Size, OUT WdkTypes::PVOID* KernelAddress);
+    BOOL WINAPI KbFreeNonCachedMemory(WdkTypes::PVOID KernelAddress, ULONG Size);
     BOOL WINAPI KbCopyMoveMemory(OUT WdkTypes::PVOID Dest, IN WdkTypes::PVOID Src, ULONG Size, BOOLEAN Intersects);
     BOOL WINAPI KbFillMemory(IN WdkTypes::PVOID Address, UCHAR Filler, ULONG Size);
     BOOL WINAPI KbEqualMemory(IN WdkTypes::PVOID Src, IN WdkTypes::PVOID Dest, ULONG Size, OUT PBOOLEAN Equals);
 }
 
 namespace Mdl {
+    BOOL WINAPI KbAllocateMdl(
+        WdkTypes::PVOID VirtualAddress,
+        ULONG Size,
+        OUT WdkTypes::PMDL* Mdl
+    );
+
+    BOOL WINAPI KbProbeAndLockPages(
+        OPTIONAL ULONG ProcessId,
+        WdkTypes::PMDL Mdl,
+        WdkTypes::KPROCESSOR_MODE ProcessorMode,
+        WdkTypes::LOCK_OPERATION LockOperation
+    );
+
     BOOL WINAPI KbMapMdl(
         OUT WdkTypes::PVOID* MappedMemory,
         OPTIONAL UINT64 SrcProcessId,
@@ -113,6 +128,11 @@ namespace Mdl {
         WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
         OPTIONAL WdkTypes::PVOID UserRequestedAddress = NULL
     );
+
+    BOOL WINAPI KbProtectMappedMemory(IN WdkTypes::PMDL Mdl, ULONG Protect);
+    BOOL WINAPI KbUnmapMdl(IN WdkTypes::PMDL Mdl, IN WdkTypes::PVOID MappedMemory, BOOLEAN NeedUnlock);
+    BOOL WINAPI KbUnlockPages(WdkTypes::PMDL Mdl);
+    BOOL WINAPI KbFreeMdl(WdkTypes::PMDL Mdl);
 
     using MAPPING_INFO = struct {
         WdkTypes::PVOID MappedAddress;
@@ -131,10 +151,6 @@ namespace Mdl {
         WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
         OPTIONAL WdkTypes::PVOID UserRequestedAddress = NULL
     );
-
-    BOOL WINAPI KbProtectMappedMemory(IN WdkTypes::PMDL Mdl, ULONG Protect);
-
-    BOOL WINAPI KbUnmapMdl(IN WdkTypes::PMDL Mdl, IN WdkTypes::PVOID MappedMemory, BOOLEAN NeedUnlock);
     BOOL WINAPI KbUnmapMemory(IN PMAPPING_INFO MappingInfo);
 }
 
@@ -262,6 +278,8 @@ namespace Processes {
         
         BOOL WINAPI KbReadProcessMemory(ULONG ProcessId, IN WdkTypes::PVOID BaseAddress, OUT PVOID Buffer, ULONG Size);
         BOOL WINAPI KbWriteProcessMemory(ULONG ProcessId, OUT WdkTypes::PVOID BaseAddress, IN PVOID Buffer, ULONG Size);
+
+        BOOL WINAPI KbGetProcessCr3Cr4(ULONG ProcessId, OUT OPTIONAL PUINT64 Cr3, OUT OPTIONAL PUINT64 Cr4);
     }
 
     namespace Apc {

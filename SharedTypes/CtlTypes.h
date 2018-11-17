@@ -38,72 +38,79 @@ namespace Ctls {
         // Memory management:
         /* 21 */ KbAllocKernelMemory,
         /* 22 */ KbFreeKernelMemory,
-        /* 23 */ KbCopyMoveMemory,
-        /* 24 */ KbFillMemory,
-        /* 25 */ KbEqualMemory,
+        /* 23 */ KbAllocNonCachedMemory,
+        /* 24 */ KbFreeNonCachedMemory,
+        /* 25 */ KbCopyMoveMemory,
+        /* 26 */ KbFillMemory,
+        /* 27 */ KbEqualMemory,
 
         // Memory mappings:
-        /* 26 */ KbMapMdl,
-        /* 27 */ KbMapMemory,
-        /* 28 */ KbProtectMappedMemory,
-        /* 29 */ KbUnmapMdl,
-        /* 30 */ KbUnmapMemory,
+        /* 28 */ KbAllocateMdl,
+        /* 29 */ KbProbeAndLockPages,
+        /* 30 */ KbMapMdl,
+        /* 31 */ KbProtectMappedMemory,
+        /* 32 */ KbUnmapMdl,
+        /* 33 */ KbUnlockPages,
+        /* 34 */ KbFreeMdl,
+        /* 35 */ KbMapMemory,
+        /* 36 */ KbUnmapMemory,
 
         // Physical memory:
-        /* 31 */ KbAllocPhysicalMemory,
-        /* 32 */ KbFreePhysicalMemory,
-        /* 33 */ KbMapPhysicalMemory,
-        /* 34 */ KbUnmapPhysicalMemory,
-        /* 35 */ KbGetPhysicalAddress,
-        /* 36 */ KbGetVirtualForPhysical,
-        /* 37 */ KbReadPhysicalMemory,
-        /* 38 */ KbWritePhysicalMemory,
-        /* 39 */ KbReadDmiMemory,
+        /* 37 */ KbAllocPhysicalMemory,
+        /* 38 */ KbFreePhysicalMemory,
+        /* 39 */ KbMapPhysicalMemory,
+        /* 40 */ KbUnmapPhysicalMemory,
+        /* 41 */ KbGetPhysicalAddress,
+        /* 42 */ KbGetVirtualForPhysical,
+        /* 43 */ KbReadPhysicalMemory,
+        /* 44 */ KbWritePhysicalMemory,
+        /* 45 */ KbReadDmiMemory,
 
         // Processes & Threads:
-        /* 40 */ KbGetEprocess,
-        /* 41 */ KbGetEthread,
-        /* 42 */ KbOpenProcess,
-        /* 43 */ KbOpenProcessByPointer,
-        /* 44 */ KbOpenThread,
-        /* 45 */ KbOpenThreadByPointer,
-        /* 46 */ KbDereferenceObject,
-        /* 47 */ KbCloseHandle,
-        /* 48 */ KbAllocUserMemory,
-        /* 49 */ KbFreeUserMemory,
-        /* 50 */ KbSecureVirtualMemory,
-        /* 51 */ KbUnsecureVirtualMemory,
-        /* 52 */ KbReadProcessMemory,
-        /* 53 */ KbWriteProcessMemory,
-        /* 54 */ KbSuspendProcess,
-        /* 55 */ KbResumeProcess,
-        /* 56 */ KbGetThreadContext,
-        /* 57 */ KbSetThreadContext,
-        /* 58 */ KbCreateUserThread,
-        /* 59 */ KbCreateSystemThread,
-        /* 60 */ KbQueueUserApc,
-        /* 61 */ KbRaiseIopl,
-        /* 62 */ KbResetIopl,
+        /* 46 */ KbGetEprocess,
+        /* 47 */ KbGetEthread,
+        /* 48 */ KbOpenProcess,
+        /* 49 */ KbOpenProcessByPointer,
+        /* 50 */ KbOpenThread,
+        /* 51 */ KbOpenThreadByPointer,
+        /* 52 */ KbDereferenceObject,
+        /* 53 */ KbCloseHandle,
+        /* 54 */ KbAllocUserMemory,
+        /* 55 */ KbFreeUserMemory,
+        /* 56 */ KbSecureVirtualMemory,
+        /* 57 */ KbUnsecureVirtualMemory,
+        /* 58 */ KbReadProcessMemory,
+        /* 59 */ KbWriteProcessMemory,
+        /* 60 */ KbSuspendProcess,
+        /* 61 */ KbResumeProcess,
+        /* 62 */ KbGetThreadContext,
+        /* 63 */ KbSetThreadContext,
+        /* 64 */ KbCreateUserThread,
+        /* 65 */ KbCreateSystemThread,
+        /* 66 */ KbQueueUserApc,
+        /* 67 */ KbRaiseIopl,
+        /* 68 */ KbResetIopl,
+        /* 69 */ KbGetProcessCr3Cr4,
 
         // Sections:
-        /* 63 */ KbCreateSection,
-        /* 64 */ KbOpenSection,
-        /* 65 */ KbMapViewOfSection,
-        /* 66 */ KbUnmapViewOfSection,
+        /* 70 */ KbCreateSection,
+        /* 71 */ KbOpenSection,
+        /* 72 */ KbMapViewOfSection,
+        /* 73 */ KbUnmapViewOfSection,
 
         // Loadable modules:
-        /* 67 */ KbCreateDriver,
-        /* 68 */ KbLoadModule,
-        /* 69 */ KbGetModuleHandle,
-        /* 70 */ KbCallModule,
-        /* 71 */ KbUnloadModule,
+        /* 74 */ KbCreateDriver,
+        /* 75 */ KbLoadModule,
+        /* 76 */ KbGetModuleHandle,
+        /* 77 */ KbCallModule,
+        /* 78 */ KbUnloadModule,
 
         // Stuff u kn0w:
-        /* 72 */ KbExecuteShellCode,
-        /* 73 */ KbGetKernelProcAddress,
-        /* 74 */ KbStallExecutionProcessor,
-        /* 75 */ KbBugCheck,
-        /* 76 */ KbFindSignature
+        /* 79 */ KbExecuteShellCode,
+        /* 80 */ KbGetKernelProcAddress,
+        /* 81 */ KbStallExecutionProcessor,
+        /* 82 */ KbBugCheck,
+        /* 83 */ KbFindSignature
     };
 }
 
@@ -223,6 +230,19 @@ DECLARE_STRUCT(KB_FREE_KERNEL_MEMORY_IN, {
     WdkTypes::PVOID KernelAddress;
 });
 
+DECLARE_STRUCT(KB_ALLOC_NON_CACHED_MEMORY_IN, {
+    ULONG Size;
+});
+
+DECLARE_STRUCT(KB_ALLOC_NON_CACHED_MEMORY_OUT, {
+    WdkTypes::PVOID KernelAddress;
+});
+
+DECLARE_STRUCT(KB_FREE_NON_CACHED_MEMORY_IN, {
+    WdkTypes::PVOID KernelAddress;
+    ULONG Size;
+});
+
 DECLARE_STRUCT(KB_COPY_MOVE_MEMORY_IN, {
     WdkTypes::PVOID Src;
     WdkTypes::PVOID Dest;
@@ -244,6 +264,22 @@ DECLARE_STRUCT(KB_EQUAL_MEMORY_IN, {
 
 DECLARE_STRUCT(KB_EQUAL_MEMORY_OUT, {
     BOOLEAN Equals;
+});
+
+DECLARE_STRUCT(KB_ALLOCATE_MDL_IN, {
+    WdkTypes::PVOID VirtualAddress;
+    ULONG Size;
+});
+
+DECLARE_STRUCT(KB_ALLOCATE_MDL_OUT, {
+    WdkTypes::PMDL Mdl;    
+});
+
+DECLARE_STRUCT(KB_PROBE_AND_LOCK_PAGES_IN, {
+    OPTIONAL UINT64 ProcessId;
+    WdkTypes::PMDL Mdl;
+    WdkTypes::KPROCESSOR_MODE ProcessorMode;
+    WdkTypes::LOCK_OPERATION LockOperation;
 });
 
 DECLARE_STRUCT(KB_MAP_MDL_IN, {
@@ -286,6 +322,14 @@ DECLARE_STRUCT(KB_UNMAP_MDL_IN, {
     WdkTypes::PVOID BaseAddress;
     WdkTypes::PMDL Mdl;
     BOOLEAN NeedUnlock;
+});
+
+DECLARE_STRUCT(KB_UNLOCK_PAGES_IN, {
+    WdkTypes::PMDL Mdl;    
+});
+
+DECLARE_STRUCT(KB_FREE_MDL_IN, {
+    WdkTypes::PMDL Mdl;    
 });
 
 DECLARE_STRUCT(KB_UNMAP_MEMORY_IN, {
@@ -483,6 +527,15 @@ DECLARE_STRUCT(KB_QUEUE_USER_APC_IN, {
     UINT64 ThreadId;
     WdkTypes::PVOID ApcProc;
     WdkTypes::PVOID Argument;
+});
+
+DECLARE_STRUCT(KB_GET_PROCESS_CR3_CR4_IN, {
+    UINT64 ProcessId;
+});
+
+DECLARE_STRUCT(KB_GET_PROCESS_CR3_CR4_OUT, {
+    UINT64 Cr3;
+    UINT64 Cr4;
 });
 
 DECLARE_STRUCT(KB_CREATE_SECTION_IN, {

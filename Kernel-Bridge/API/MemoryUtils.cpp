@@ -324,8 +324,17 @@ namespace PhysicalMemory {
         return MmGetVirtualForPhysical(*reinterpret_cast<PPHYSICAL_ADDRESS>(&PhysicalAddress));
     }
 
-    _IRQL_requires_max_(DISPATCH_LEVEL)
+    _IRQL_requires_max_(APC_LEVEL)
     BOOLEAN ReadPhysicalMemory(IN PVOID64 PhysicalAddress, OUT PVOID Buffer, SIZE_T Length, MEMORY_CACHING_TYPE CachingType) {
+        PVOID VirtualAddress = GetVirtualForPhysical(PhysicalAddress);
+        if (VirtualAddress) {
+            __try {
+                RtlCopyMemory(Buffer, VirtualAddress, Length);
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                return FALSE;
+            }
+            return TRUE;
+        }
         PVOID MappedMemory = MapPhysicalMemory(PhysicalAddress, Length, CachingType);
         if (!MappedMemory) return FALSE;
         RtlCopyMemory(Buffer, MappedMemory, Length);
@@ -333,8 +342,17 @@ namespace PhysicalMemory {
         return TRUE;
     }
 
-    _IRQL_requires_max_(DISPATCH_LEVEL)
+    _IRQL_requires_max_(APC_LEVEL)
     BOOLEAN WritePhysicalMemory(OUT PVOID64 PhysicalAddress, IN PVOID Buffer, SIZE_T Length, MEMORY_CACHING_TYPE CachingType) {
+        PVOID VirtualAddress = GetVirtualForPhysical(PhysicalAddress);
+        if (VirtualAddress) {
+            __try {
+                RtlCopyMemory(VirtualAddress, Buffer, Length);
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                return FALSE;
+            }
+            return TRUE;
+        }
         PVOID MappedMemory = MapPhysicalMemory(PhysicalAddress, Length, CachingType);
         if (!MappedMemory) return FALSE;
         RtlCopyMemory(MappedMemory, Buffer, Length);

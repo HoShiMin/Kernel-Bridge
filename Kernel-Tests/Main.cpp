@@ -162,10 +162,13 @@ void TranslationTest()
     using namespace KernelShells;
 
     WdkTypes::PVOID KernelMemory = NULL;
-    KbAllocKernelMemory(4096, FALSE, &KernelMemory);
+    KbAllocNonCachedMemory(4096, &KernelMemory);
+    KbFillMemory(KernelMemory, 0x90, 4096);
 
     VIRTUAL_ADDRESS Va = {};
     Va.Value = KernelMemory;
+
+    printf("Target VA: %p\r\n", (PVOID)KernelMemory);
 
     VirtualLock(&Va, sizeof(Va));
 
@@ -191,33 +194,40 @@ void TranslationTest()
         WdkTypes::PVOID pPml4e = PFN_TO_PAGE(Regs.Cr3.x64.Bitmap.PML4) + Va.x64.Page4Kb.PageMapLevel4Offset * sizeof(Pml4e);
         WdkTypes::PVOID VirtPml4e = PhysMem::GetVirtualForPhysical(pPml4e);
         Pml4e.x64.Value = VirtMem::ReadQword(VirtPml4e);
+        printf("PML4E: VA = %p, PA = %p\r\n", (PVOID)VirtPml4e, (PVOID)pPml4e);
 
         WdkTypes::PVOID pPdpe = PFN_TO_PAGE(Pml4e.x64.Page4Kb.PDP) + Va.x64.Page4Kb.PageDirectoryPointerOffset * sizeof(Pdpe);
         WdkTypes::PVOID VirtPdpe = PhysMem::GetVirtualForPhysical(pPdpe);
         Pdpe.x64.Value = VirtMem::ReadQword(VirtPdpe);
+        printf("PDPE: VA = %p, PA = %p\r\n", (PVOID)VirtPdpe, (PVOID)pPdpe);
 
         WdkTypes::PVOID pPde = PFN_TO_PAGE(Pdpe.x64.Page4Kb.PD) + Va.x64.Page4Kb.PageDirectoryOffset * sizeof(Pde);
         WdkTypes::PVOID VirtPde = PhysMem::GetVirtualForPhysical(pPde);
         Pde.x64.Value = VirtMem::ReadQword(VirtPde);
+        printf("PDE: VA = %p, PA = %p\r\n", (PVOID)VirtPde, (PVOID)pPde);
 
         WdkTypes::PVOID pPte = PFN_TO_PAGE(Pde.x64.Page4Kb.PT) + Va.x64.Page4Kb.PageTableOffset * sizeof(Pte);
         WdkTypes::PVOID VirtPte = PhysMem::GetVirtualForPhysical(pPte);
+
         Pte.x64.Value = VirtMem::ReadQword(VirtPte);
+        printf("PTE: VA = %p, PA = %p\r\n", (PVOID)VirtPte, (PVOID)pPte);
 
         WdkTypes::PVOID PhysicalAddress = PFN_TO_PAGE(Pte.x64.Page4Kb.PhysicalPageBase) + Va.x64.Page4Kb.PageOffset;
         WdkTypes::PVOID ValidPhysicalAddress = PhysMem::GetPhysAddress(Va.Value);
 
         if (PhysicalAddress == ValidPhysicalAddress)
-            printf("Addresses are matched, PA = 0x%llX\n", PhysicalAddress);
+            printf("Addresses are matches, PA = 0x%llX\n", PhysicalAddress);
         
     } catch (DWORD LastError) {
         printf("LE: 0x%X\r\n", LastError);
     }
 
-    KbFreeKernelMemory(KernelMemory);
+    KbFreeNonCachedMemory(KernelMemory, 4096);
 }
 
 int main() {
+    printf("PID: %i, TID: %i\r\n", GetCurrentProcessId(), GetCurrentThreadId());
+
     KbLoader::KbUnload();
     if (KbLoader::KbLoadAsFilter(
         L"C:\\Temp\\Kernel-Bridge\\Kernel-Bridge.sys",

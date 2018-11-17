@@ -340,6 +340,24 @@ namespace VirtualMemory {
         return Status;
     }
 
+    BOOL WINAPI KbAllocNonCachedMemory(ULONG Size, OUT WdkTypes::PVOID* KernelAddress) {
+        if (!Size || !KernelAddress) return FALSE;
+        KB_ALLOC_NON_CACHED_MEMORY_IN Input = {};
+        KB_ALLOC_NON_CACHED_MEMORY_OUT Output = {};
+        Input.Size = Size;
+        BOOL Status = KbSendRequest(Ctls::KbAllocNonCachedMemory, &Input, sizeof(Input), &Output, sizeof(Output));
+        *KernelAddress = Output.KernelAddress;
+        return Status;
+    }
+
+    BOOL WINAPI KbFreeNonCachedMemory(WdkTypes::PVOID KernelAddress, ULONG Size) {
+        if (!KernelAddress) return FALSE;
+        KB_FREE_NON_CACHED_MEMORY_IN Input = {};
+        Input.KernelAddress = KernelAddress;
+        Input.Size = Size;
+        return KbSendRequest(Ctls::KbFreeNonCachedMemory, &Input, sizeof(Input));
+    }
+
     BOOL WINAPI KbCopyMoveMemory(OUT WdkTypes::PVOID Dest, IN WdkTypes::PVOID Src, ULONG Size, BOOLEAN Intersects) {
         if (!Dest || !Src || !Size) return FALSE;
         KB_COPY_MOVE_MEMORY_IN Input = {};
@@ -373,6 +391,36 @@ namespace VirtualMemory {
 }
 
 namespace Mdl {
+    BOOL WINAPI KbAllocateMdl(
+        WdkTypes::PVOID VirtualAddress,
+        ULONG Size,
+        OUT WdkTypes::PMDL* Mdl
+    ) {
+        if (!VirtualAddress || !Size || !Mdl) return FALSE;
+        KB_ALLOCATE_MDL_IN Input = {};
+        KB_ALLOCATE_MDL_OUT Output = {};
+        Input.VirtualAddress = VirtualAddress;
+        Input.Size = Size;
+        BOOL Status = KbSendRequest(Ctls::KbAllocateMdl, &Input, sizeof(Input), &Output, sizeof(Output));
+        *Mdl = Output.Mdl;
+        return Status;
+    }
+
+    BOOL WINAPI KbProbeAndLockPages(
+        OPTIONAL ULONG ProcessId,
+        WdkTypes::PMDL Mdl,
+        WdkTypes::KPROCESSOR_MODE ProcessorMode,
+        WdkTypes::LOCK_OPERATION LockOperation
+    ) {
+        if (!Mdl) return FALSE;
+        KB_PROBE_AND_LOCK_PAGES_IN Input = {};
+        Input.ProcessId = ProcessId;
+        Input.Mdl = Mdl;
+        Input.ProcessorMode = ProcessorMode;
+        Input.LockOperation = LockOperation;
+        return KbSendRequest(Ctls::KbProbeAndLockPages, &Input, sizeof(Input));
+    }
+
     BOOL WINAPI KbMapMdl(
         OUT WdkTypes::PVOID* MappedMemory,
         OPTIONAL UINT64 SrcProcessId,
@@ -398,6 +446,37 @@ namespace Mdl {
         BOOL Status = KbSendRequest(Ctls::KbMapMdl, &Input, sizeof(Input), &Output, sizeof(Output));
         *MappedMemory = Output.BaseAddress;
         return Status;
+    }
+
+    BOOL WINAPI KbProtectMappedMemory(IN WdkTypes::PMDL Mdl, ULONG Protect) {
+        if (!Mdl) return FALSE;
+        KB_PROTECT_MAPPED_MEMORY_IN Input = {};
+        Input.Mdl = Mdl;
+        Input.Protect = Protect;
+        return KbSendRequest(Ctls::KbProtectMappedMemory, &Input, sizeof(Input));
+    }
+
+    BOOL WINAPI KbUnmapMdl(IN WdkTypes::PMDL Mdl, IN WdkTypes::PVOID MappedMemory, BOOLEAN NeedUnlock) {
+        if (!Mdl || !MappedMemory) return FALSE;
+        KB_UNMAP_MDL_IN Input = {};
+        Input.Mdl = Mdl;
+        Input.BaseAddress = MappedMemory;
+        Input.NeedUnlock = NeedUnlock;
+        return KbSendRequest(Ctls::KbUnmapMdl, &Input, sizeof(Input));
+    }
+
+    BOOL WINAPI KbUnlockPages(WdkTypes::PMDL Mdl) {
+        if (!Mdl) return FALSE;
+        KB_UNLOCK_PAGES_IN Input = {};
+        Input.Mdl = Mdl;
+        return KbSendRequest(Ctls::KbUnlockPages, &Input, sizeof(Input));
+    }
+
+    BOOL WINAPI KbFreeMdl(WdkTypes::PMDL Mdl) {
+        if (!Mdl) return FALSE;
+        KB_FREE_MDL_IN Input = {};
+        Input.Mdl = Mdl;
+        return KbSendRequest(Ctls::KbFreeMdl, &Input, sizeof(Input));
     }
 
     BOOL WINAPI KbMapMemory(
@@ -426,23 +505,6 @@ namespace Mdl {
         MappingInfo->MappedAddress = Output.BaseAddress;
         MappingInfo->Mdl = Output.Mdl;
         return Status;
-    }
-
-    BOOL WINAPI KbProtectMappedMemory(IN WdkTypes::PMDL Mdl, ULONG Protect) {
-        if (!Mdl) return FALSE;
-        KB_PROTECT_MAPPED_MEMORY_IN Input = {};
-        Input.Mdl = Mdl;
-        Input.Protect = Protect;
-        return KbSendRequest(Ctls::KbProtectMappedMemory, &Input, sizeof(Input));
-    }
-
-    BOOL WINAPI KbUnmapMdl(IN WdkTypes::PMDL Mdl, IN WdkTypes::PVOID MappedMemory, BOOLEAN NeedUnlock) {
-        if (!Mdl || !MappedMemory) return FALSE;
-        KB_UNMAP_MDL_IN Input = {};
-        Input.Mdl = Mdl;
-        Input.BaseAddress = MappedMemory;
-        Input.NeedUnlock = NeedUnlock;
-        return KbSendRequest(Ctls::KbUnmapMdl, &Input, sizeof(Input));
     }
 
     BOOL WINAPI KbUnmapMemory(IN PMAPPING_INFO MappingInfo) {
@@ -818,6 +880,17 @@ namespace Processes {
             Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
             Input.Size = Size;
             return KbSendRequest(Ctls::KbWriteProcessMemory, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbGetProcessCr3Cr4(ULONG ProcessId, OUT OPTIONAL PUINT64 Cr3, OUT OPTIONAL PUINT64 Cr4) {
+            if (!ProcessId) return FALSE;
+            KB_GET_PROCESS_CR3_CR4_IN Input = {};
+            KB_GET_PROCESS_CR3_CR4_OUT Output = {};
+            Input.ProcessId = ProcessId;
+            BOOL Status = KbSendRequest(Ctls::KbGetProcessCr3Cr4, &Input, sizeof(Input), &Output, sizeof(Output));
+            if (Cr3) *Cr3 = Output.Cr3;
+            if (Cr4) *Cr4 = Output.Cr4;
+            return Status;
         }
     }
 

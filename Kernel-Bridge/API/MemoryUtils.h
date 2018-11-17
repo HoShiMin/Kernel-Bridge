@@ -167,10 +167,10 @@ namespace PhysicalMemory {
 
     PVOID GetVirtualForPhysical(PVOID64 PhysicalAddress);
 
-    _IRQL_requires_max_(DISPATCH_LEVEL)
+    _IRQL_requires_max_(APC_LEVEL)
     BOOLEAN ReadPhysicalMemory(IN PVOID64 PhysicalAddress, OUT PVOID Buffer, SIZE_T Length, MEMORY_CACHING_TYPE CachingType);
 
-    _IRQL_requires_max_(DISPATCH_LEVEL)
+    _IRQL_requires_max_(APC_LEVEL)
     BOOLEAN WritePhysicalMemory(OUT PVOID64 PhysicalAddress, IN PVOID Buffer, SIZE_T Length, MEMORY_CACHING_TYPE CachingType);
 }
 
