@@ -2,15 +2,19 @@
 The "Kernel-Bridge" project is a Windows kernel driver template, development framework and
 kernel-mode API and wrappers written on C++17.  
   
+[Precompiled and signed binaries with SecureBoot support](https://github.com/HoShiMin/Kernel-Bridge/releases)
+  
 ### ✔ It supports work with:
 * IO-ports (+ 'in/out/cli/sti' usermode forwarding by IOPL)
 * System beeper
 * MSRs, CPUID, TSC and performance counters (RDPMC)
 * DMI/SMBIOS memory reading
-* Physical memory (RW, mappings)
+* Physical memory (allocations, RW, mappings)
 * Kernel memory management (allocations, mappings, transitions)
 * Usermode memory management (allocations in processes etc.)
 * Direct UM->KM and KM->UM memory transitions
+* Direct PTE-based memory management
+* Direct MDL management
 * Obtaining processes/threads handles from kernel
 * Reading and writing memory of another processes
 * Suspending/resuming/termination processes
@@ -21,10 +25,15 @@ kernel-mode API and wrappers written on C++17.
 * Unsigned drivers mapping
 * Processes, threads, handles and modules usermode callbacks (`ObRegisterCallbacks` & `PsSet***NotifyRoutine`)
 * Minifilter with usermode callbacks
+* PDB parsing
   
-### ➰ In development and coming soon:
+### ➰ In development and plans:
 * PCI configuration (is it really necessary?)
-* PDB parsing and AsmJIT integration
+* Python bindings
+* Qt-based GUI for the kernel-hacking and memory researching framework
+* Kernel WinSock support
+* Extensions for the RTL: hooks, injections, disassembling
+* Kernel loadable modules with SEH support
   
 Driver template has full support of C++ static and global initializers and all of C++17 features (without C++ exceptions). All of API modules are easy-to-use and have no external dependiencies, so you can include them to your own C++ drivers. All of API functions are grouped into a logical categories into namespaces, so you can quickly find all functions you want.
   
