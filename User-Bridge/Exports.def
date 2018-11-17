@@ -3,6 +3,7 @@ EXPORTS
 	KbLoadAsDriver
 	KbLoadAsFilter
 	KbUnload
+
 	KbSetBeeperRegime
 	KbStartBeeper
 	KbStopBeeper
@@ -10,6 +11,7 @@ EXPORTS
 	KbSetBeeperOut
 	KbSetBeeperDivider
 	KbSetBeeperFrequency
+
 	KbReadPortByte
 	KbReadPortWord
 	KbReadPortDword
@@ -22,34 +24,52 @@ EXPORTS
 	KbWritePortByteString
 	KbWritePortWordString
 	KbWritePortDwordString
+
 	KbRaiseIopl
 	KbResetIopl
+
 	KbCli
 	KbSti
 	KbHlt
+
 	KbReadMsr
 	KbWriteMsr
+
 	KbCpuid
 	KbCpuidEx
+
 	KbReadPmc
 	KbReadTsc
 	KbReadTscp
+
 	KbAllocKernelMemory
 	KbFreeKernelMemory
+	KbAllocNonCachedMemory
+	KbFreeNonCachedMemory
 	KbCopyMoveMemory
 	KbFillMemory
 	KbEqualMemory
+
+	KbAllocateMdl
+	KbProbeAndLockPages
 	KbMapMdl
-	KbMapMemory
 	KbProtectMappedMemory
 	KbUnmapMdl
+	KbUnlockPages
+	KbFreeMdl
+	KbMapMemory
 	KbUnmapMemory
+	
+	KbAllocPhysicalMemory
+	KbFreePhysicalMemory
 	KbMapPhysicalMemory
 	KbUnmapPhysicalMemory
 	KbGetPhysicalAddress
+	KbGetVirtualForPhysical
 	KbReadPhysicalMemory
 	KbWritePhysicalMemory
 	KbReadDmiMemory
+
 	KbGetEprocess
 	KbGetEthread
 	KbOpenProcess
@@ -64,23 +84,34 @@ EXPORTS
 	KbResumeProcess
 	KbGetThreadContext
 	KbSetThreadContext
-	KbQueueUserApc
 	KbAllocUserMemory
 	KbFreeUserMemory
 	KbSecureVirtualMemory
 	KbUnsecureVirtualMemory
 	KbReadProcessMemory
 	KbWriteProcessMemory
+	KbGetProcessCr3Cr4
+	KbQueueUserApc
+
+	KbCreateSection
+	KbOpenSection
+	KbMapViewOfSection
+	KbUnmapViewOfSection
+
 	KbExecuteShellCode
+
+	KbCreateDriver
+	KbLoadModule
+	KbUnloadModule
+	KbGetModuleHandle
+	KbCallModule
+
+	KbRtlMapDriverMemory
+	KbRtlMapDriverFile
+	KbRtlLoadModuleMemory
+	KbRtlLoadModuleFile
+
 	KbGetKernelProcAddress
 	KbStallExecutionProcessor
 	KbBugCheck
-	KbCreateDriver
-	KbMapDriverMemory
-	KbMapDriverFile
-	KbLoadModule
-	KbCallModule
-	KbGetModuleHandle
-	KbUnloadModule
-	KbLoadModuleMemory
-	KbLoadModuleFile
+	KbFindSignature

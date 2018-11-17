@@ -276,6 +276,19 @@ namespace Processes {
         BOOL WINAPI KbAllocUserMemory(ULONG ProcessId, ULONG Protect, ULONG Size, OUT WdkTypes::PVOID* BaseAddress);
         BOOL WINAPI KbFreeUserMemory(ULONG ProcessId, WdkTypes::PVOID BaseAddress);
         
+        BOOL WINAPI KbSecureVirtualMemory(
+            ULONG ProcessId,
+            WdkTypes::PVOID BaseAddress,
+            ULONG Size,
+            ULONG ProtectRights,
+            OUT WdkTypes::HANDLE* SecureHandle
+        );
+
+        BOOL WINAPI KbUnsecureVirtualMemory(
+            ULONG ProcessId,
+            WdkTypes::HANDLE SecureHandle
+        );
+
         BOOL WINAPI KbReadProcessMemory(ULONG ProcessId, IN WdkTypes::PVOID BaseAddress, OUT PVOID Buffer, ULONG Size);
         BOOL WINAPI KbWriteProcessMemory(ULONG ProcessId, OUT WdkTypes::PVOID BaseAddress, IN PVOID Buffer, ULONG Size);
 

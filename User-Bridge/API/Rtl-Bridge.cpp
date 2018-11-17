@@ -73,7 +73,7 @@ namespace KbRtl {
         ULONG GetSize() const { return Size; }
     };
 
-    KbLdrStatus WINAPI KbMapDriverMemory(PVOID DriverImage, LPCWSTR DriverName)
+    KbLdrStatus WINAPI KbRtlMapDriverMemory(PVOID DriverImage, LPCWSTR DriverName)
     {
         try {
             PELoader Loader(
@@ -118,14 +118,14 @@ namespace KbRtl {
         }
     }
 
-    KbLdrStatus WINAPI KbMapDriverFile(LPCWSTR DriverPath, LPCWSTR DriverName)
+    KbLdrStatus WINAPI KbRtlMapDriverFile(LPCWSTR DriverPath, LPCWSTR DriverName)
     {
         FileReader Reader;
         if (!Reader.Load(DriverPath)) return KbLdrCreationFailure;
-        return KbMapDriverMemory(Reader.GetMemory(), DriverName);
+        return KbRtlMapDriverMemory(Reader.GetMemory(), DriverName);
     }
 
-    KbLdrStatus WINAPI KbLoadModuleMemory(PVOID DriverImage, LPCWSTR ModuleName, OUT WdkTypes::HMODULE* ImageBase)
+    KbLdrStatus WINAPI KbRtlLoadModuleMemory(PVOID DriverImage, LPCWSTR ModuleName, OUT WdkTypes::HMODULE* ImageBase)
     {
         try {
             PELoader Loader(
@@ -195,10 +195,10 @@ namespace KbRtl {
         }
     }
 
-    KbLdrStatus WINAPI KbLoadModuleFile(LPCWSTR ModulePath, LPCWSTR ModuleName, OUT WdkTypes::HMODULE* hModule)
+    KbLdrStatus WINAPI KbRtlLoadModuleFile(LPCWSTR ModulePath, LPCWSTR ModuleName, OUT WdkTypes::HMODULE* hModule)
     {
         FileReader Reader;
         if (!Reader.Load(ModulePath)) return KbLdrCreationFailure;
-        return KbLoadModuleMemory(Reader.GetMemory(), ModuleName, hModule);
+        return KbRtlLoadModuleMemory(Reader.GetMemory(), ModuleName, hModule);
     }
 }
