@@ -88,6 +88,7 @@ namespace IO {
         }
 
         void SetBeeperFrequency(unsigned short Frequency) {
+            if (!Frequency) Frequency = 1;
             SetBeeperDivider(static_cast<unsigned short>(1193182 / static_cast<unsigned long>(Frequency)));
         }
     }
