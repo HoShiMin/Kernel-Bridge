@@ -19,8 +19,12 @@
 
 #include "IOCTLs.h"
 
+#ifdef _AMD64_
 extern "C" size_t __cdecl __readcr3();
 extern "C" size_t __cdecl __readcr4();
+#else
+extern "C" unsigned long __cdecl __readcr4();
+#endif
 
 namespace
 {
