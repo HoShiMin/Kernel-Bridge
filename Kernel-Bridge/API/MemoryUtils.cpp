@@ -70,6 +70,44 @@ namespace VirtualMemory {
         MmFreeNonCachedMemory(Address, Bytes);
     }
 
+    VOID CopyMemory(PVOID Dest, PVOID Src, SIZE_T Size, BOOLEAN Intersects) {
+        switch (Size) {
+        case sizeof(UCHAR): {
+            *reinterpret_cast<PUCHAR>(Dest) = *reinterpret_cast<PUCHAR>(Src);
+            break;
+        }
+        case sizeof(USHORT): {
+            *reinterpret_cast<PUSHORT>(Dest) = *reinterpret_cast<PUSHORT>(Src);
+            break;              
+        }
+        case sizeof(ULONG): {
+            *reinterpret_cast<PULONG>(Dest) = *reinterpret_cast<PULONG>(Src);
+            break;
+        }
+#ifdef _AMD64_
+        case sizeof(ULONGLONG): {
+            *reinterpret_cast<PULONGLONG>(Dest) = *reinterpret_cast<PULONGLONG>(Src);
+            break;
+        }
+#endif
+        default: {
+            if (Intersects) {
+                RtlMoveMemory(
+                    reinterpret_cast<PVOID>(Dest),
+                    reinterpret_cast<PVOID>(Src),
+                    Size
+                );
+            } else {
+                RtlCopyMemory(
+                    reinterpret_cast<PVOID>(Dest),
+                    reinterpret_cast<PVOID>(Src),
+                    Size
+                );
+            }
+        }
+        }
+    }
+
     _IRQL_requires_max_(APC_LEVEL)
     BOOLEAN SecureMemory(
         __in_data_source(USER_MODE) PVOID UserAddress, 
@@ -326,38 +364,62 @@ namespace PhysicalMemory {
 
     _IRQL_requires_max_(APC_LEVEL)
     BOOLEAN ReadPhysicalMemory(IN PVOID64 PhysicalAddress, OUT PVOID Buffer, SIZE_T Length, MEMORY_CACHING_TYPE CachingType) {
+        BOOLEAN Status;
         PVOID VirtualAddress = GetVirtualForPhysical(PhysicalAddress);
         if (VirtualAddress) {
             __try {
-                RtlCopyMemory(Buffer, VirtualAddress, Length);
+                VirtualMemory::CopyMemory(Buffer, VirtualAddress, Length);
+                Status = TRUE;
             } __except (EXCEPTION_EXECUTE_HANDLER) {
-                return FALSE;
+                Status = FALSE;
             }
-            return TRUE;
+        } else {
+            Status = FALSE;
         }
-        PVOID MappedMemory = MapPhysicalMemory(PhysicalAddress, Length, CachingType);
-        if (!MappedMemory) return FALSE;
-        RtlCopyMemory(Buffer, MappedMemory, Length);
-        UnmapPhysicalMemory(MappedMemory, Length);
-        return TRUE;
+
+        if (!Status) {
+            PVOID MappedMemory = MapPhysicalMemory(PhysicalAddress, Length, CachingType);
+            if (!MappedMemory) return FALSE;
+            __try {
+                VirtualMemory::CopyMemory(Buffer, MappedMemory, Length);
+                Status = TRUE;
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                Status = FALSE;
+            }
+            UnmapPhysicalMemory(MappedMemory, Length);
+        }
+
+        return Status;
     }
 
     _IRQL_requires_max_(APC_LEVEL)
     BOOLEAN WritePhysicalMemory(OUT PVOID64 PhysicalAddress, IN PVOID Buffer, SIZE_T Length, MEMORY_CACHING_TYPE CachingType) {
+        BOOLEAN Status;
         PVOID VirtualAddress = GetVirtualForPhysical(PhysicalAddress);
         if (VirtualAddress) {
             __try {
-                RtlCopyMemory(VirtualAddress, Buffer, Length);
+                VirtualMemory::CopyMemory(VirtualAddress, Buffer, Length);
+                Status = TRUE;
             } __except (EXCEPTION_EXECUTE_HANDLER) {
-                return FALSE;
+                Status = FALSE;
             }
-            return TRUE;
+        } else {
+            Status = FALSE;
         }
-        PVOID MappedMemory = MapPhysicalMemory(PhysicalAddress, Length, CachingType);
-        if (!MappedMemory) return FALSE;
-        RtlCopyMemory(MappedMemory, Buffer, Length);
-        UnmapPhysicalMemory(MappedMemory, Length);
-        return TRUE;
+
+        if (!Status) {
+            PVOID MappedMemory = MapPhysicalMemory(PhysicalAddress, Length, CachingType);
+            if (!MappedMemory) return FALSE;
+            __try {
+                VirtualMemory::CopyMemory(MappedMemory, Buffer, Length);
+                Status = TRUE;
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                Status = FALSE;
+            }
+            UnmapPhysicalMemory(MappedMemory, Length);
+        }
+
+        return Status;
     }
 }
 

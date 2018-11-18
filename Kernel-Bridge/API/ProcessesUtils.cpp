@@ -465,10 +465,10 @@ namespace Processes {
                 Status = STATUS_UNSUCCESSFUL;
                 switch (Operation) {
                 case MemRead:
-                    RtlCopyMemory(BufferMapping.BaseAddress, ProcessMapping.BaseAddress, Size);
+                    VirtualMemory::CopyMemory(BufferMapping.BaseAddress, ProcessMapping.BaseAddress, Size);
                     break;
                 case MemWrite:
-                    RtlCopyMemory(ProcessMapping.BaseAddress, BufferMapping.BaseAddress, Size);
+                    VirtualMemory::CopyMemory(ProcessMapping.BaseAddress, BufferMapping.BaseAddress, Size);
                     break;
                 }
                 Status = STATUS_SUCCESS;

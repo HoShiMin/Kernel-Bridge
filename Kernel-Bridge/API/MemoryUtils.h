@@ -41,6 +41,8 @@ namespace VirtualMemory {
     _IRQL_requires_max_(APC_LEVEL)
     VOID FreeNonCachedMemory(PVOID Address, SIZE_T Bytes);
 
+    VOID CopyMemory(PVOID Dest, PVOID Src, SIZE_T Size, BOOLEAN Intersects = FALSE);
+
     // Secure user memory from page rights descending or memory freeing:
     _IRQL_requires_max_(APC_LEVEL)
     BOOLEAN SecureMemory(

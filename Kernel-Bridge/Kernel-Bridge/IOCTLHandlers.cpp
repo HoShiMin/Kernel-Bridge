@@ -448,41 +448,12 @@ namespace
 
         if (!Input->Size) return STATUS_SUCCESS;
 
-        switch (Input->Size) {
-        case sizeof(UCHAR): {
-            *reinterpret_cast<PUCHAR>(Input->Dest) = *reinterpret_cast<PUCHAR>(Input->Src);
-            break;
-        }
-        case sizeof(USHORT): {
-            *reinterpret_cast<PUSHORT>(Input->Dest) = *reinterpret_cast<PUSHORT>(Input->Src);
-            break;              
-        }
-        case sizeof(ULONG): {
-            *reinterpret_cast<PULONG>(Input->Dest) = *reinterpret_cast<PULONG>(Input->Src);
-            break;
-        }
-#ifdef _AMD64_
-        case sizeof(ULONGLONG): {
-            *reinterpret_cast<PULONGLONG>(Input->Dest) = *reinterpret_cast<PULONGLONG>(Input->Src);
-            break;
-        }
-#endif
-        default: {
-            if (Input->Intersects) {
-                RtlMoveMemory(
-                    reinterpret_cast<PVOID>(Input->Dest),
-                    reinterpret_cast<PVOID>(Input->Src),
-                    Input->Size
-                );
-            } else {
-                RtlCopyMemory(
-                    reinterpret_cast<PVOID>(Input->Dest),
-                    reinterpret_cast<PVOID>(Input->Src),
-                    Input->Size
-                );
-            }
-        }
-        }
+        VirtualMemory::CopyMemory(
+            reinterpret_cast<PVOID>(Input->Dest),
+            reinterpret_cast<PVOID>(Input->Src),
+            Input->Size, 
+            Input->Intersects
+        );
 
         return STATUS_SUCCESS;
     }

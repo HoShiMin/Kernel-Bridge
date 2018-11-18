@@ -21,7 +21,7 @@
 #include <dbghelp.h>
 #include "SymParser.h"
 
-#include "../Kernel-Bridge/API/PTE.h"
+#include <PTE.h>
 
 #include <intrin.h>
 

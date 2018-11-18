@@ -169,9 +169,6 @@
     <ClInclude Include="API\Signatures.h">
       <Filter>API</Filter>
     </ClInclude>
-    <ClInclude Include="API\PTE.h">
-      <Filter>API</Filter>
-    </ClInclude>
     <ClInclude Include="API\SectionsUtils.h">
       <Filter>API</Filter>
     </ClInclude>

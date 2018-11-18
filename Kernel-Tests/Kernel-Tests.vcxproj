@@ -73,19 +73,19 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>../User-Bridge/API;../SharedTypes;../User-Bridge/API/PEUtils;$(IncludePath)</IncludePath>
+    <IncludePath>../User-Bridge/API;../SharedTypes;../CommonTypes;../User-Bridge/API/PEUtils;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>../User-Bridge/API;../SharedTypes;../User-Bridge/API/PEUtils;$(IncludePath)</IncludePath>
+    <IncludePath>../User-Bridge/API;../SharedTypes;../CommonTypes;../User-Bridge/API/PEUtils;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>../User-Bridge/API;../SharedTypes;../User-Bridge/API/PEUtils;$(IncludePath)</IncludePath>
+    <IncludePath>../User-Bridge/API;../SharedTypes;../CommonTypes;../User-Bridge/API/PEUtils;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>../User-Bridge/API;../SharedTypes;../User-Bridge/API/PEUtils;$(IncludePath)</IncludePath>
+    <IncludePath>../User-Bridge/API;../SharedTypes;../CommonTypes;../User-Bridge/API/PEUtils;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -170,6 +170,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\CommonTypes\PTE.h" />
     <ClInclude Include="Kernel-Tests.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
