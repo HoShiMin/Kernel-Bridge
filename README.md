@@ -2,7 +2,7 @@
 The "Kernel-Bridge" project is a Windows kernel driver template, development framework and
 kernel-mode API and wrappers written on C++17.  
   
-[Precompiled and signed binaries with SecureBoot support](https://github.com/HoShiMin/Kernel-Bridge/releases)
+[Precompiled and signed binaries with the SecureBoot support](https://github.com/HoShiMin/Kernel-Bridge/releases)
   
 ### ✔ It supports work with:
 * IO-ports (+ 'in/out/cli/sti' usermode forwarding by IOPL)
@@ -26,9 +26,10 @@ kernel-mode API and wrappers written on C++17.
 * Processes, threads, handles and modules usermode callbacks (`ObRegisterCallbacks` & `PsSet***NotifyRoutine`)
 * Minifilter with usermode callbacks
 * PDB parsing
+* Signatures and patterns scanning
+* Sections management (to map `\\Device\PhysicalMemory` and more)
   
 ### ➰ In development and plans:
-* PCI configuration (is it really necessary?)
 * Python bindings
 * Qt-based GUI for the kernel-hacking and memory researching framework
 * Kernel WinSock support
@@ -71,6 +72,8 @@ All required headers are `WdkTypes.h`, `CtlTypes.h` and `User-Bridge.h`. For usi
 `/Kernel-Bridge/API/` - standalone kernel API for using in C++ drivers  
 `/Kernel-Bridge/Kernel-Bridge/` - driver template files  
 `/SharedTypes/` - shared types headers required for UM and KM modules  
+`/CommonTypes/` - common user- and kernelmode headers and types
+`/Python-Bridge/` - Python binding
 `/Kernel-Tests/` - unit-tests for UM and KM modules and common functions  
   
 #### Example (using of KbReadProcessMemory):
