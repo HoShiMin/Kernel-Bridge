@@ -72,8 +72,8 @@ All required headers are `WdkTypes.h`, `CtlTypes.h` and `User-Bridge.h`. For usi
 `/Kernel-Bridge/API/` - standalone kernel API for using in C++ drivers  
 `/Kernel-Bridge/Kernel-Bridge/` - driver template files  
 `/SharedTypes/` - shared types headers required for UM and KM modules  
-`/CommonTypes/` - common user- and kernelmode headers and types
-`/Python-Bridge/` - Python binding
+`/CommonTypes/` - common user- and kernelmode headers and types  
+`/Python-Bridge/` - Python binding  
 `/Kernel-Tests/` - unit-tests for UM and KM modules and common functions  
   
 #### Example (using of KbReadProcessMemory):
