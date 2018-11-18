@@ -195,25 +195,35 @@ void TranslationTest()
         WdkTypes::PVOID VirtPml4e = PhysMem::GetVirtualForPhysical(pPml4e);
         Pml4e.x64.Value = VirtMem::ReadQword(VirtPml4e);
         printf("PML4E: VA = %p, PA = %p\r\n", (PVOID)VirtPml4e, (PVOID)pPml4e);
+        Pml4e.x64.Page4Kb.US = 1;
+        VirtMem::WriteQword(VirtPml4e, Pml4e.x64.Value);
 
         WdkTypes::PVOID pPdpe = PFN_TO_PAGE(Pml4e.x64.Page4Kb.PDP) + Va.x64.Page4Kb.PageDirectoryPointerOffset * sizeof(Pdpe);
         WdkTypes::PVOID VirtPdpe = PhysMem::GetVirtualForPhysical(pPdpe);
         Pdpe.x64.Value = VirtMem::ReadQword(VirtPdpe);
         printf("PDPE: VA = %p, PA = %p\r\n", (PVOID)VirtPdpe, (PVOID)pPdpe);
+        Pdpe.x64.Page4Kb.US = 1;
+        VirtMem::WriteQword(VirtPdpe, Pdpe.x64.Value);
 
         WdkTypes::PVOID pPde = PFN_TO_PAGE(Pdpe.x64.Page4Kb.PD) + Va.x64.Page4Kb.PageDirectoryOffset * sizeof(Pde);
         WdkTypes::PVOID VirtPde = PhysMem::GetVirtualForPhysical(pPde);
         Pde.x64.Value = VirtMem::ReadQword(VirtPde);
         printf("PDE: VA = %p, PA = %p\r\n", (PVOID)VirtPde, (PVOID)pPde);
+        Pde.x64.Page4Kb.US = 1;
+        VirtMem::WriteQword(VirtPde, Pde.x64.Value);
 
         WdkTypes::PVOID pPte = PFN_TO_PAGE(Pde.x64.Page4Kb.PT) + Va.x64.Page4Kb.PageTableOffset * sizeof(Pte);
         WdkTypes::PVOID VirtPte = PhysMem::GetVirtualForPhysical(pPte);
-
         Pte.x64.Value = VirtMem::ReadQword(VirtPte);
         printf("PTE: VA = %p, PA = %p\r\n", (PVOID)VirtPte, (PVOID)pPte);
+        Pte.x64.Page4Kb.US = 1;
+        VirtMem::WriteQword(VirtPte, Pte.x64.Value);
 
         WdkTypes::PVOID PhysicalAddress = PFN_TO_PAGE(Pte.x64.Page4Kb.PhysicalPageBase) + Va.x64.Page4Kb.PageOffset;
         WdkTypes::PVOID ValidPhysicalAddress = PhysMem::GetPhysAddress(Va.Value);
+
+        PULONG KMem = (PULONG)KernelMemory;
+        *KMem = 0x1EE7C0DE;
 
         if (PhysicalAddress == ValidPhysicalAddress)
             printf("Addresses are matches, PA = 0x%llX\n", PhysicalAddress);
