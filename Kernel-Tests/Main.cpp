@@ -236,27 +236,15 @@ void TranslationTest()
 }
 
 int main() {
-    printf("PID: %i, TID: %i\r\n", GetCurrentProcessId(), GetCurrentThreadId());
+    printf("[Kernel-Tests]: PID: %i, TID: %i\r\n", GetCurrentProcessId(), GetCurrentThreadId());
 
-    KbLoader::KbUnload();
     if (KbLoader::KbLoadAsFilter(
         L"C:\\Temp\\Kernel-Bridge\\Kernel-Bridge.sys",
         L"260000" // Altitude of minifilter
     )) {
         TranslationTest();
-        
-        //for (int i = 0; i < 1; i++) {
-        //    WdkTypes::HMODULE hModule = NULL;
-        //    KbRtl::KbLdrStatus LdrStatus = KbRtl::KbLoadModuleFile(L"C:\\Temp\\Kernel-Bridge\\KbLoadableModule.dll", L"LdMd", &hModule);
-        //    if (LdrStatus == KbRtl::KbLdrSuccess) {
-        //        LoadableModules::KbCallModule(hModule, 1, 0x11223344);
-        //        LoadableModules::KbCallModule(hModule, 2, 0x1EE7C0DE);
-        //        LoadableModules::KbUnloadModule(hModule);
-        //    }
-
-        //    RunTests();
-        //}
-        //KbLoader::KbUnload();
+        RunTests();
+        KbLoader::KbUnload();
     } else {
         std::wcout << L"Unable to load driver!" << std::endl;
     }

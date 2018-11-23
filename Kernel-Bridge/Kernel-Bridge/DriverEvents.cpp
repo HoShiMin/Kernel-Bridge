@@ -2,6 +2,8 @@
 
 #include "FilterCallbacks.h"
 
+volatile LONG KbHandlesCount = 0;
+
 VOID OnDriverLoad(
     PDRIVER_OBJECT DriverObject, 
     PDEVICE_OBJECT DeviceObject, 
@@ -56,6 +58,7 @@ VOID OnDriverCreate(
     UNREFERENCED_PARAMETER(FilterHandle);
     UNREFERENCED_PARAMETER(Irp);
     UNREFERENCED_PARAMETER(IrpStack);
+    InterlockedIncrement(&KbHandlesCount);
 }
 
 VOID OnDriverCleanup(
@@ -80,4 +83,5 @@ VOID OnDriverClose(
     UNREFERENCED_PARAMETER(FilterHandle);
     UNREFERENCED_PARAMETER(Irp);
     UNREFERENCED_PARAMETER(IrpStack);
+    InterlockedDecrement(&KbHandlesCount);
 }

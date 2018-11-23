@@ -143,8 +143,8 @@ BOOL DeleteDriver(LPCWSTR DriverName)
     }
 
     SERVICE_STATUS ServiceStatus;
-    BOOL Status = ControlService(hService, SERVICE_CONTROL_STOP, &ServiceStatus);
-    if (Status) Status = DeleteService(hService);
+    ControlService(hService, SERVICE_CONTROL_STOP, &ServiceStatus);
+    BOOL Status = DeleteService(hService);
 
     CloseServiceHandle(hService);
     CloseServiceHandle(hSCManager);

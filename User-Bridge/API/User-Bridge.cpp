@@ -6,20 +6,45 @@
 
 #include "DriversUtils.h"
 
+namespace KbLoader {
+    static constexpr LPCWSTR KbDriverName = L"Kernel-Bridge";
+    static constexpr LPCWSTR KbDeviceName = L"\\\\.\\Kernel-Bridge";
+    static HANDLE hDriver = INVALID_HANDLE_VALUE;
+}
+
+static inline BOOL WINAPI KbSendRequest(
+    Ctls::KbCtlIndices Index, 
+    IN PVOID Input = NULL, 
+    ULONG InputSize = 0, 
+    OUT PVOID Output = NULL, 
+    ULONG OutputSize = 0
+) {
+    return SendIOCTL(KbLoader::hDriver, CTL_BASE + Index, Input, InputSize, Output, OutputSize);
+}
 
 namespace KbLoader {
-
-    constexpr LPCWSTR KbDriverName = L"Kernel-Bridge";
-    constexpr LPCWSTR KbDeviceName = L"\\\\.\\Kernel-Bridge";
-
-    static HANDLE hDriver = INVALID_HANDLE_VALUE;
-
     BOOL WINAPI KbLoadAsDriver(LPCWSTR DriverPath)
     {
         // Check whether the Kernel-Bridge is already loaded:
         if (hDriver != INVALID_HANDLE_VALUE) return TRUE;
         hDriver = OpenDevice(KbDeviceName);
-        if (hDriver != INVALID_HANDLE_VALUE) return TRUE;
+        if (hDriver != INVALID_HANDLE_VALUE) {
+            ULONG DriverApiVersion = KbGetDriverApiVersion();
+            if (KbGetUserApiVersion() == DriverApiVersion) return TRUE;
+            
+            ULONG HandlesCount = 0;
+            if (!KbGetHandlesCount(&HandlesCount) || HandlesCount > 1) {
+                CloseHandle(hDriver);
+                hDriver = INVALID_HANDLE_VALUE;
+                return FALSE;
+            }
+
+            CloseHandle(hDriver);
+            hDriver = INVALID_HANDLE_VALUE;
+        }
+
+        // Removing tails from previous installation:
+        DeleteDriver(KbDriverName);
 
         // Installing driver:
         BOOL Status = InstallDriver(DriverPath, KbDriverName);
@@ -42,7 +67,23 @@ namespace KbLoader {
         // Check whether the Kernel-Bridge is already loaded:
         if (hDriver != INVALID_HANDLE_VALUE) return TRUE;
         hDriver = OpenDevice(KbDeviceName);
-        if (hDriver != INVALID_HANDLE_VALUE) return TRUE;
+        if (hDriver != INVALID_HANDLE_VALUE) {
+            ULONG DriverApiVersion = KbGetDriverApiVersion();
+            if (KbGetUserApiVersion() == DriverApiVersion) return TRUE;
+            
+            ULONG HandlesCount = 0;
+            if (!KbGetHandlesCount(&HandlesCount) || HandlesCount > 1) {
+                CloseHandle(hDriver);
+                hDriver = INVALID_HANDLE_VALUE;
+                return FALSE;
+            }
+
+            CloseHandle(hDriver);
+            hDriver = INVALID_HANDLE_VALUE;
+        }
+
+        // Removing tails from previous installation:
+        DeleteDriver(KbDriverName);
 
         BOOL Status = InstallMinifilter(DriverPath, KbDriverName, Altitude);
         if (!Status) return FALSE;
@@ -60,19 +101,40 @@ namespace KbLoader {
     BOOL WINAPI KbUnload()
     {
         if (hDriver == INVALID_HANDLE_VALUE) return TRUE;
+        
+        ULONG HandlesCount = 0;
+        if (KbGetHandlesCount(&HandlesCount) && HandlesCount > 1) {
+            CloseHandle(hDriver);
+            hDriver = INVALID_HANDLE_VALUE;
+            return TRUE;
+        }
+
         CloseHandle(hDriver);
+        hDriver = INVALID_HANDLE_VALUE;
         return DeleteDriver(KbDriverName);
     }
-}
 
-static inline BOOL WINAPI KbSendRequest(
-    Ctls::KbCtlIndices Index, 
-    IN PVOID Input = NULL, 
-    ULONG InputSize = 0, 
-    OUT PVOID Output = NULL, 
-    ULONG OutputSize = 0
-) {
-    return SendIOCTL(KbLoader::hDriver, CTL_BASE + Index, Input, InputSize, Output, OutputSize);
+    ULONG WINAPI KbGetDriverApiVersion()
+    {
+        if (hDriver == INVALID_HANDLE_VALUE) return 0;
+        KB_GET_DRIVER_API_VERSION_OUT Output = {};
+        KbSendRequest(Ctls::KbGetDriverApiVersion, NULL, 0, &Output, sizeof(Output));
+        return Output.Version;
+    }
+
+    ULONG WINAPI KbGetUserApiVersion()
+    {
+        return KB_API_VERSION;
+    }
+
+    BOOL WINAPI KbGetHandlesCount(OUT PULONG Count)
+    {
+        if (!Count) return FALSE;
+        KB_GET_HANDLES_COUNT_OUT Output = {};
+        BOOL Status = KbSendRequest(Ctls::KbGetHandlesCount, NULL, 0, &Output, sizeof(Output));
+        *Count = Output.HandlesCount;
+        return Status;
+    }
 }
 
 namespace IO {
@@ -1065,6 +1127,44 @@ namespace LoadableModules {
         Input.CtlCode = CtlCode;
         Input.Argument = Argument;
         return KbSendRequest(Ctls::KbCallModule, &Input, sizeof(Input));
+    }
+}
+
+namespace PCI {
+    BOOL WINAPI KbReadPciConfig(
+        ULONG PciAddress,
+        ULONG PciOffset,
+        OUT PVOID Buffer,
+        ULONG Size,
+        OPTIONAL OUT PULONG BytesRead
+    ) {
+        KB_READ_WRITE_PCI_CONFIG_IN Input = {};
+        KB_READ_WRITE_PCI_CONFIG_OUT Output = {};
+        Input.PciAddress = PciAddress;
+        Input.PciOffset = PciOffset;
+        Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
+        Input.Size = Size;
+        BOOL Status = KbSendRequest(Ctls::KbReadPciConfig, &Input, sizeof(Input), &Output, sizeof(Output));
+        if (BytesRead) *BytesRead = Output.ReadOrWritten;
+        return Status;
+    }
+
+    BOOL WINAPI KbWritePciConfig(
+        ULONG PciAddress,
+        ULONG PciOffset,
+        IN PVOID Buffer,
+        ULONG Size,
+        OPTIONAL OUT PULONG BytesWritten
+    ) {
+        KB_READ_WRITE_PCI_CONFIG_IN Input = {};
+        KB_READ_WRITE_PCI_CONFIG_OUT Output = {};
+        Input.PciAddress = PciAddress;
+        Input.PciOffset = PciOffset;
+        Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
+        Input.Size = Size;
+        BOOL Status = KbSendRequest(Ctls::KbWritePciConfig, &Input, sizeof(Input), &Output, sizeof(Output));
+        if (BytesWritten) *BytesWritten = Output.ReadOrWritten;
+        return Status;
     }
 }
 

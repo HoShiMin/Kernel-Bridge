@@ -3,6 +3,9 @@ EXPORTS
 	KbLoadAsDriver
 	KbLoadAsFilter
 	KbUnload
+	KbGetDriverApiVersion
+	KbGetUserApiVersion
+	KbGetHandlesCount
 
 	KbSetBeeperRegime
 	KbStartBeeper
@@ -110,6 +113,9 @@ EXPORTS
 	KbRtlMapDriverFile
 	KbRtlLoadModuleMemory
 	KbRtlLoadModuleFile
+
+	KbReadPciConfig
+	KbWritePciConfig
 
 	KbGetKernelProcAddress
 	KbStallExecutionProcessor

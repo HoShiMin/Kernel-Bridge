@@ -28,6 +28,7 @@
     <ClCompile Include="API\MemoryUtils.cpp" />
     <ClCompile Include="API\ObCallbacks.cpp" />
     <ClCompile Include="API\OSVersion.cpp" />
+    <ClCompile Include="API\PCI.cpp" />
     <ClCompile Include="API\ProcessesUtils.cpp" />
     <ClCompile Include="API\PsCallbacks.cpp" />
     <ClCompile Include="API\SectionsUtils.cpp" />
@@ -215,6 +216,7 @@
     <ClInclude Include="API\MemoryUtils.h" />
     <ClInclude Include="API\ObCallbacks.h" />
     <ClInclude Include="API\OSVersion.h" />
+    <ClInclude Include="API\PCI.h" />
     <ClInclude Include="API\ProcessesUtils.h" />
     <ClInclude Include="API\PsCallbacks.h" />
     <ClInclude Include="API\RAII.h" />

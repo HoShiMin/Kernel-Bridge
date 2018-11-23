@@ -95,6 +95,9 @@
     <ClCompile Include="API\SectionsUtils.cpp">
       <Filter>API</Filter>
     </ClCompile>
+    <ClCompile Include="API\PCI.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h">
@@ -170,6 +173,9 @@
       <Filter>API</Filter>
     </ClInclude>
     <ClInclude Include="API\SectionsUtils.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\PCI.h">
       <Filter>API</Filter>
     </ClInclude>
   </ItemGroup>

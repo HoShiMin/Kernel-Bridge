@@ -172,7 +172,6 @@
     <ClInclude Include="API\PEUtils\PEAnalyzer.h" />
     <ClInclude Include="API\PEUtils\PELoader.h" />
     <ClInclude Include="API\Rtl-Bridge.h" />
-    <ClInclude Include="API\SymParser.h" />
     <ClInclude Include="API\User-Bridge.h" />
   </ItemGroup>
   <ItemGroup>
@@ -181,7 +180,6 @@
     <ClCompile Include="API\PEUtils\PEAnalyzer.cpp" />
     <ClCompile Include="API\PEUtils\PELoader.cpp" />
     <ClCompile Include="API\Rtl-Bridge.cpp" />
-    <ClCompile Include="API\SymParser.cpp" />
     <ClCompile Include="API\User-Bridge.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>

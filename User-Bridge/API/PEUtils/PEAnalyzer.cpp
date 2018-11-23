@@ -2,8 +2,8 @@
 
 #define RELOCS_OFFSET_MASK 0b0000111111111111 /* Low 12 bit */ 
 
-#define FORCED_FILE_ALIGNMENT		0x200
-#define MINIMAL_SECTION_ALIGNMENT	0x1000
+#define FORCED_FILE_ALIGNMENT       0x200
+#define MINIMAL_SECTION_ALIGNMENT   0x1000
 
 size_t inline AlignDown(size_t Value, size_t Factor) {
     return Value & ~(Factor - 1);

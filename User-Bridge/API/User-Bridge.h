@@ -4,6 +4,9 @@ namespace KbLoader {
     BOOL WINAPI KbLoadAsDriver(LPCWSTR DriverPath);
     BOOL WINAPI KbLoadAsFilter(LPCWSTR DriverPath, LPCWSTR Altitude);
     BOOL WINAPI KbUnload();
+    ULONG WINAPI KbGetDriverApiVersion();
+    ULONG WINAPI KbGetUserApiVersion();
+    BOOL WINAPI KbGetHandlesCount(OUT PULONG Count);
 }
 
 namespace AddressRange {
@@ -362,6 +365,24 @@ namespace LoadableModules {
     BOOL WINAPI KbUnloadModule(WdkTypes::HMODULE hModule);
     BOOL WINAPI KbGetModuleHandle(LPCWSTR ModuleName, OUT WdkTypes::HMODULE* hModule);
     BOOL WINAPI KbCallModule(WdkTypes::HMODULE hModule, ULONG CtlCode, OPTIONAL WdkTypes::PVOID Argument = NULL);
+}
+
+namespace PCI {
+    BOOL WINAPI KbReadPciConfig(
+        ULONG PciAddress,
+        ULONG PciOffset,
+        OUT PVOID Buffer,
+        ULONG Size,
+        OPTIONAL OUT PULONG BytesRead
+    );
+
+    BOOL WINAPI KbWritePciConfig(
+        ULONG PciAddress,
+        ULONG PciOffset,
+        IN PVOID Buffer,
+        ULONG Size,
+        OPTIONAL OUT PULONG BytesWritten
+    );
 }
 
 namespace Stuff {

@@ -16,6 +16,7 @@
 #include "../API/KernelShells.h"
 #include "../API/StringsAPI.h"
 #include "../API/Signatures.h"
+#include "../API/PCI.h"
 
 #include "IOCTLs.h"
 
@@ -26,8 +27,32 @@ extern "C" size_t __cdecl __readcr4();
 extern "C" unsigned long __cdecl __readcr4();
 #endif
 
+extern volatile LONG KbHandlesCount;
+
 namespace
 {
+    NTSTATUS FASTCALL KbGetDriverApiVersion(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        if (RequestInfo->OutputBufferSize != sizeof(KB_GET_DRIVER_API_VERSION_OUT)) 
+            return STATUS_INFO_LENGTH_MISMATCH;
+        auto Output = reinterpret_cast<PKB_GET_DRIVER_API_VERSION_OUT>(RequestInfo->OutputBuffer);
+        if (!Output) return STATUS_INVALID_PARAMETER;
+        Output->Version = KB_API_VERSION;
+        *ResponseLength = sizeof(*Output);
+        return STATUS_SUCCESS;
+    }
+
+    NTSTATUS FASTCALL KbGetHandlesCount(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        if (RequestInfo->OutputBufferSize != sizeof(KB_GET_HANDLES_COUNT_OUT)) 
+            return STATUS_INFO_LENGTH_MISMATCH;
+        auto Output = reinterpret_cast<PKB_GET_HANDLES_COUNT_OUT>(RequestInfo->OutputBuffer);
+        if (!Output) return STATUS_INVALID_PARAMETER;
+        Output->HandlesCount = KbHandlesCount;
+        *ResponseLength = sizeof(*Output);
+        return STATUS_SUCCESS;
+    }
+
     NTSTATUS FASTCALL KbSetBeeperRegime(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
     {
         UNREFERENCED_PARAMETER(RequestInfo);
@@ -1749,6 +1774,52 @@ namespace
         );
     }
 
+    NTSTATUS FASTCALL KbReadPciConfig(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        if (
+            RequestInfo->InputBufferSize != sizeof(KB_READ_WRITE_PCI_CONFIG_IN) || 
+            RequestInfo->OutputBufferSize != sizeof(KB_READ_WRITE_PCI_CONFIG_OUT)
+        ) return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_READ_WRITE_PCI_CONFIG_IN>(RequestInfo->InputBuffer);
+        auto Output = static_cast<PKB_READ_WRITE_PCI_CONFIG_OUT>(RequestInfo->OutputBuffer);
+
+        if (!Input || !Output || !Input->Buffer || !Input->Size) return STATUS_INVALID_PARAMETER;
+
+        Output->ReadOrWritten = PCI::ReadPciConfig(
+            Input->PciAddress,
+            Input->PciOffset,
+            reinterpret_cast<PVOID>(Input->Buffer),
+            Input->Size
+        );
+
+        *ResponseLength = sizeof(*Output);
+        return STATUS_SUCCESS;
+    }
+
+    NTSTATUS FASTCALL KbWritePciConfig(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        if (
+            RequestInfo->InputBufferSize != sizeof(KB_READ_WRITE_PCI_CONFIG_IN) || 
+            RequestInfo->OutputBufferSize != sizeof(KB_READ_WRITE_PCI_CONFIG_OUT)
+        ) return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_READ_WRITE_PCI_CONFIG_IN>(RequestInfo->InputBuffer);
+        auto Output = static_cast<PKB_READ_WRITE_PCI_CONFIG_OUT>(RequestInfo->OutputBuffer);
+
+        if (!Input || !Output || !Input->Buffer || !Input->Size) return STATUS_INVALID_PARAMETER;
+
+        Output->ReadOrWritten = PCI::WritePciConfig(
+            Input->PciAddress,
+            Input->PciOffset,
+            reinterpret_cast<PVOID>(Input->Buffer),
+            Input->Size
+        );
+
+        *ResponseLength = sizeof(*Output);
+        return STATUS_SUCCESS;
+    }
+
     NTSTATUS FASTCALL KbExecuteShellCode(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
     {
         if (
@@ -2134,115 +2205,123 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
 {
     using _CtlHandler = NTSTATUS(FASTCALL*)(IN PIOCTL_INFO, OUT PSIZE_T);
     static const _CtlHandler Handlers[] = {
+        // Driver management:
+        /* 00 */ KbGetDriverApiVersion,
+        /* 01 */ KbGetHandlesCount,
+
         // Beeper:
-        /* 00 */ KbSetBeeperRegime,
-        /* 01 */ KbStartBeeper,
-        /* 02 */ KbStopBeeper,
-        /* 03 */ KbSetBeeperIn,
-        /* 04 */ KbSetBeeperOut,
-        /* 05 */ KbSetBeeperDivider,
-        /* 06 */ KbSetBeeperFrequency,
+        /* 02 */ KbSetBeeperRegime,
+        /* 03 */ KbStartBeeper,
+        /* 04 */ KbStopBeeper,
+        /* 05 */ KbSetBeeperIn,
+        /* 06 */ KbSetBeeperOut,
+        /* 07 */ KbSetBeeperDivider,
+        /* 08 */ KbSetBeeperFrequency,
 
         // IO-Ports:
-        /* 07 */ KbReadPort,
-        /* 08 */ KbReadPortString,
-        /* 09 */ KbWritePort,
-        /* 10 */ KbWritePortString,
+        /* 09 */ KbReadPort,
+        /* 10 */ KbReadPortString,
+        /* 11 */ KbWritePort,
+        /* 12 */ KbWritePortString,
 
         // Interrupts:
-        /* 11 */ KbCli,
-        /* 12 */ KbSti,
-        /* 13 */ KbHlt,
+        /* 13 */ KbCli,
+        /* 14 */ KbSti,
+        /* 15 */ KbHlt,
 
         // MSR:
-        /* 14 */ KbReadMsr,
-        /* 15 */ KbWriteMsr,
+        /* 16 */ KbReadMsr,
+        /* 17 */ KbWriteMsr,
 
         // CPUID:
-        /* 16 */ KbCpuid,
-        /* 17 */ KbCpuidEx,
+        /* 18 */ KbCpuid,
+        /* 19 */ KbCpuidEx,
 
         // TSC & PMC:
-        /* 18 */ KbReadPmc,
-        /* 19 */ KbReadTsc,
-        /* 20 */ KbReadTscp,
+        /* 20 */ KbReadPmc,
+        /* 21 */ KbReadTsc,
+        /* 22 */ KbReadTscp,
 
         // Memory management:
-        /* 21 */ KbAllocKernelMemory,
-        /* 22 */ KbFreeKernelMemory,
-        /* 23 */ KbAllocNonCachedMemory,
-        /* 24 */ KbFreeNonCachedMemory,
-        /* 25 */ KbCopyMoveMemory,
-        /* 26 */ KbFillMemory,
-        /* 27 */ KbEqualMemory,
+        /* 23 */ KbAllocKernelMemory,
+        /* 24 */ KbFreeKernelMemory,
+        /* 25 */ KbAllocNonCachedMemory,
+        /* 26 */ KbFreeNonCachedMemory,
+        /* 27 */ KbCopyMoveMemory,
+        /* 28 */ KbFillMemory,
+        /* 29 */ KbEqualMemory,
 
         // Memory mappings:
-        /* 28 */ KbAllocateMdl,
-        /* 29 */ KbProbeAndLockPages,
-        /* 30 */ KbMapMdl,
-        /* 31 */ KbProtectMappedMemory,
-        /* 32 */ KbUnmapMdl,
-        /* 33 */ KbUnlockPages,
-        /* 34 */ KbFreeMdl,
-        /* 35 */ KbMapMemory,
-        /* 36 */ KbUnmapMemory,
+        /* 30 */ KbAllocateMdl,
+        /* 31 */ KbProbeAndLockPages,
+        /* 32 */ KbMapMdl,
+        /* 33 */ KbProtectMappedMemory,
+        /* 34 */ KbUnmapMdl,
+        /* 35 */ KbUnlockPages,
+        /* 36 */ KbFreeMdl,
+        /* 37 */ KbMapMemory,
+        /* 38 */ KbUnmapMemory,
 
         // Physical memory:
-        /* 37 */ KbAllocPhysicalMemory,
-        /* 38 */ KbFreePhysicalMemory,
-        /* 39 */ KbMapPhysicalMemory,
-        /* 40 */ KbUnmapPhysicalMemory,
-        /* 41 */ KbGetPhysicalAddress,
-        /* 42 */ KbGetVirtualForPhysical,
-        /* 43 */ KbReadPhysicalMemory,
-        /* 44 */ KbWritePhysicalMemory,
-        /* 45 */ KbReadDmiMemory,
+        /* 39 */ KbAllocPhysicalMemory,
+        /* 40 */ KbFreePhysicalMemory,
+        /* 41 */ KbMapPhysicalMemory,
+        /* 42 */ KbUnmapPhysicalMemory,
+        /* 43 */ KbGetPhysicalAddress,
+        /* 44 */ KbGetVirtualForPhysical,
+        /* 45 */ KbReadPhysicalMemory,
+        /* 46 */ KbWritePhysicalMemory,
+        /* 47 */ KbReadDmiMemory,
 
         // Processes & Threads:
-        /* 46 */ KbGetEprocess,
-        /* 47 */ KbGetEthread,
-        /* 48 */ KbOpenProcess,
-        /* 49 */ KbOpenProcessByPointer,
-        /* 50 */ KbOpenThread,
-        /* 51 */ KbOpenThreadByPointer,
-        /* 52 */ KbDereferenceObject,
-        /* 53 */ KbCloseHandle,
-        /* 54 */ KbAllocUserMemory,
-        /* 55 */ KbFreeUserMemory,
-        /* 56 */ KbSecureVirtualMemory,
-        /* 57 */ KbUnsecureVirtualMemory,
-        /* 58 */ KbReadProcessMemory,
-        /* 59 */ KbWriteProcessMemory,
-        /* 60 */ KbSuspendProcess,
-        /* 61 */ KbResumeProcess,
-        /* 62 */ KbGetThreadContext,
-        /* 63 */ KbSetThreadContext,
-        /* 64 */ KbCreateUserThread,
-        /* 65 */ KbCreateSystemThread,
-        /* 66 */ KbQueueUserApc,
-        /* 67 */ KbRaiseIopl,
-        /* 68 */ KbResetIopl,
-        /* 69 */ KbGetProcessCr3Cr4,
+        /* 48 */ KbGetEprocess,
+        /* 49 */ KbGetEthread,
+        /* 50 */ KbOpenProcess,
+        /* 51 */ KbOpenProcessByPointer,
+        /* 52 */ KbOpenThread,
+        /* 53 */ KbOpenThreadByPointer,
+        /* 54 */ KbDereferenceObject,
+        /* 55 */ KbCloseHandle,
+        /* 56 */ KbAllocUserMemory,
+        /* 57 */ KbFreeUserMemory,
+        /* 58 */ KbSecureVirtualMemory,
+        /* 59 */ KbUnsecureVirtualMemory,
+        /* 60 */ KbReadProcessMemory,
+        /* 61 */ KbWriteProcessMemory,
+        /* 62 */ KbSuspendProcess,
+        /* 63 */ KbResumeProcess,
+        /* 64 */ KbGetThreadContext,
+        /* 65 */ KbSetThreadContext,
+        /* 66 */ KbCreateUserThread,
+        /* 67 */ KbCreateSystemThread,
+        /* 68 */ KbQueueUserApc,
+        /* 69 */ KbRaiseIopl,
+        /* 70 */ KbResetIopl,
+        /* 71 */ KbGetProcessCr3Cr4,
 
         // Sections:
-        /* 70 */ KbCreateSection,
-        /* 71 */ KbOpenSection,
-        /* 72 */ KbMapViewOfSection,
-        /* 73 */ KbUnmapViewOfSection,
+        /* 72 */ KbCreateSection,
+        /* 73 */ KbOpenSection,
+        /* 74 */ KbMapViewOfSection,
+        /* 75 */ KbUnmapViewOfSection,
 
         // Loadable modules:
-        /* 74 */ KbCreateDriver,
-        /* 75 */ KbLoadModule,
-        /* 76 */ KbGetModuleHandle,
-        /* 77 */ KbCallModule,
-        /* 78 */ KbUnloadModule,
+        /* 76 */ KbCreateDriver,
+        /* 77 */ KbLoadModule,
+        /* 78 */ KbGetModuleHandle,
+        /* 79 */ KbCallModule,
+        /* 80 */ KbUnloadModule,
+
+        // PCI:
+        /* 81 */ KbReadPciConfig,
+        /* 82 */ KbWritePciConfig,
 
         // Stuff u kn0w:
-        /* 79 */ KbExecuteShellCode,
-        /* 80 */ KbGetKernelProcAddress,
-        /* 81 */ KbStallExecutionProcessor,
-        /* 82 */ KbBugCheck,
-        /* 83 */ KbFindSignature
+        /* 83 */ KbExecuteShellCode,
+        /* 84 */ KbGetKernelProcAddress,
+        /* 85 */ KbStallExecutionProcessor,
+        /* 86 */ KbBugCheck,
+        /* 87 */ KbFindSignature
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;
