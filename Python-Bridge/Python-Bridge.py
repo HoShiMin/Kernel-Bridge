@@ -118,6 +118,37 @@ class KernelBridge:
             status = self.__kb.KbReadTsc(byref(value), byref(aux))
             return status, value, aux
 
+    class VirtualMemory:
+        def __init__(self, kb):
+            self.__kb = kb
+
+        def alloc_kernel_memory(self, size, executable):
+            ptr = c_uint64()
+            status = self.__kb.KbAllocKernelMemory(c_uint(size), c_byte(executable), byref(ptr))
+            return status, ptr
+
+        def free_kernel_memory(self, ptr):
+            return self.__kb.KbFreeKernelMemory(c_uint64(ptr))
+
+        def alloc_non_cached_memory(self, size):
+            ptr = c_uint64()
+            status = self.__kb.KbAllocNonCachedMemory(c_uint(size), byref(ptr))
+            return status, ptr
+
+        def free_non_cached_memory(self, ptr, size):
+            return self.__kb.KbFreeNonCachedMemory(c_uint64(ptr), c_uint(size))
+
+        def copy_move_memory(self, dst, src, size, intersects):
+            return self.__kb.KbCopyMoveMemory(c_uint64(dst), c_uint64(src), c_uint(size), c_byte(intersects))
+
+        def fill_memory(self, ptr, filler, size):
+            return self.__kb.KbFillMemory(c_uint64(ptr), c_byte(filler), c_uint(size))
+
+        def equal_memory(self, src, dst, size):
+            equals = c_byte()
+            status = self.__kb.KbEqualMemory(c_uint64(src), c_uint64(dst), c_uint(size), byref(equals))
+            return status, equals
+
     def __init__(self, dll="User-Bridge.dll"):
         self.__kb = WinDLL(dll)
         self.beeper = self.Beeper(self.__kb)
