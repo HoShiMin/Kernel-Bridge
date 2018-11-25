@@ -1,6 +1,6 @@
 #pragma once
 
-constexpr int KB_API_VERSION = 3;
+constexpr int KB_API_VERSION = 4;
 
 namespace Ctls {
     enum KbCtlIndices {

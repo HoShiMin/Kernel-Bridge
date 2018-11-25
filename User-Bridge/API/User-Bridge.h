@@ -300,7 +300,7 @@ namespace Processes {
 
     namespace Apc {
         using _ApcProc = VOID(WINAPI*)(PVOID Argument);
-        BOOL WINAPI KbQueueUserApc(ULONG ThreadId, _ApcProc ApcProc, PVOID Argument);
+        BOOL WINAPI KbQueueUserApc(ULONG ThreadId, WdkTypes::PVOID ApcProc, WdkTypes::PVOID Argument);
     }
 }
 

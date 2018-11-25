@@ -957,11 +957,11 @@ namespace Processes {
     }
 
     namespace Apc {
-        BOOL WINAPI KbQueueUserApc(ULONG ThreadId, _ApcProc ApcProc, PVOID Argument) {
+        BOOL WINAPI KbQueueUserApc(ULONG ThreadId, WdkTypes::PVOID ApcProc, WdkTypes::PVOID Argument) {
             KB_QUEUE_USER_APC_IN Input = {};
             Input.ThreadId = ThreadId;
-            Input.ApcProc = reinterpret_cast<WdkTypes::PVOID>(ApcProc);
-            Input.Argument = reinterpret_cast<WdkTypes::PVOID>(Argument);
+            Input.ApcProc = ApcProc;
+            Input.Argument = Argument;
             return KbSendRequest(Ctls::KbQueueUserApc, &Input, sizeof(Input));
         }
     }

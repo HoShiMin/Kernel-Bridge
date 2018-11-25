@@ -222,12 +222,14 @@ bool ProcessesTest::RunTest() {
         if (!Status) Log(L"KbFreeUserMemory == FALSE");
     }
 
+
+
     TestStatus &= KbQueueUserApc(
         ThreadId, 
-        [](PVOID Argument) -> VOID {
+        reinterpret_cast<WdkTypes::PVOID>(&[](PVOID Argument) -> VOID {
             std::cout << " > Called from APC: " << Argument << std::endl;
-        }, 
-        reinterpret_cast<PVOID>(0x12345)
+        }),
+        static_cast<WdkTypes::PVOID>(0x12345)
     );
 
     return static_cast<bool>(TestStatus);
