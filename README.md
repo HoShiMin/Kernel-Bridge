@@ -28,9 +28,10 @@ kernel-mode API and wrappers written on C++17.
 * PDB parsing
 * Signatures and patterns scanning
 * Sections management (to map `\\Device\PhysicalMemory` and more)
+* PCI configuration
+* Python binding
   
 ### ➰ In development and plans:
-* Python bindings
 * Qt-based GUI for the kernel-hacking and memory researching framework
 * Kernel WinSock support
 * Extensions for the RTL: hooks, injections, disassembling
