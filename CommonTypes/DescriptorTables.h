@@ -308,7 +308,7 @@ union TSS {
         unsigned short Reserved3;
         unsigned short IopbBaseAddress;
         // IOPB (up to 8 Kbytes)
-        // ^ TSS Limit in the SEGMENT_DESCRIPTOR_LEGACY::Tss::SegmentLimit
+        // ^ TSS Limit in the SEGMENT_DESCRIPTOR_LONG::Tss::SegmentLimit
     } Long;
 };
 #pragma pack(pop)
