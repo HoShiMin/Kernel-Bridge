@@ -3,7 +3,7 @@
 #define PFN_TO_PAGE(pfn) (pfn << 12)
 
 #pragma pack(push, 1)
-using VIRTUAL_ADDRESS = union {
+union VIRTUAL_ADDRESS {
     unsigned long long Value;
     union {
         unsigned int Value;
@@ -54,7 +54,7 @@ using VIRTUAL_ADDRESS = union {
     } x64;
 };
 
-using PML4E = union {
+union PML4E {
     union {
         unsigned long long Value;
         struct {
@@ -103,7 +103,7 @@ using PML4E = union {
     } x64;
 };
 
-using PDPE = union {
+union PDPE {
     union {
         union {
             unsigned long long Value;
@@ -181,7 +181,7 @@ using PDPE = union {
     } x64;
 };
 
-using PDE = union {
+union PDE {
     union {
         union {
             unsigned int Value;
@@ -288,7 +288,7 @@ using PDE = union {
     } x64;
 };
 
-using PTE = union {
+union PTE {
     union {
         union {
             unsigned int Value;
@@ -345,7 +345,7 @@ using PTE = union {
     } x64;
 };
 
-using CR3 = union {
+union CR3 {
     unsigned long long Value;
     union {
         unsigned int Value;
@@ -376,7 +376,7 @@ using CR3 = union {
     } x64;
 };
 
-using CR4 = union {
+union CR4 {
     unsigned long long Value;
     union {
         unsigned int Value;
