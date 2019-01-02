@@ -1,7 +1,7 @@
 #pragma once
 
 namespace SVM {
-    using VMCB_CONTROL_AREA = struct {
+    struct VMCB_CONTROL_AREA {
         union {
             unsigned int Value;
             struct {
@@ -295,64 +295,78 @@ namespace SVM {
         unsigned char Reserved11[752]; // Final padding to 0x400 size
     };
 
-    using VMCB_STATE_SAVE_AREA = struct {
+    struct VMCB_STATE_SAVE_AREA {
+        union VMCB_SEGMENT_ATTRIBUTE {
+            unsigned short Value;
+            struct {
+                unsigned short Type : 4;
+                unsigned short System : 1;
+                unsigned short Dpl : 2;
+                unsigned short Present : 1;
+                unsigned short Available : 1;
+                unsigned short LongMode : 1;
+                unsigned short DefaultOperandSize : 1;
+                unsigned short Granularity : 1;
+                unsigned short Reserved : 4;
+            } Bitmap;
+        };
         struct {
             unsigned short Selector;
-            unsigned short Attrib;
+            VMCB_SEGMENT_ATTRIBUTE Attrib;
             unsigned int Limit;
             unsigned long long Base; // Only lower 32 bits are implemented
         } Es;
         struct {
             unsigned short Selector;
-            unsigned short Attrib;
+            VMCB_SEGMENT_ATTRIBUTE Attrib;
             unsigned int Limit;
             unsigned long long Base; // Only lower 32 bits are implemented
         } Cs;
         struct {
             unsigned short Selector;
-            unsigned short Attrib;
+            VMCB_SEGMENT_ATTRIBUTE Attrib;
             unsigned int Limit;
             unsigned long long Base; // Only lower 32 bits are implemented
         } Ss;
         struct {
             unsigned short Selector;
-            unsigned short Attrib;
+            VMCB_SEGMENT_ATTRIBUTE Attrib;
             unsigned int Limit;
             unsigned long long Base; // Only lower 32 bits are implemented
         } Ds;
         struct {
             unsigned short Selector;
-            unsigned short Attrib;
+            VMCB_SEGMENT_ATTRIBUTE Attrib;
             unsigned int Limit;
             unsigned long long Base;
         } Fs;
         struct {
             unsigned short Selector;
-            unsigned short Attrib;
+            VMCB_SEGMENT_ATTRIBUTE Attrib;
             unsigned int Limit;
             unsigned long long Base;
         } Gs;
         struct {
             unsigned short Selector; // Reserved
-            unsigned short Attrib; // Reserved
+            VMCB_SEGMENT_ATTRIBUTE Attrib; // Reserved
             unsigned int Limit; // Only lower 16 bits are implemented
             unsigned long long Base;
         } Gdtr;
         struct {
             unsigned short Selector;
-            unsigned short Attrib;
+            VMCB_SEGMENT_ATTRIBUTE Attrib;
             unsigned int Limit;
             unsigned long long Base;
         } Ldtr;
         struct {
             unsigned short Selector; // Reserved
-            unsigned short Attrib; // Reserved
+            VMCB_SEGMENT_ATTRIBUTE Attrib; // Reserved
             unsigned int Limit; // Only lower 16 bits are implemented
             unsigned long long Base;
         } Idtr;
         struct {
             unsigned short Selector;
-            unsigned short Attrib;
+            VMCB_SEGMENT_ATTRIBUTE Attrib;
             unsigned int Limit;
             unsigned long long Base;
         } Tr;
@@ -390,7 +404,7 @@ namespace SVM {
         unsigned long long LastExcpTo;   // Guest LastIntToIP MSR - only used if HW acceleration of LBR virtualization is supported and enabled
     };
 
-    using VMCB = struct {
+    struct VMCB {
         VMCB_CONTROL_AREA ControlArea;
         VMCB_STATE_SAVE_AREA StateSaveArea;
         unsigned char Reserved[0x1000 - sizeof(VMCB_CONTROL_AREA) - sizeof(VMCB_STATE_SAVE_AREA)];
@@ -398,6 +412,18 @@ namespace SVM {
     static_assert(sizeof(VMCB_CONTROL_AREA) == 0x400, "Size of VMCB Control Area != 0x400 bytes");
     static_assert(sizeof(VMCB_STATE_SAVE_AREA) == 0x298, "Size of VMCB State Save Area != 0x298 bytes");
     static_assert(sizeof(VMCB) == 0x1000, "Size of VMCB != 0x1000 bytes");
+
+    // 2 bits per MSR:
+    union MSRPM {
+        unsigned char Msrpm[2048 * 4];
+        struct {
+            unsigned char Msrpm0[2048]; // 0000_0000 to 0000_1FFF
+            unsigned char Msrpm1[2048]; // C000_0000 to C000_1FFF
+            unsigned char Msrpm2[2048]; // C001_0000 to C001_1FFF
+            unsigned char Msrpm3[2048]; // Reserved
+        };
+    };
+    static_assert(sizeof(MSRPM) == 8192, "Size of MSRPM != 8192 bytes");
 
     enum SVM_EXIT_CODE {
         VMEXIT_INVALID = -1,

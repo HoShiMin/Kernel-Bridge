@@ -155,6 +155,20 @@ enum SYSTEM_SEGMENT_DESCRIPTOR_TYPE_LONG {
 union USER_SEGMENT_DESCRIPTOR_LONG {
     unsigned long long Value;
     struct {
+        unsigned long long SegmentLimitLow : 16;
+        unsigned long long BaseAddressLow : 24;
+        unsigned long long Type : 4; // 1 = Code, 0 = Data
+        unsigned long long System : 1; // Must be 1 (0 = System (LDT, TSS, Gate), 1 = User (Code, Data))
+        unsigned long long Dpl : 2;
+        unsigned long long Present : 1;
+        unsigned long long SegmentLimitHigh : 4;
+        unsigned long long Available : 1;
+        unsigned long long LongMode : 1;
+        unsigned long long DefaultOperandSize : 1; // Must be 0 (0 = 64-bit, 1 = Reserved)
+        unsigned long long Granularity : 1; // 1 = Segment size is SegmentLimit * 4096 bytes, 0 = Segment size is SegmentLimit bytes
+        unsigned long long BaseAddressHigh : 8;
+    } Generic;
+    struct {
         /* COMPAT MODE ONLY */ unsigned long long SegmentLimitLow : 16;
         /* COMPAT MODE ONLY */ unsigned long long BaseAddressLow : 24;
         /* COMPAT MODE ONLY */ unsigned long long Accessed : 1;
@@ -217,7 +231,7 @@ union GATE_DESCRIPTOR_LONG {
     struct {
         unsigned long long Low;
         unsigned long long High;
-    };
+    } Value;
     struct {
         unsigned long long TargetOffsetLow : 16;
         unsigned long long TargetSelector : 16;
