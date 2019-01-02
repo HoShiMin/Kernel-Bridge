@@ -421,7 +421,7 @@ namespace SVM {
             unsigned char Msrpm1[2048]; // C000_0000 to C000_1FFF
             unsigned char Msrpm2[2048]; // C001_0000 to C001_1FFF
             unsigned char Msrpm3[2048]; // Reserved
-        };
+        } Vectors;
     };
     static_assert(sizeof(MSRPM) == 8192, "Size of MSRPM != 8192 bytes");
 
