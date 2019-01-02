@@ -81,6 +81,10 @@ EXPORTS
 	KbOpenThreadByPointer
 	KbDereferenceObject
 	KbCloseHandle
+	KbQueryInformationProcess
+	KbSetInformationProcess
+	KbQueryInformationThread
+	KbSetInformationThread
 	KbCreateUserThread
 	KbCreateSystemThread
 	KbSuspendProcess

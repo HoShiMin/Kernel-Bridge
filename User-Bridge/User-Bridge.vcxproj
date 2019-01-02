@@ -23,7 +23,7 @@
     <ProjectGuid>{09805AB7-6E91-46A3-B501-A420E56458AB}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>UserBridge</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17754.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

@@ -5,7 +5,7 @@ from ctypes import *
 
 
 class KernelBridge:
-    __api_version = 4
+    __api_version = 5
 
     class KProcessorMode(enum.Enum):
         kernel_mode = 0
@@ -215,7 +215,7 @@ class KernelBridge:
                 c_uint(lock_operation)
             )
 
-        def map_mdl(self, src_pid, dst_pid, mdl, need_lock, access_mode, protect, cache_type, user_requested_address):
+        def map_mdl(self, src_pid, dst_pid, mdl, need_lock, lock_operation, access_mode, protect, cache_type, user_requested_address):
             ptr = c_uint64()
             status = self.__kb.KbMapMdl(
                 byref(ptr),
@@ -223,6 +223,7 @@ class KernelBridge:
                 c_uint64(dst_pid),
                 c_uint64(mdl),
                 c_byte(need_lock),
+                c_uint(lock_operation),
                 c_uint(access_mode),
                 c_uint(protect),
                 c_uint(cache_type),
@@ -246,7 +247,7 @@ class KernelBridge:
             _fields_ = [("MappedAddress", c_uint64),
                         ("Mdl", c_uint64)]
 
-        def map_memory(self, src_pid, dst_pid, virtual_address, size, access_mode, protect, cache_type, user_requested_address):
+        def map_memory(self, src_pid, dst_pid, virtual_address, size, lock_operation, access_mode, protect, cache_type, user_requested_address):
             mapping_info = self.MappingInfo()
             status = self.__kb.KbMapMemory(
                 byref(mapping_info),
@@ -254,6 +255,7 @@ class KernelBridge:
                 c_uint64(dst_pid),
                 c_uint64(virtual_address),
                 c_uint(size),
+                c_uint(lock_operation),
                 c_uint(access_mode),
                 c_uint(protect),
                 c_uint(cache_type),
@@ -371,6 +373,40 @@ class KernelBridge:
         def close_handle(self, handle):
             return self.__kb.KbCloseHandle(c_uint64(handle))
 
+        def query_information_process(self, handle, info_class, buffer, size, return_length):
+            return self.__kb.KbQueryInformationProcess(
+                c_uint64(handle),
+                c_uint(info_class),
+                c_void_p(buffer),
+                c_uint(size),
+                byref(return_length)
+            )
+
+        def set_information_process(self, handle, info_class, buffer, size):
+            return self.__kb.KbSetInformationProcess(
+                c_uint64(handle),
+                c_uint(info_class),
+                c_void_p(buffer),
+                c_uint(size)
+            )
+
+        def query_information_thread(self, handle, info_class, buffer, size, return_length):
+            return self.__kb.KbQueryInformationThread(
+                c_uint64(handle),
+                c_uint(info_class),
+                c_void_p(buffer),
+                c_uint(size),
+                byref(return_length)
+            )
+
+        def set_information_thread(self, handle, info_class, buffer, size):
+            return self.__kb.KbSetInformationThread(
+                c_uint64(handle),
+                c_uint(info_class),
+                c_void_p(buffer),
+                c_uint(size)
+            )
+
         def create_user_thread(self, pid, routine, arg, create_suspended):
             client = KernelBridge.ClientId()
             handle = c_uint64()
@@ -440,11 +476,25 @@ class KernelBridge:
         def unsecure_virtual_memory(self, pid, secure_handle):
             return self.__kb.KbUnsecureVirtualMemory(c_uint(pid), c_uint64(secure_handle))
 
-        def read_process_memory(self, pid, address, buffer, size):
-            return self.__kb.KbReadProcessMemory(c_uint(pid), c_uint64(address), c_void_p(buffer), c_uint(size))
+        def read_process_memory(self, pid, address, buffer, size, local_lock, remote_lock):
+            return self.__kb.KbReadProcessMemory(
+                c_uint(pid),
+                c_uint64(address),
+                c_void_p(buffer),
+                c_uint(size),
+                c_uint(local_lock),
+                c_uint(remote_lock),
+            )
 
-        def write_process_memory(self, pid, address, buffer, size):
-            return self.__kb.KbWriteProcessMemory(c_uint(pid), c_uint64(address), c_void_p(buffer), c_uint(size))
+        def write_process_memory(self, pid, address, buffer, size, local_lock, remote_lock):
+            return self.__kb.KbWriteProcessMemory(
+                c_uint(pid),
+                c_uint64(address),
+                c_void_p(buffer),
+                c_uint(size),
+                c_uint(local_lock),
+                c_uint(remote_lock)
+            )
 
         def get_process_cr3_cr4(self, pid):
             cr3 = c_uint64()

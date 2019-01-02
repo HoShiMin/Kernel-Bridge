@@ -1,6 +1,6 @@
 #pragma once
 
-constexpr int KB_API_VERSION = 4;
+constexpr int KB_API_VERSION = 5;
 
 namespace Ctls {
     enum KbCtlIndices {
@@ -81,46 +81,50 @@ namespace Ctls {
         /* 53 */ KbOpenThreadByPointer,
         /* 54 */ KbDereferenceObject,
         /* 55 */ KbCloseHandle,
-        /* 56 */ KbAllocUserMemory,
-        /* 57 */ KbFreeUserMemory,
-        /* 58 */ KbSecureVirtualMemory,
-        /* 59 */ KbUnsecureVirtualMemory,
-        /* 60 */ KbReadProcessMemory,
-        /* 61 */ KbWriteProcessMemory,
-        /* 62 */ KbSuspendProcess,
-        /* 63 */ KbResumeProcess,
-        /* 64 */ KbGetThreadContext,
-        /* 65 */ KbSetThreadContext,
-        /* 66 */ KbCreateUserThread,
-        /* 67 */ KbCreateSystemThread,
-        /* 68 */ KbQueueUserApc,
-        /* 69 */ KbRaiseIopl,
-        /* 70 */ KbResetIopl,
-        /* 71 */ KbGetProcessCr3Cr4,
+        /* 56 */ KbQueryInformationProcess,
+        /* 57 */ KbSetInformationProcess,
+        /* 58 */ KbQueryInformationThread,
+        /* 59 */ KbSetInformationThread,
+        /* 60 */ KbAllocUserMemory,
+        /* 61 */ KbFreeUserMemory,
+        /* 62 */ KbSecureVirtualMemory,
+        /* 63 */ KbUnsecureVirtualMemory,
+        /* 64 */ KbReadProcessMemory,
+        /* 65 */ KbWriteProcessMemory,
+        /* 66 */ KbSuspendProcess,
+        /* 67 */ KbResumeProcess,
+        /* 68 */ KbGetThreadContext,
+        /* 69 */ KbSetThreadContext,
+        /* 70 */ KbCreateUserThread,
+        /* 71 */ KbCreateSystemThread,
+        /* 72 */ KbQueueUserApc,
+        /* 73 */ KbRaiseIopl,
+        /* 74 */ KbResetIopl,
+        /* 75 */ KbGetProcessCr3Cr4,
 
         // Sections:
-        /* 72 */ KbCreateSection,
-        /* 73 */ KbOpenSection,
-        /* 74 */ KbMapViewOfSection,
-        /* 75 */ KbUnmapViewOfSection,
+        /* 76 */ KbCreateSection,
+        /* 77 */ KbOpenSection,
+        /* 78 */ KbMapViewOfSection,
+        /* 79 */ KbUnmapViewOfSection,
 
         // Loadable modules:
-        /* 76 */ KbCreateDriver,
-        /* 77 */ KbLoadModule,
-        /* 78 */ KbGetModuleHandle,
-        /* 79 */ KbCallModule,
-        /* 80 */ KbUnloadModule,
+        /* 80 */ KbCreateDriver,
+        /* 81 */ KbLoadModule,
+        /* 82 */ KbGetModuleHandle,
+        /* 83 */ KbCallModule,
+        /* 84 */ KbUnloadModule,
         
         // PCI:
-        /* 81 */ KbReadPciConfig,
-        /* 82 */ KbWritePciConfig,
+        /* 85 */ KbReadPciConfig,
+        /* 86 */ KbWritePciConfig,
 
         // Stuff u kn0w:
-        /* 83 */ KbExecuteShellCode,
-        /* 84 */ KbGetKernelProcAddress,
-        /* 85 */ KbStallExecutionProcessor,
-        /* 86 */ KbBugCheck,
-        /* 87 */ KbFindSignature
+        /* 87 */ KbExecuteShellCode,
+        /* 88 */ KbGetKernelProcAddress,
+        /* 89 */ KbStallExecutionProcessor,
+        /* 90 */ KbBugCheck,
+        /* 91 */ KbFindSignature
     };
 }
 
@@ -304,6 +308,7 @@ DECLARE_STRUCT(KB_MAP_MDL_IN, {
     OPTIONAL UINT64 DestProcessId;
     WdkTypes::PMDL Mdl;
     BOOLEAN NeedLock;
+    WdkTypes::LOCK_OPERATION LockOperation;
     WdkTypes::KPROCESSOR_MODE AccessMode;
     ULONG Protect;
     WdkTypes::MEMORY_CACHING_TYPE CacheType;
@@ -319,6 +324,7 @@ DECLARE_STRUCT(KB_MAP_MEMORY_IN, {
     OPTIONAL UINT64 DestProcessId;
     WdkTypes::PVOID VirtualAddress;
     ULONG Size;
+    WdkTypes::LOCK_OPERATION LockOperation;
     WdkTypes::KPROCESSOR_MODE AccessMode;
     ULONG Protect;
     WdkTypes::MEMORY_CACHING_TYPE CacheType;
@@ -473,6 +479,21 @@ DECLARE_STRUCT(KB_CLOSE_HANDLE_IN, {
     WdkTypes::HANDLE Handle;
 });
 
+DECLARE_STRUCT(KB_QUERY_INFORMATION_PROCESS_THREAD_IN, {
+    WdkTypes::HANDLE Handle;
+    WdkTypes::PVOID Buffer;
+    WdkTypes::PULONG ReturnLength;
+    ULONG InfoClass;
+    ULONG Size;
+});
+
+DECLARE_STRUCT(KB_SET_INFORMATION_PROCESS_THREAD_IN, {
+    WdkTypes::HANDLE Handle;
+    WdkTypes::PVOID Buffer;
+    ULONG InfoClass;
+    ULONG Size;
+});
+
 DECLARE_STRUCT(KB_ALLOC_USER_MEMORY_IN, {
     UINT64 ProcessId;
     ULONG Size;
@@ -509,6 +530,8 @@ DECLARE_STRUCT(KB_READ_WRITE_PROCESS_MEMORY_IN, {
     WdkTypes::PVOID BaseAddress;
     WdkTypes::PVOID Buffer;
     ULONG Size;
+    WdkTypes::LOCK_OPERATION LocalLockOperation;
+    WdkTypes::LOCK_OPERATION RemoteLockOperation;
 });
 
 DECLARE_STRUCT(KB_SUSPEND_RESUME_PROCESS_IN, {

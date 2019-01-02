@@ -16,6 +16,7 @@
 #include <string>
 #include <iostream>
 #include <set>
+#include <fstream>
 
 #define _NO_CVCONST_H
 #include <dbghelp.h>
@@ -235,6 +236,50 @@ void TranslationTest()
     KbFreeNonCachedMemory(KernelMemory, 4096);
 }
 
+void SmmTest() {
+    SetThreadAffinityMask(GetCurrentThread(), 1);
+
+    UINT64 MsrBaseAddress = 0x30000;
+    CPU::KbReadMsr(0xC0010111, &MsrBaseAddress);
+
+    using SMM_ADDR = union {
+        unsigned long long Value;
+        struct {
+            unsigned long long Reserved0 : 17;
+            unsigned long long Base : 35;
+            unsigned long long Reserved1 : 12;
+        } Bitmap;
+    };
+
+    using SMM_MASK = union {
+        unsigned long long Value;
+        struct {
+            unsigned long long AE : 1;
+            unsigned long long TE : 1;
+            unsigned long long Reserved0 : 15;
+            unsigned long long Base : 35;
+            unsigned long long Reserved1 : 12;
+        } Bitmap;
+    };
+
+    SMM_ADDR MsrProtectedBase = {};
+    CPU::KbReadMsr(0xC0010112, &MsrProtectedBase.Value);
+
+    SMM_MASK MsrProtectedMask = {};
+    CPU::KbReadMsr(0xC0010113, &MsrProtectedMask.Value);
+
+    constexpr int SMM_SIZE = 65536;
+    auto Buf = new BYTE[SMM_SIZE];
+    RtlZeroMemory(Buf, SMM_SIZE);
+    BOOL Status = PhysicalMemory::KbWritePhysicalMemory(MsrBaseAddress, Buf, SMM_SIZE);
+    std::ofstream File("E:\\SmmProtected.bin", std::ofstream::binary);
+    File.write((char*)Buf, SMM_SIZE);
+    File.close();
+    delete[] Buf;
+
+    __debugbreak();
+}
+
 int main() {
     printf("[Kernel-Tests]: PID: %i, TID: %i\r\n", GetCurrentProcessId(), GetCurrentThreadId());
 
@@ -242,8 +287,9 @@ int main() {
         L"C:\\Temp\\Kernel-Bridge\\Kernel-Bridge.sys",
         L"260000" // Altitude of minifilter
     )) {
-        TranslationTest();
-        RunTests();
+        SmmTest();
+        //TranslationTest();
+        //RunTests();
         KbLoader::KbUnload();
     } else {
         std::wcout << L"Unable to load driver!" << std::endl;

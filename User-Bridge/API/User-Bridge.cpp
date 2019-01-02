@@ -489,6 +489,7 @@ namespace Mdl {
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PMDL Mdl,
         BOOLEAN NeedLock,
+        WdkTypes::LOCK_OPERATION LockOperation,
         WdkTypes::KPROCESSOR_MODE AccessMode,
         ULONG Protect,
         WdkTypes::MEMORY_CACHING_TYPE CacheType,
@@ -501,6 +502,7 @@ namespace Mdl {
         Input.DestProcessId = DestProcessId;
         Input.Mdl = Mdl;
         Input.NeedLock = NeedLock;
+        Input.LockOperation = LockOperation;
         Input.AccessMode = AccessMode;
         Input.Protect = Protect;
         Input.CacheType = CacheType;
@@ -547,6 +549,7 @@ namespace Mdl {
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PVOID VirtualAddress,
         ULONG Size,
+        WdkTypes::LOCK_OPERATION LockOperation,
         WdkTypes::KPROCESSOR_MODE AccessMode,
         ULONG Protect,
         WdkTypes::MEMORY_CACHING_TYPE CacheType,
@@ -559,6 +562,7 @@ namespace Mdl {
         Input.DestProcessId = DestProcessId;
         Input.VirtualAddress = VirtualAddress;
         Input.Size = Size;
+        Input.LockOperation = LockOperation;
         Input.AccessMode = AccessMode;
         Input.Protect = Protect;
         Input.CacheType = CacheType;
@@ -795,6 +799,74 @@ namespace Processes {
         }
     }
 
+    namespace Information {
+        BOOL WINAPI KbQueryInformationProcess(
+            WdkTypes::HANDLE hProcess,
+            PROCESS_INFORMATION_CLASS ProcessInfoClass,
+            OUT PVOID Buffer,
+            ULONG Size,
+            OPTIONAL OUT PULONG ReturnLength
+        ) {
+            ULONG RetLength = 0;
+            KB_QUERY_INFORMATION_PROCESS_THREAD_IN Input = {};
+            Input.Handle = hProcess;
+            Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
+            Input.ReturnLength = reinterpret_cast<WdkTypes::PVOID>(&RetLength);
+            Input.InfoClass = static_cast<ULONG>(ProcessInfoClass);
+            Input.Size = Size;
+            BOOL Status = KbSendRequest(Ctls::KbQueryInformationProcess, &Input, sizeof(Input));
+            if (ReturnLength) *ReturnLength = RetLength;
+            return Status;
+        }
+
+        BOOL WINAPI KbSetInformationProcess(
+            WdkTypes::HANDLE hProcess,
+            PROCESS_INFORMATION_CLASS ProcessInfoClass,
+            IN PVOID Buffer,
+            ULONG Size
+        ) {
+            KB_SET_INFORMATION_PROCESS_THREAD_IN Input = {};
+            Input.Handle = hProcess;
+            Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
+            Input.InfoClass = static_cast<ULONG>(ProcessInfoClass);
+            Input.Size = Size;
+            return KbSendRequest(Ctls::KbSetInformationProcess, &Input, sizeof(Input));
+        }
+
+        BOOL WINAPI KbQueryInformationThread(
+            WdkTypes::HANDLE hThread,
+            THREAD_INFORMATION_CLASS ThreadInfoClass,
+            OUT PVOID Buffer,
+            ULONG Size,
+            OPTIONAL OUT PULONG ReturnLength
+        ) {
+            ULONG RetLength = 0;
+            KB_QUERY_INFORMATION_PROCESS_THREAD_IN Input = {};
+            Input.Handle = hThread;
+            Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
+            Input.ReturnLength = reinterpret_cast<WdkTypes::PVOID>(&RetLength);
+            Input.InfoClass = static_cast<ULONG>(ThreadInfoClass);
+            Input.Size = Size;
+            BOOL Status = KbSendRequest(Ctls::KbQueryInformationThread, &Input, sizeof(Input));
+            if (ReturnLength) *ReturnLength = RetLength;
+            return Status;
+        }
+
+        BOOL WINAPI KbSetInformationThread(
+            WdkTypes::HANDLE hThread,
+            THREAD_INFORMATION_CLASS ThreadInfoClass,
+            IN PVOID Buffer,
+            ULONG Size
+        ) {
+            KB_SET_INFORMATION_PROCESS_THREAD_IN Input = {};
+            Input.Handle = hThread;
+            Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
+            Input.InfoClass = static_cast<ULONG>(ThreadInfoClass);
+            Input.Size = Size;
+            return KbSendRequest(Ctls::KbSetInformationProcess, &Input, sizeof(Input));
+        }
+    }
+
     namespace Threads {
         BOOL WINAPI KbCreateUserThread(
             ULONG ProcessId, 
@@ -924,23 +996,41 @@ namespace Processes {
             return KbSendRequest(Ctls::KbUnsecureVirtualMemory, &Input, sizeof(Input));
         }
 
-        BOOL WINAPI KbReadProcessMemory(ULONG ProcessId, IN WdkTypes::PVOID BaseAddress, OUT PVOID Buffer, ULONG Size) {
+        BOOL WINAPI KbReadProcessMemory(
+            ULONG ProcessId,
+            IN WdkTypes::PVOID BaseAddress,
+            OUT PVOID Buffer,
+            ULONG Size,
+            WdkTypes::LOCK_OPERATION LocalLockOperation,
+            WdkTypes::LOCK_OPERATION RemoteLockOperation
+        ) {
             if (!ProcessId || !BaseAddress || !Buffer || !Size) return FALSE;
             KB_READ_WRITE_PROCESS_MEMORY_IN Input = {};
             Input.ProcessId = ProcessId;
             Input.BaseAddress = BaseAddress;
             Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
             Input.Size = Size;
+            Input.LocalLockOperation = LocalLockOperation;
+            Input.RemoteLockOperation = RemoteLockOperation;
             return KbSendRequest(Ctls::KbReadProcessMemory, &Input, sizeof(Input));
         }
 
-        BOOL WINAPI KbWriteProcessMemory(ULONG ProcessId, OUT WdkTypes::PVOID BaseAddress, IN PVOID Buffer, ULONG Size) {
+        BOOL WINAPI KbWriteProcessMemory(
+            ULONG ProcessId,
+            OUT WdkTypes::PVOID BaseAddress,
+            IN PVOID Buffer,
+            ULONG Size,
+            WdkTypes::LOCK_OPERATION LocalLockOperation,
+            WdkTypes::LOCK_OPERATION RemoteLockOperation
+        ) {
             if (!ProcessId || !BaseAddress || !Buffer || !Size) return FALSE;
             KB_READ_WRITE_PROCESS_MEMORY_IN Input = {};
             Input.ProcessId = ProcessId;
             Input.BaseAddress = BaseAddress;
             Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
             Input.Size = Size;
+            Input.LocalLockOperation = LocalLockOperation;
+            Input.RemoteLockOperation = RemoteLockOperation;
             return KbSendRequest(Ctls::KbWriteProcessMemory, &Input, sizeof(Input));
         }
 

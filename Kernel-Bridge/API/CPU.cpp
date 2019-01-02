@@ -2,7 +2,7 @@
 #include "CPU.h"
 
 extern "C" void _enable();
-extern "C" void __cdecl _disable();
+extern "C" void _disable();
 extern "C" void __halt();
 extern "C" unsigned long long __readmsr(unsigned long Index);
 extern "C" void __writemsr(unsigned long Index, unsigned long long Value);

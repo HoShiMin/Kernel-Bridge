@@ -29,6 +29,9 @@
     <Filter Include="SharedTypes">
       <UniqueIdentifier>{d3a9dfce-6a9f-4eef-a3ea-0a30ace51980}</UniqueIdentifier>
     </Filter>
+    <Filter Include="CommonTypes">
+      <UniqueIdentifier>{1540d3f3-c5f5-44c0-a3bb-2246da568195}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Inf Include="Kernel-Bridge.inf">
@@ -96,6 +99,9 @@
       <Filter>API</Filter>
     </ClCompile>
     <ClCompile Include="API\PCI.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\Hypervisor.cpp">
       <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>
@@ -177,6 +183,18 @@
     </ClInclude>
     <ClInclude Include="API\PCI.h">
       <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="API\Hypervisor.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CommonTypes\PTE.h">
+      <Filter>CommonTypes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CommonTypes\SVM.h">
+      <Filter>CommonTypes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CommonTypes\DescriptorTables.h">
+      <Filter>CommonTypes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -181,7 +181,9 @@ namespace Processes {
             PEPROCESS Process,
             __in_data_source(USER_MODE) IN PVOID BaseAddress,
             OUT PVOID Buffer, // User or kernel address
-            ULONG Size
+            ULONG Size,
+            LOCK_OPERATION LocalLockOperation = IoWriteAccess, // Lock type for the Buffer
+            LOCK_OPERATION RemoteLockOperation = IoReadAccess  // Lock type for the BaseAddress
         );
 
         _IRQL_requires_max_(APC_LEVEL)
@@ -189,7 +191,9 @@ namespace Processes {
             PEPROCESS Process,
             __in_data_source(USER_MODE) OUT PVOID BaseAddress,
             IN PVOID Buffer, // User or kernel address
-            ULONG Size
+            ULONG Size,
+            LOCK_OPERATION LocalLockOperation = IoReadAccess,  // Lock type for the Buffer
+            LOCK_OPERATION RemoteLockOperation = IoWriteAccess // Lock type for the BaseAddress
         );
     }
 

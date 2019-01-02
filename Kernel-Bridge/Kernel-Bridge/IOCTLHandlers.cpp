@@ -623,6 +623,7 @@ namespace
             SrcProcess,
             DestProcess,
             Input->NeedLock,
+            static_cast<LOCK_OPERATION>(Input->LockOperation),
             static_cast<KPROCESSOR_MODE>(Input->AccessMode),
             Input->Protect,
             static_cast<MEMORY_CACHING_TYPE>(Input->CacheType),
@@ -741,6 +742,7 @@ namespace
             DestProcess,
             reinterpret_cast<PVOID>(Input->VirtualAddress),
             Input->Size,
+            static_cast<LOCK_OPERATION>(Input->LockOperation),
             static_cast<KPROCESSOR_MODE>(Input->AccessMode),
             Input->Protect,
             static_cast<MEMORY_CACHING_TYPE>(Input->CacheType),
@@ -1147,6 +1149,84 @@ namespace
         return ZwClose(reinterpret_cast<HANDLE>(Input->Handle));        
     }
 
+    NTSTATUS FASTCALL KbQueryInformationProcess(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_QUERY_INFORMATION_PROCESS_THREAD_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        if (!RequestInfo->InputBuffer) return STATUS_INVALID_PARAMETER;
+
+        auto Input = static_cast<PKB_QUERY_INFORMATION_PROCESS_THREAD_IN>(RequestInfo->InputBuffer);
+
+        return Processes::Information::QueryInformationProcess(
+            reinterpret_cast<HANDLE>(Input->Handle),
+            static_cast<PROCESSINFOCLASS>(Input->InfoClass),
+            reinterpret_cast<PVOID>(Input->Buffer),
+            Input->Size,
+            reinterpret_cast<PULONG>(Input->ReturnLength)
+        );
+    }
+
+    NTSTATUS FASTCALL KbSetInformationProcess(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_SET_INFORMATION_PROCESS_THREAD_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        if (!RequestInfo->InputBuffer) return STATUS_INVALID_PARAMETER;
+
+        auto Input = static_cast<PKB_SET_INFORMATION_PROCESS_THREAD_IN>(RequestInfo->InputBuffer);
+
+        return Processes::Information::SetInformationProcess(
+            reinterpret_cast<HANDLE>(Input->Handle),
+            static_cast<PROCESSINFOCLASS>(Input->InfoClass),
+            reinterpret_cast<PVOID>(Input->Buffer),
+            Input->Size
+        );
+    }
+
+    NTSTATUS FASTCALL KbQueryInformationThread(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_QUERY_INFORMATION_PROCESS_THREAD_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        if (!RequestInfo->InputBuffer) return STATUS_INVALID_PARAMETER;
+
+        auto Input = static_cast<PKB_QUERY_INFORMATION_PROCESS_THREAD_IN>(RequestInfo->InputBuffer);
+
+        return Processes::Threads::QueryInformationThread(
+            reinterpret_cast<HANDLE>(Input->Handle),
+            static_cast<THREADINFOCLASS>(Input->InfoClass),
+            reinterpret_cast<PVOID>(Input->Buffer),
+            Input->Size,
+            reinterpret_cast<PULONG>(Input->ReturnLength)
+        );
+    }
+
+    NTSTATUS FASTCALL KbSetInformationThread(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_SET_INFORMATION_PROCESS_THREAD_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        if (!RequestInfo->InputBuffer) return STATUS_INVALID_PARAMETER;
+
+        auto Input = static_cast<PKB_SET_INFORMATION_PROCESS_THREAD_IN>(RequestInfo->InputBuffer);
+
+        return Processes::Threads::SetInformationThread(
+            reinterpret_cast<HANDLE>(Input->Handle),
+            static_cast<THREADINFOCLASS>(Input->InfoClass),
+            reinterpret_cast<PVOID>(Input->Buffer),
+            Input->Size
+        );
+    }
+
     NTSTATUS FASTCALL KbAllocUserMemory(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
     {
         if (
@@ -1303,7 +1383,9 @@ namespace
             Process,
             reinterpret_cast<PVOID>(Input->BaseAddress),
             reinterpret_cast<PVOID>(Input->Buffer),
-            Input->Size
+            Input->Size,
+            static_cast<LOCK_OPERATION>(Input->LocalLockOperation),
+            static_cast<LOCK_OPERATION>(Input->RemoteLockOperation)
         );
 
         ObDereferenceObject(Process);
@@ -1329,7 +1411,9 @@ namespace
             Process,
             reinterpret_cast<PVOID>(Input->BaseAddress),
             reinterpret_cast<PVOID>(Input->Buffer),
-            Input->Size
+            Input->Size,
+            static_cast<LOCK_OPERATION>(Input->LocalLockOperation),
+            static_cast<LOCK_OPERATION>(Input->RemoteLockOperation)
         );
 
         ObDereferenceObject(Process);
@@ -2282,50 +2366,54 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 53 */ KbOpenThreadByPointer,
         /* 54 */ KbDereferenceObject,
         /* 55 */ KbCloseHandle,
-        /* 56 */ KbAllocUserMemory,
-        /* 57 */ KbFreeUserMemory,
-        /* 58 */ KbSecureVirtualMemory,
-        /* 59 */ KbUnsecureVirtualMemory,
-        /* 60 */ KbReadProcessMemory,
-        /* 61 */ KbWriteProcessMemory,
-        /* 62 */ KbSuspendProcess,
-        /* 63 */ KbResumeProcess,
-        /* 64 */ KbGetThreadContext,
-        /* 65 */ KbSetThreadContext,
-        /* 66 */ KbCreateUserThread,
-        /* 67 */ KbCreateSystemThread,
-        /* 68 */ KbQueueUserApc,
-        /* 69 */ KbRaiseIopl,
-        /* 70 */ KbResetIopl,
-        /* 71 */ KbGetProcessCr3Cr4,
+        /* 56 */ KbQueryInformationProcess,
+        /* 57 */ KbSetInformationProcess,
+        /* 58 */ KbQueryInformationThread,
+        /* 59 */ KbSetInformationThread,
+        /* 60 */ KbAllocUserMemory,
+        /* 61 */ KbFreeUserMemory,
+        /* 62 */ KbSecureVirtualMemory,
+        /* 63 */ KbUnsecureVirtualMemory,
+        /* 64 */ KbReadProcessMemory,
+        /* 65 */ KbWriteProcessMemory,
+        /* 66 */ KbSuspendProcess,
+        /* 67 */ KbResumeProcess,
+        /* 68 */ KbGetThreadContext,
+        /* 69 */ KbSetThreadContext,
+        /* 70 */ KbCreateUserThread,
+        /* 71 */ KbCreateSystemThread,
+        /* 72 */ KbQueueUserApc,
+        /* 73 */ KbRaiseIopl,
+        /* 74 */ KbResetIopl,
+        /* 75 */ KbGetProcessCr3Cr4,
 
         // Sections:
-        /* 72 */ KbCreateSection,
-        /* 73 */ KbOpenSection,
-        /* 74 */ KbMapViewOfSection,
-        /* 75 */ KbUnmapViewOfSection,
+        /* 76 */ KbCreateSection,
+        /* 77 */ KbOpenSection,
+        /* 78 */ KbMapViewOfSection,
+        /* 79 */ KbUnmapViewOfSection,
 
         // Loadable modules:
-        /* 76 */ KbCreateDriver,
-        /* 77 */ KbLoadModule,
-        /* 78 */ KbGetModuleHandle,
-        /* 79 */ KbCallModule,
-        /* 80 */ KbUnloadModule,
+        /* 80 */ KbCreateDriver,
+        /* 81 */ KbLoadModule,
+        /* 82 */ KbGetModuleHandle,
+        /* 83 */ KbCallModule,
+        /* 84 */ KbUnloadModule,
 
         // PCI:
-        /* 81 */ KbReadPciConfig,
-        /* 82 */ KbWritePciConfig,
+        /* 85 */ KbReadPciConfig,
+        /* 86 */ KbWritePciConfig,
 
         // Stuff u kn0w:
-        /* 83 */ KbExecuteShellCode,
-        /* 84 */ KbGetKernelProcAddress,
-        /* 85 */ KbStallExecutionProcessor,
-        /* 86 */ KbBugCheck,
-        /* 87 */ KbFindSignature
+        /* 87 */ KbExecuteShellCode,
+        /* 88 */ KbGetKernelProcAddress,
+        /* 89 */ KbStallExecutionProcessor,
+        /* 90 */ KbBugCheck,
+        /* 91 */ KbFindSignature
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;
-    return Index < sizeof(Handlers) / sizeof(Handlers[0]) 
-        ? Handlers[Index](RequestInfo, ResponseLength) 
+    return Index < sizeof(Handlers) / sizeof(Handlers[0])
+        ? Handlers[Index](RequestInfo, ResponseLength)
         : STATUS_NOT_IMPLEMENTED;
 }

@@ -126,6 +126,7 @@ namespace Mdl {
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PMDL Mdl,
         BOOLEAN NeedLock,
+        WdkTypes::LOCK_OPERATION LockOperation,
         WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode,
         ULONG Protect = PAGE_READWRITE,
         WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
@@ -149,6 +150,7 @@ namespace Mdl {
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PVOID VirtualAddress,
         ULONG Size,
+        WdkTypes::LOCK_OPERATION LockOperation,
         WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode,
         ULONG Protect = PAGE_READWRITE,
         WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
@@ -245,6 +247,36 @@ namespace Processes {
         );
         BOOL WINAPI KbDereferenceObject(WdkTypes::PVOID Object);
         BOOL WINAPI KbCloseHandle(WdkTypes::HANDLE Handle);
+
+    }
+
+    namespace Information {
+        BOOL WINAPI KbQueryInformationProcess(
+            WdkTypes::HANDLE hProcess,
+            PROCESS_INFORMATION_CLASS ProcessInfoClass,
+            OUT PVOID Buffer,
+            ULONG Size,
+            OPTIONAL OUT PULONG ReturnLength = NULL
+        );
+        BOOL WINAPI KbSetInformationProcess(
+            WdkTypes::HANDLE hProcess,
+            PROCESS_INFORMATION_CLASS ProcessInfoClass,
+            IN PVOID Buffer,
+            ULONG Size
+        );
+        BOOL WINAPI KbQueryInformationThread(
+            WdkTypes::HANDLE hThread,
+            THREAD_INFORMATION_CLASS ThreadInfoClass,
+            OUT PVOID Buffer,
+            ULONG Size,
+            OPTIONAL OUT PULONG ReturnLength = NULL
+        );
+        BOOL WINAPI KbSetInformationThread(
+            WdkTypes::HANDLE hThread,
+            THREAD_INFORMATION_CLASS ThreadInfoClass,
+            IN PVOID Buffer,
+            ULONG Size
+        );
     }
 
     namespace Threads {
@@ -292,8 +324,22 @@ namespace Processes {
             WdkTypes::HANDLE SecureHandle
         );
 
-        BOOL WINAPI KbReadProcessMemory(ULONG ProcessId, IN WdkTypes::PVOID BaseAddress, OUT PVOID Buffer, ULONG Size);
-        BOOL WINAPI KbWriteProcessMemory(ULONG ProcessId, OUT WdkTypes::PVOID BaseAddress, IN PVOID Buffer, ULONG Size);
+        BOOL WINAPI KbReadProcessMemory(
+            ULONG ProcessId,
+            IN WdkTypes::PVOID BaseAddress,
+            OUT PVOID Buffer,
+            ULONG Size,
+            WdkTypes::LOCK_OPERATION LocalLockOperation = WdkTypes::IoWriteAccess, // LockOperation for the Buffer
+            WdkTypes::LOCK_OPERATION RemoteLockOperation = WdkTypes::IoReadAccess  // LockOperation for the BaseAddress
+        );
+        BOOL WINAPI KbWriteProcessMemory(
+            ULONG ProcessId,
+            OUT WdkTypes::PVOID BaseAddress,
+            IN PVOID Buffer,
+            ULONG Size,
+            WdkTypes::LOCK_OPERATION LocalLockOperation = WdkTypes::IoReadAccess,  // LockOperation for the Buffer
+            WdkTypes::LOCK_OPERATION RemoteLockOperation = WdkTypes::IoWriteAccess // LockOperation for the BaseAddress
+        );
 
         BOOL WINAPI KbGetProcessCr3Cr4(ULONG ProcessId, OUT OPTIONAL PUINT64 Cr3, OUT OPTIONAL PUINT64 Cr4);
     }
