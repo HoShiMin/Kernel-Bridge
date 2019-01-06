@@ -1,6 +1,7 @@
 #include <fltKernel.h>
 
 #include "FilterCallbacks.h"
+#include "../API/Hypervisor.h"
 
 volatile LONG KbHandlesCount = 0;
 
@@ -29,6 +30,7 @@ VOID OnDriverUnload(
 ) {
     UNREFERENCED_PARAMETER(DriverObject);
     UNREFERENCED_PARAMETER(DeviceObject);
+    Hypervisor::Devirtualize(); // Devirtualize processor if it is in virtualized state
 }
 
 VOID OnFilterUnload(
@@ -84,4 +86,27 @@ VOID OnDriverClose(
     UNREFERENCED_PARAMETER(Irp);
     UNREFERENCED_PARAMETER(IrpStack);
     InterlockedDecrement(&KbHandlesCount);
+}
+
+namespace HypervisorManagement {
+    static bool NeedToRevirtualizeOnWake = false;
+}
+
+VOID OnSystemSleep()
+{
+    using namespace HypervisorManagement;
+    if (Hypervisor::IsVirtualized()) {
+        NeedToRevirtualizeOnWake = true;
+        Hypervisor::Devirtualize();
+    }
+    else {
+        NeedToRevirtualizeOnWake = false;
+    }
+}
+
+VOID OnSystemWake()
+{
+    using namespace HypervisorManagement;
+    if (NeedToRevirtualizeOnWake)
+        Hypervisor::Virtualize();
 }

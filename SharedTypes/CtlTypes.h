@@ -1,6 +1,6 @@
 #pragma once
 
-constexpr int KB_API_VERSION = 5;
+constexpr int KB_API_VERSION = 7;
 
 namespace Ctls {
     enum KbCtlIndices {
@@ -119,12 +119,16 @@ namespace Ctls {
         /* 85 */ KbReadPciConfig,
         /* 86 */ KbWritePciConfig,
 
+        // Hypervisor:
+        /* 87 */ KbVmmEnable,
+        /* 88 */ KbVmmDisable,
+
         // Stuff u kn0w:
-        /* 87 */ KbExecuteShellCode,
-        /* 88 */ KbGetKernelProcAddress,
-        /* 89 */ KbStallExecutionProcessor,
-        /* 90 */ KbBugCheck,
-        /* 91 */ KbFindSignature
+        /* 89 */ KbExecuteShellCode,
+        /* 90 */ KbGetKernelProcAddress,
+        /* 91 */ KbStallExecutionProcessor,
+        /* 92 */ KbBugCheck,
+        /* 93 */ KbFindSignature
     };
 }
 
@@ -307,9 +311,9 @@ DECLARE_STRUCT(KB_MAP_MDL_IN, {
     OPTIONAL UINT64 SrcProcessId;
     OPTIONAL UINT64 DestProcessId;
     WdkTypes::PMDL Mdl;
-    BOOLEAN NeedLock;
-    WdkTypes::LOCK_OPERATION LockOperation;
-    WdkTypes::KPROCESSOR_MODE AccessMode;
+    BOOLEAN NeedProbeAndLock;
+    WdkTypes::KPROCESSOR_MODE ProbeAccessMode;
+    WdkTypes::KPROCESSOR_MODE MapToAddressSpace;
     ULONG Protect;
     WdkTypes::MEMORY_CACHING_TYPE CacheType;
     OPTIONAL WdkTypes::PVOID UserRequestedAddress;
@@ -324,8 +328,8 @@ DECLARE_STRUCT(KB_MAP_MEMORY_IN, {
     OPTIONAL UINT64 DestProcessId;
     WdkTypes::PVOID VirtualAddress;
     ULONG Size;
-    WdkTypes::LOCK_OPERATION LockOperation;
-    WdkTypes::KPROCESSOR_MODE AccessMode;
+    WdkTypes::KPROCESSOR_MODE ProbeAccessMode;
+    WdkTypes::KPROCESSOR_MODE MapToAddressSpace;
     ULONG Protect;
     WdkTypes::MEMORY_CACHING_TYPE CacheType;
     OPTIONAL WdkTypes::PVOID UserRequestedAddress;
@@ -530,8 +534,7 @@ DECLARE_STRUCT(KB_READ_WRITE_PROCESS_MEMORY_IN, {
     WdkTypes::PVOID BaseAddress;
     WdkTypes::PVOID Buffer;
     ULONG Size;
-    WdkTypes::LOCK_OPERATION LocalLockOperation;
-    WdkTypes::LOCK_OPERATION RemoteLockOperation;
+    WdkTypes::KPROCESSOR_MODE AccessMode;
 });
 
 DECLARE_STRUCT(KB_SUSPEND_RESUME_PROCESS_IN, {

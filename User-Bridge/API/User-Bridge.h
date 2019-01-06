@@ -125,9 +125,9 @@ namespace Mdl {
         OPTIONAL UINT64 SrcProcessId,
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PMDL Mdl,
-        BOOLEAN NeedLock,
-        WdkTypes::LOCK_OPERATION LockOperation,
-        WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode,
+        BOOLEAN NeedProbeAndLock,
+        OPTIONAL WdkTypes::KPROCESSOR_MODE ProbeAccessMode = WdkTypes::UserMode,
+        WdkTypes::KPROCESSOR_MODE MapToAddressSpace = WdkTypes::UserMode,
         ULONG Protect = PAGE_READWRITE,
         WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
         OPTIONAL WdkTypes::PVOID UserRequestedAddress = NULL
@@ -150,8 +150,8 @@ namespace Mdl {
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PVOID VirtualAddress,
         ULONG Size,
-        WdkTypes::LOCK_OPERATION LockOperation,
-        WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode,
+        WdkTypes::KPROCESSOR_MODE ProbeAccessMode = WdkTypes::UserMode,
+        WdkTypes::KPROCESSOR_MODE MapToAddressSpace = WdkTypes::UserMode,
         ULONG Protect = PAGE_READWRITE,
         WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
         OPTIONAL WdkTypes::PVOID UserRequestedAddress = NULL
@@ -253,27 +253,27 @@ namespace Processes {
     namespace Information {
         BOOL WINAPI KbQueryInformationProcess(
             WdkTypes::HANDLE hProcess,
-            PROCESS_INFORMATION_CLASS ProcessInfoClass,
+            NtTypes::PROCESSINFOCLASS ProcessInfoClass,
             OUT PVOID Buffer,
             ULONG Size,
             OPTIONAL OUT PULONG ReturnLength = NULL
         );
         BOOL WINAPI KbSetInformationProcess(
             WdkTypes::HANDLE hProcess,
-            PROCESS_INFORMATION_CLASS ProcessInfoClass,
+            NtTypes::PROCESSINFOCLASS ProcessInfoClass,
             IN PVOID Buffer,
             ULONG Size
         );
         BOOL WINAPI KbQueryInformationThread(
             WdkTypes::HANDLE hThread,
-            THREAD_INFORMATION_CLASS ThreadInfoClass,
+            NtTypes::THREADINFOCLASS ThreadInfoClass,
             OUT PVOID Buffer,
             ULONG Size,
             OPTIONAL OUT PULONG ReturnLength = NULL
         );
         BOOL WINAPI KbSetInformationThread(
             WdkTypes::HANDLE hThread,
-            THREAD_INFORMATION_CLASS ThreadInfoClass,
+            NtTypes::THREADINFOCLASS ThreadInfoClass,
             IN PVOID Buffer,
             ULONG Size
         );
@@ -329,16 +329,15 @@ namespace Processes {
             IN WdkTypes::PVOID BaseAddress,
             OUT PVOID Buffer,
             ULONG Size,
-            WdkTypes::LOCK_OPERATION LocalLockOperation = WdkTypes::IoWriteAccess, // LockOperation for the Buffer
-            WdkTypes::LOCK_OPERATION RemoteLockOperation = WdkTypes::IoReadAccess  // LockOperation for the BaseAddress
+            WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode
         );
+
         BOOL WINAPI KbWriteProcessMemory(
             ULONG ProcessId,
             OUT WdkTypes::PVOID BaseAddress,
             IN PVOID Buffer,
             ULONG Size,
-            WdkTypes::LOCK_OPERATION LocalLockOperation = WdkTypes::IoReadAccess,  // LockOperation for the Buffer
-            WdkTypes::LOCK_OPERATION RemoteLockOperation = WdkTypes::IoWriteAccess // LockOperation for the BaseAddress
+            WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode
         );
 
         BOOL WINAPI KbGetProcessCr3Cr4(ULONG ProcessId, OUT OPTIONAL PUINT64 Cr3, OUT OPTIONAL PUINT64 Cr4);
@@ -429,6 +428,11 @@ namespace PCI {
         ULONG Size,
         OPTIONAL OUT PULONG BytesWritten
     );
+}
+
+namespace Hypervisor {
+    BOOL WINAPI KbVmmEnable();
+    BOOL WINAPI KbVmmDisable();
 }
 
 namespace Stuff {

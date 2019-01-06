@@ -413,6 +413,19 @@ namespace SVM {
     static_assert(sizeof(VMCB_STATE_SAVE_AREA) == 0x298, "Size of VMCB State Save Area != 0x298 bytes");
     static_assert(sizeof(VMCB) == 0x1000, "Size of VMCB != 0x1000 bytes");
 
+    union EVENTINJ {
+        unsigned long long Value;
+        struct {
+            unsigned long long Vector : 8; // IDT vector of the interrupt/exception (ignored if Type == 2)
+            unsigned long long Type : 2; // 0 = External/virtual interrupt (INTR), 2 = NMI, 3 = Exception (fault/trap), 4 = Software interrupt (INTn instruction)
+            unsigned long long ErrorCodeValid : 1; // 1 - Exception should push an error code onto the stack
+            unsigned long long Reserved : 19;
+            unsigned long long Valid : 1; // 1 - Event is to be injected into the guest
+            unsigned long long ErrorCode : 32; // This error code will be pushed onto the stack if the ErrorCodeValid == 1
+        } Bitmap;
+    };
+    static_assert(sizeof(EVENTINJ) == sizeof(unsigned long long), "Size of EVEINTINJ != sizeof(unsigned long long)");
+
     // 2 bits per MSR:
     union MSRPM {
         unsigned char Msrpm[2048 * 4];

@@ -12,8 +12,8 @@
 #pragma prefast(disable:__WARNING_ENCODE_MEMBER_FUNCTION_POINTER, "Not valid for kernel mode drivers")
 
 namespace {
-    PCWSTR DeviceNamePath = L"\\Device\\Kernel-Bridge";
-    PCWSTR DeviceLinkPath = L"\\??\\Kernel-Bridge";
+    UNICODE_STRING DeviceName = RTL_CONSTANT_STRING(L"\\Device\\Kernel-Bridge");
+    UNICODE_STRING DeviceLink = RTL_CONSTANT_STRING(L"\\??\\Kernel-Bridge");
     PDEVICE_OBJECT DeviceInstance = NULL;
     PFLT_FILTER FilterHandle = NULL;
 }
@@ -47,6 +47,8 @@ static NTSTATUS DriverStub(
     _In_ PIRP Irp
 );
 
+static VOID PowerCallback(PVOID CallbackContext, PVOID Argument1, PVOID Argument2);
+
 static NTSTATUS DriverUnload(
     _In_ PDRIVER_OBJECT DriverObject
 );
@@ -60,6 +62,8 @@ EXTERN_C_END
 #pragma alloc_text(PAGE, DriverStub)
 #pragma alloc_text(PAGE, DriverUnload)
 #endif
+
+static PVOID PowerCallbackRegistration = NULL;
 
 // Operations registration:
 static CONST FLT_OPERATION_REGISTRATION Callbacks[] =
@@ -146,8 +150,6 @@ NTSTATUS DriverEntry(
     DriverObject->MajorFunction[IRP_MJ_CLOSE]   = DriverStub;
     DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = DriverControl;
 
-    UNICODE_STRING DeviceName;
-    RtlInitUnicodeString(&DeviceName, DeviceNamePath);
     NTSTATUS Status = IoCreateDevice(DriverObject, 0, &DeviceName, FILE_DEVICE_UNKNOWN, 0, FALSE, &DeviceInstance);
 
     if (!NT_SUCCESS(Status)) {
@@ -155,8 +157,6 @@ NTSTATUS DriverEntry(
         return Status;
     }
 
-    UNICODE_STRING DeviceLink;
-    RtlInitUnicodeString(&DeviceLink, DeviceLinkPath);
     Status = IoCreateSymbolicLink(&DeviceLink, &DeviceName);
 
     if (!NT_SUCCESS(Status)) {
@@ -183,6 +183,22 @@ NTSTATUS DriverEntry(
         }
     } else {
         KdPrint(("[Kernel-Bridge]: Unable to register as filter: 0x%X\r\n", Status));
+    }
+
+    // Registering the power callback to handle sleep/resume for support in VMM:
+    PCALLBACK_OBJECT PowerCallbackObject = NULL;
+    UNICODE_STRING PowerObjectName = RTL_CONSTANT_STRING(L"\\Callback\\PowerState");
+    OBJECT_ATTRIBUTES PowerObjectAttributes = RTL_CONSTANT_OBJECT_ATTRIBUTES(&PowerObjectName, OBJ_CASE_INSENSITIVE);
+    Status = ExCreateCallback(&PowerCallbackObject, &PowerObjectAttributes, FALSE, TRUE);
+    if (NT_SUCCESS(Status)) {
+        PowerCallbackRegistration = ExRegisterCallback(PowerCallbackObject, PowerCallback, NULL);
+        ObDereferenceObject(PowerCallbackObject);
+        if (!PowerCallbackRegistration) {
+            KdPrint(("[Kernel-Bridge]: Unable to register the power callback!\r\n"));
+        }
+    }
+    else {
+        KdPrint(("[Kernel-Bridge]: Unable to create the power callback!\r\n"));
     }
 
     OnDriverLoad(DriverObject, DeviceInstance, FilterHandle, RegistryPath);
@@ -319,6 +335,18 @@ static NTSTATUS DriverStub(_In_ PDEVICE_OBJECT DeviceObject, _In_ PIRP Irp)
     return STATUS_SUCCESS;
 }
 
+static VOID PowerCallback(PVOID CallbackContext, PVOID Argument1, PVOID Argument2)
+{
+    UNREFERENCED_PARAMETER(CallbackContext);
+    if (reinterpret_cast<SIZE_T>(Argument1) != PO_CB_SYSTEM_STATE_LOCK) return;
+
+    if (Argument2) {
+        OnSystemWake();
+    } else {
+        OnSystemSleep();
+    }
+}
+
 static NTSTATUS DriverUnload(_In_ PDRIVER_OBJECT DriverObject)
 {
     PAGED_CODE();
@@ -327,8 +355,9 @@ static NTSTATUS DriverUnload(_In_ PDRIVER_OBJECT DriverObject)
 
     __crt_deinit(); // Global objects destroying
 
-    UNICODE_STRING DeviceLink;
-    RtlInitUnicodeString(&DeviceLink, DeviceLinkPath);
+    if (PowerCallbackRegistration)
+        ExUnregisterCallback(PowerCallbackRegistration);
+
     IoDeleteSymbolicLink(&DeviceLink);
     IoDeleteDevice(DeviceInstance);
     

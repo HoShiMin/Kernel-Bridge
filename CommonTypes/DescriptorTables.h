@@ -12,13 +12,13 @@ union SEGMENT_SELECTOR {
 };
 
 // Value of the IDTR/GDTR/LDTR registers in the legacy mode:
-union DESCRIPTOR_TABLE_REGISTER_LEGACY {
+struct DESCRIPTOR_TABLE_REGISTER_LEGACY {
     unsigned short Limit; // Size of descriptor table in bytes
     unsigned int BaseAddress; // Points to the first entry in a descriptor table
 };
 
 // Value of the IDTR/GDTR/LDTR registers in the long mode mode:
-union DESCRIPTOR_TABLE_REGISTER_LONG {
+struct DESCRIPTOR_TABLE_REGISTER_LONG {
     unsigned short Limit; // Size of descriptor table in bytes
     unsigned long long BaseAddress; // Points to the first entry in a descriptor table
 };

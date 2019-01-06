@@ -179,21 +179,19 @@ namespace Processes {
         _IRQL_requires_max_(APC_LEVEL)
         NTSTATUS ReadProcessMemory(
             PEPROCESS Process,
-            __in_data_source(USER_MODE) IN PVOID BaseAddress,
-            OUT PVOID Buffer, // User or kernel address
+            __in_data_source(USER_MODE) IN PVOID BaseAddress, // In the target process
+            OUT PVOID Buffer, // User or kernel address in the current process
             ULONG Size,
-            LOCK_OPERATION LocalLockOperation = IoWriteAccess, // Lock type for the Buffer
-            LOCK_OPERATION RemoteLockOperation = IoReadAccess  // Lock type for the BaseAddress
+            KPROCESSOR_MODE AccessMode = UserMode
         );
 
         _IRQL_requires_max_(APC_LEVEL)
         NTSTATUS WriteProcessMemory(
             PEPROCESS Process,
-            __in_data_source(USER_MODE) OUT PVOID BaseAddress,
-            IN PVOID Buffer, // User or kernel address
+            __in_data_source(USER_MODE) OUT PVOID BaseAddress, // In the target process
+            IN PVOID Buffer, // User or kernel address in the current process
             ULONG Size,
-            LOCK_OPERATION LocalLockOperation = IoReadAccess,  // Lock type for the Buffer
-            LOCK_OPERATION RemoteLockOperation = IoWriteAccess // Lock type for the BaseAddress
+            KPROCESSOR_MODE AccessMode = UserMode
         );
     }
 

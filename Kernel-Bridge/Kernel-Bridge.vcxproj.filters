@@ -202,4 +202,9 @@
       <Filter>Main</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <MASM Include="API\SVM.asm">
+      <Filter>API</Filter>
+    </MASM>
+  </ItemGroup>
 </Project>

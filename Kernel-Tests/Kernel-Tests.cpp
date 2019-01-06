@@ -80,7 +80,7 @@ bool MdlTest::RunTest() {
     bool TestStatus = false;
 
     Mdl::MAPPING_INFO MappingInfo = {};
-    BOOL Status = KbMapMemory(&MappingInfo, 0, 0, reinterpret_cast<WdkTypes::PVOID>(Buffer), Size, WdkTypes::IoWriteAccess);
+    BOOL Status = KbMapMemory(&MappingInfo, 0, 0, reinterpret_cast<WdkTypes::PVOID>(Buffer), Size);
     if (!Status) Log(L"KbMapMemory == FALSE");
 
     if (!Status || !MappingInfo.MappedAddress || !MappingInfo.Mdl) {
@@ -128,7 +128,7 @@ bool PhysicalMemoryTest::RunTest() {
         if (!Status) Log(L"KbMapPhysicalMemory == FALSE");
 
         Mdl::MAPPING_INFO MappingInfo = {};
-        KbMapMemory(&MappingInfo, 0, 0, VirtualAddress, sizeof(Value), WdkTypes::IoWriteAccess);
+        KbMapMemory(&MappingInfo, 0, 0, VirtualAddress, sizeof(Value));
 
         PUINT64 Mapping = reinterpret_cast<PUINT64>(MappingInfo.MappedAddress);
 

@@ -406,8 +406,7 @@ namespace Processes {
             __in_data_source(USER_MODE) PVOID BaseAddress,
             PVOID Buffer,
             ULONG Size,
-            LOCK_OPERATION LocalLockOperation,
-            LOCK_OPERATION RemoteLockOperation,
+            KPROCESSOR_MODE AccessMode,
             MEMORY_OPERATION_TYPE Operation
         ) {
             if (!Process) return STATUS_INVALID_PARAMETER_1;
@@ -438,7 +437,7 @@ namespace Processes {
                 NULL,
                 BaseAddress,
                 Size,
-                RemoteLockOperation
+                AccessMode
             );
 
             if (!NT_SUCCESS(Status)) { 
@@ -455,7 +454,7 @@ namespace Processes {
                 NULL,
                 Buffer,
                 Size,
-                LocalLockOperation
+                AccessMode
             );
 
             if (!NT_SUCCESS(Status)) {
@@ -492,10 +491,9 @@ namespace Processes {
             __in_data_source(USER_MODE) IN PVOID BaseAddress,
             OUT PVOID Buffer,
             ULONG Size,
-            LOCK_OPERATION LocalLockOperation,
-            LOCK_OPERATION RemoteLockOperation
+            KPROCESSOR_MODE AccessMode
         ) {
-            return OperateProcessMemory(Process, BaseAddress, Buffer, Size, LocalLockOperation, RemoteLockOperation, MemRead);
+            return OperateProcessMemory(Process, BaseAddress, Buffer, Size, AccessMode, MemRead);
         }
 
         _IRQL_requires_max_(APC_LEVEL)
@@ -504,10 +502,9 @@ namespace Processes {
             __in_data_source(USER_MODE) OUT PVOID BaseAddress,
             IN PVOID Buffer,
             ULONG Size,
-            LOCK_OPERATION LocalLockOperation,
-            LOCK_OPERATION RemoteLockOperation
+            KPROCESSOR_MODE AccessMode
         ) {
-            return OperateProcessMemory(Process, BaseAddress, Buffer, Size, LocalLockOperation, RemoteLockOperation, MemWrite);
+            return OperateProcessMemory(Process, BaseAddress, Buffer, Size, AccessMode, MemWrite);
         }
     }
 

@@ -305,7 +305,7 @@ namespace PhysicalMemory {
     PVOID AllocPhysicalMemory(PVOID64 HighestAcceptableAddress, SIZE_T Size) {
         return MmAllocateContiguousMemory(
             Size, 
-            *reinterpret_cast<PHYSICAL_ADDRESS*>(HighestAcceptableAddress)
+            *reinterpret_cast<PHYSICAL_ADDRESS*>(&HighestAcceptableAddress)
         );
     }
 
@@ -319,9 +319,9 @@ namespace PhysicalMemory {
     ) {
         return MmAllocateContiguousMemorySpecifyCache(
             Size, 
-            *reinterpret_cast<PHYSICAL_ADDRESS*>(LowestAcceptableAddress),
-            *reinterpret_cast<PHYSICAL_ADDRESS*>(HighestAcceptableAddress),
-            *reinterpret_cast<PHYSICAL_ADDRESS*>(BoundaryAddressMultiple),
+            *reinterpret_cast<PHYSICAL_ADDRESS*>(&LowestAcceptableAddress),
+            *reinterpret_cast<PHYSICAL_ADDRESS*>(&HighestAcceptableAddress),
+            *reinterpret_cast<PHYSICAL_ADDRESS*>(&BoundaryAddressMultiple),
             CachingType
         );
     }
@@ -460,9 +460,9 @@ namespace Mdl {
         OUT PVOID* MappedMemory,
         OPTIONAL PEPROCESS SrcProcess,
         OPTIONAL PEPROCESS DestProcess,
-        BOOLEAN NeedLock,
-        LOCK_OPERATION LockOperation,
-        KPROCESSOR_MODE AccessMode, 
+        BOOLEAN NeedProbeAndLock,
+        OPTIONAL KPROCESSOR_MODE ProbeAccessMode,
+        KPROCESSOR_MODE MapToAddressSpace, 
         ULONG Protect,
         MEMORY_CACHING_TYPE CacheType,
         OPTIONAL PVOID UserRequestedAddress     
@@ -472,8 +472,8 @@ namespace Mdl {
 
         if (UserRequestedAddress) {
             if (
-                (AccessMode == KernelMode && AddressRange::IsUserAddress(UserRequestedAddress)) || 
-                (AccessMode == UserMode && AddressRange::IsKernelAddress(UserRequestedAddress))
+                (MapToAddressSpace == KernelMode && AddressRange::IsUserAddress(UserRequestedAddress)) ||
+                (MapToAddressSpace == UserMode && AddressRange::IsKernelAddress(UserRequestedAddress))
             ) return STATUS_INVALID_PARAMETER_6; // Access mode is incompatible with UserRequestAddress!
         }
 
@@ -484,11 +484,11 @@ namespace Mdl {
             PEPROCESS CurrentProcess = PsGetCurrentProcess();
 
             // Lock and prepare pages in target process:
-            if (NeedLock) {
+            if (NeedProbeAndLock) {
                 if (!SrcProcess || SrcProcess == CurrentProcess)
-                    MmProbeAndLockPages(Mdl, KernelMode, LockOperation);
+                    MmProbeAndLockPages(Mdl, ProbeAccessMode, IoReadAccess);
                 else
-                    MmProbeAndLockProcessPages(Mdl, SrcProcess, KernelMode, LockOperation);
+                    MmProbeAndLockProcessPages(Mdl, SrcProcess, ProbeAccessMode, IoReadAccess);
                 IsLocked = TRUE;
             }
 
@@ -500,9 +500,9 @@ namespace Mdl {
             // Map prepared pages to current process:
             PVOID Mapping = MmMapLockedPagesSpecifyCache(
                 Mdl,
-                AccessMode,
+                MapToAddressSpace,
                 CacheType,
-                AccessMode == UserMode ? UserRequestedAddress : NULL,
+                MapToAddressSpace == UserMode ? UserRequestedAddress : NULL,
                 FALSE,
                 NormalPagePriority
             );
@@ -533,8 +533,8 @@ namespace Mdl {
         OPTIONAL PEPROCESS DestProcess,
         IN PVOID VirtualAddress,
         ULONG Size,
-        LOCK_OPERATION LockOperation,
-        KPROCESSOR_MODE AccessMode,
+        KPROCESSOR_MODE ProbeAccessMode,
+        KPROCESSOR_MODE MapToAddressSpace,
         ULONG Protect,
         MEMORY_CACHING_TYPE CacheType,
         OPTIONAL PVOID UserRequestedAddress 
@@ -552,8 +552,8 @@ namespace Mdl {
             SrcProcess,
             DestProcess,
             TRUE,
-            LockOperation,
-            AccessMode,
+            ProbeAccessMode,
+            MapToAddressSpace,
             Protect,
             CacheType,
             UserRequestedAddress

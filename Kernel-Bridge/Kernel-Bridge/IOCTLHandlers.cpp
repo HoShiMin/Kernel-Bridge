@@ -17,6 +17,7 @@
 #include "../API/StringsAPI.h"
 #include "../API/Signatures.h"
 #include "../API/PCI.h"
+#include "../API/Hypervisor.h"
 
 #include "IOCTLs.h"
 
@@ -622,9 +623,9 @@ namespace
             &Mapping,
             SrcProcess,
             DestProcess,
-            Input->NeedLock,
-            static_cast<LOCK_OPERATION>(Input->LockOperation),
-            static_cast<KPROCESSOR_MODE>(Input->AccessMode),
+            Input->NeedProbeAndLock,
+            static_cast<KPROCESSOR_MODE>(Input->ProbeAccessMode),
+            static_cast<KPROCESSOR_MODE>(Input->MapToAddressSpace),
             Input->Protect,
             static_cast<MEMORY_CACHING_TYPE>(Input->CacheType),
             reinterpret_cast<PVOID>(Input->UserRequestedAddress)
@@ -742,8 +743,8 @@ namespace
             DestProcess,
             reinterpret_cast<PVOID>(Input->VirtualAddress),
             Input->Size,
-            static_cast<LOCK_OPERATION>(Input->LockOperation),
-            static_cast<KPROCESSOR_MODE>(Input->AccessMode),
+            static_cast<KPROCESSOR_MODE>(Input->ProbeAccessMode),
+            static_cast<KPROCESSOR_MODE>(Input->MapToAddressSpace),
             Input->Protect,
             static_cast<MEMORY_CACHING_TYPE>(Input->CacheType),
             reinterpret_cast<PVOID>(Input->UserRequestedAddress)
@@ -1384,8 +1385,7 @@ namespace
             reinterpret_cast<PVOID>(Input->BaseAddress),
             reinterpret_cast<PVOID>(Input->Buffer),
             Input->Size,
-            static_cast<LOCK_OPERATION>(Input->LocalLockOperation),
-            static_cast<LOCK_OPERATION>(Input->RemoteLockOperation)
+            static_cast<KPROCESSOR_MODE>(Input->AccessMode)
         );
 
         ObDereferenceObject(Process);
@@ -1412,8 +1412,7 @@ namespace
             reinterpret_cast<PVOID>(Input->BaseAddress),
             reinterpret_cast<PVOID>(Input->Buffer),
             Input->Size,
-            static_cast<LOCK_OPERATION>(Input->LocalLockOperation),
-            static_cast<LOCK_OPERATION>(Input->RemoteLockOperation)
+            static_cast<KPROCESSOR_MODE>(Input->AccessMode)
         );
 
         ObDereferenceObject(Process);
@@ -1902,6 +1901,20 @@ namespace
 
         *ResponseLength = sizeof(*Output);
         return STATUS_SUCCESS;
+    }
+
+    NTSTATUS FASTCALL KbVmmEnable(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(RequestInfo);
+        UNREFERENCED_PARAMETER(ResponseLength);
+        return Hypervisor::Virtualize() ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
+    }
+
+    NTSTATUS FASTCALL KbVmmDisable(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(RequestInfo);
+        UNREFERENCED_PARAMETER(ResponseLength);
+        return Hypervisor::Devirtualize() ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
     }
 
     NTSTATUS FASTCALL KbExecuteShellCode(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
@@ -2404,12 +2417,16 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 85 */ KbReadPciConfig,
         /* 86 */ KbWritePciConfig,
 
+        // Hypervisor:
+        /* 87 */ KbVmmEnable,
+        /* 88 */ KbVmmDisable,
+
         // Stuff u kn0w:
-        /* 87 */ KbExecuteShellCode,
-        /* 88 */ KbGetKernelProcAddress,
-        /* 89 */ KbStallExecutionProcessor,
-        /* 90 */ KbBugCheck,
-        /* 91 */ KbFindSignature
+        /* 89 */ KbExecuteShellCode,
+        /* 90 */ KbGetKernelProcAddress,
+        /* 91 */ KbStallExecutionProcessor,
+        /* 92 */ KbBugCheck,
+        /* 93 */ KbFindSignature
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;

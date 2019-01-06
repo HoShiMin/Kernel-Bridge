@@ -121,6 +121,9 @@ EXPORTS
 	KbReadPciConfig
 	KbWritePciConfig
 
+    KbVmmEnable
+    KbVmmDisable
+
 	KbGetKernelProcAddress
 	KbStallExecutionProcessor
 	KbBugCheck

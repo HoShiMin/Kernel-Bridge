@@ -242,7 +242,7 @@ void SmmTest() {
     UINT64 MsrBaseAddress = 0x30000;
     CPU::KbReadMsr(0xC0010111, &MsrBaseAddress);
 
-    using SMM_ADDR = union {
+    union SMM_ADDR {
         unsigned long long Value;
         struct {
             unsigned long long Reserved0 : 17;
@@ -251,7 +251,7 @@ void SmmTest() {
         } Bitmap;
     };
 
-    using SMM_MASK = union {
+    union SMM_MASK {
         unsigned long long Value;
         struct {
             unsigned long long AE : 1;
@@ -268,16 +268,18 @@ void SmmTest() {
     SMM_MASK MsrProtectedMask = {};
     CPU::KbReadMsr(0xC0010113, &MsrProtectedMask.Value);
 
-    constexpr int SMM_SIZE = 65536;
-    auto Buf = new BYTE[SMM_SIZE];
-    RtlZeroMemory(Buf, SMM_SIZE);
-    BOOL Status = PhysicalMemory::KbWritePhysicalMemory(MsrBaseAddress, Buf, SMM_SIZE);
-    std::ofstream File("E:\\SmmProtected.bin", std::ofstream::binary);
-    File.write((char*)Buf, SMM_SIZE);
-    File.close();
-    delete[] Buf;
-
     __debugbreak();
+}
+
+void print_cpuid() {
+    int regs[4] = {};
+    __cpuid(regs, 0);
+    char str[13] = {};
+    // CPUID Vendor = RBX + RDX + RCX:
+    *(int*)(str + 0) = regs[1]; // RBX
+    *(int*)(str + 4) = regs[3]; // RDX
+    *(int*)(str + 8) = regs[2]; // RCX
+    printf("CPU: %s\r\n", str);
 }
 
 int main() {
@@ -287,9 +289,19 @@ int main() {
         L"C:\\Temp\\Kernel-Bridge\\Kernel-Bridge.sys",
         L"260000" // Altitude of minifilter
     )) {
-        SmmTest();
-        //TranslationTest();
-        //RunTests();
+        if (Hypervisor::KbVmmEnable()) {
+            printf("VMM enabled!\r\n");
+            while (true) {
+                print_cpuid();
+                Sleep(1000);
+            }
+            Hypervisor::KbVmmDisable();
+            printf("VMM disabled!\r\n");
+            print_cpuid();
+        }
+        else {
+            printf("Unable to start VMM!\r\n");
+        }
         KbLoader::KbUnload();
     } else {
         std::wcout << L"Unable to load driver!" << std::endl;

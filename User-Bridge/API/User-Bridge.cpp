@@ -488,9 +488,9 @@ namespace Mdl {
         OPTIONAL UINT64 SrcProcessId,
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PMDL Mdl,
-        BOOLEAN NeedLock,
-        WdkTypes::LOCK_OPERATION LockOperation,
-        WdkTypes::KPROCESSOR_MODE AccessMode,
+        BOOLEAN NeedProbeAndLock,
+        WdkTypes::KPROCESSOR_MODE ProbeAccessMode,
+        WdkTypes::KPROCESSOR_MODE MapToAddressSpace,
         ULONG Protect,
         WdkTypes::MEMORY_CACHING_TYPE CacheType,
         OPTIONAL WdkTypes::PVOID UserRequestedAddress
@@ -501,9 +501,9 @@ namespace Mdl {
         Input.SrcProcessId = SrcProcessId;
         Input.DestProcessId = DestProcessId;
         Input.Mdl = Mdl;
-        Input.NeedLock = NeedLock;
-        Input.LockOperation = LockOperation;
-        Input.AccessMode = AccessMode;
+        Input.NeedProbeAndLock = NeedProbeAndLock;
+        Input.ProbeAccessMode = ProbeAccessMode;
+        Input.MapToAddressSpace = MapToAddressSpace;
         Input.Protect = Protect;
         Input.CacheType = CacheType;
         Input.UserRequestedAddress;
@@ -549,8 +549,8 @@ namespace Mdl {
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PVOID VirtualAddress,
         ULONG Size,
-        WdkTypes::LOCK_OPERATION LockOperation,
-        WdkTypes::KPROCESSOR_MODE AccessMode,
+        WdkTypes::KPROCESSOR_MODE ProbeAccessMode,
+        WdkTypes::KPROCESSOR_MODE MapToAddressSpace,
         ULONG Protect,
         WdkTypes::MEMORY_CACHING_TYPE CacheType,
         OPTIONAL WdkTypes::PVOID UserRequestedAddress
@@ -562,8 +562,8 @@ namespace Mdl {
         Input.DestProcessId = DestProcessId;
         Input.VirtualAddress = VirtualAddress;
         Input.Size = Size;
-        Input.LockOperation = LockOperation;
-        Input.AccessMode = AccessMode;
+        Input.ProbeAccessMode = ProbeAccessMode;
+        Input.MapToAddressSpace = MapToAddressSpace;
         Input.Protect = Protect;
         Input.CacheType = CacheType;
         Input.UserRequestedAddress;
@@ -802,7 +802,7 @@ namespace Processes {
     namespace Information {
         BOOL WINAPI KbQueryInformationProcess(
             WdkTypes::HANDLE hProcess,
-            PROCESS_INFORMATION_CLASS ProcessInfoClass,
+            NtTypes::PROCESSINFOCLASS ProcessInfoClass,
             OUT PVOID Buffer,
             ULONG Size,
             OPTIONAL OUT PULONG ReturnLength
@@ -821,7 +821,7 @@ namespace Processes {
 
         BOOL WINAPI KbSetInformationProcess(
             WdkTypes::HANDLE hProcess,
-            PROCESS_INFORMATION_CLASS ProcessInfoClass,
+            NtTypes::PROCESSINFOCLASS ProcessInfoClass,
             IN PVOID Buffer,
             ULONG Size
         ) {
@@ -835,7 +835,7 @@ namespace Processes {
 
         BOOL WINAPI KbQueryInformationThread(
             WdkTypes::HANDLE hThread,
-            THREAD_INFORMATION_CLASS ThreadInfoClass,
+            NtTypes::THREADINFOCLASS ThreadInfoClass,
             OUT PVOID Buffer,
             ULONG Size,
             OPTIONAL OUT PULONG ReturnLength
@@ -854,7 +854,7 @@ namespace Processes {
 
         BOOL WINAPI KbSetInformationThread(
             WdkTypes::HANDLE hThread,
-            THREAD_INFORMATION_CLASS ThreadInfoClass,
+            NtTypes::THREADINFOCLASS ThreadInfoClass,
             IN PVOID Buffer,
             ULONG Size
         ) {
@@ -1001,8 +1001,7 @@ namespace Processes {
             IN WdkTypes::PVOID BaseAddress,
             OUT PVOID Buffer,
             ULONG Size,
-            WdkTypes::LOCK_OPERATION LocalLockOperation,
-            WdkTypes::LOCK_OPERATION RemoteLockOperation
+            WdkTypes::KPROCESSOR_MODE AccessMode
         ) {
             if (!ProcessId || !BaseAddress || !Buffer || !Size) return FALSE;
             KB_READ_WRITE_PROCESS_MEMORY_IN Input = {};
@@ -1010,8 +1009,7 @@ namespace Processes {
             Input.BaseAddress = BaseAddress;
             Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
             Input.Size = Size;
-            Input.LocalLockOperation = LocalLockOperation;
-            Input.RemoteLockOperation = RemoteLockOperation;
+            Input.AccessMode = AccessMode;
             return KbSendRequest(Ctls::KbReadProcessMemory, &Input, sizeof(Input));
         }
 
@@ -1020,8 +1018,7 @@ namespace Processes {
             OUT WdkTypes::PVOID BaseAddress,
             IN PVOID Buffer,
             ULONG Size,
-            WdkTypes::LOCK_OPERATION LocalLockOperation,
-            WdkTypes::LOCK_OPERATION RemoteLockOperation
+            WdkTypes::KPROCESSOR_MODE AccessMode
         ) {
             if (!ProcessId || !BaseAddress || !Buffer || !Size) return FALSE;
             KB_READ_WRITE_PROCESS_MEMORY_IN Input = {};
@@ -1029,8 +1026,7 @@ namespace Processes {
             Input.BaseAddress = BaseAddress;
             Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
             Input.Size = Size;
-            Input.LocalLockOperation = LocalLockOperation;
-            Input.RemoteLockOperation = RemoteLockOperation;
+            Input.AccessMode = AccessMode;
             return KbSendRequest(Ctls::KbWriteProcessMemory, &Input, sizeof(Input));
         }
 
@@ -1255,6 +1251,18 @@ namespace PCI {
         BOOL Status = KbSendRequest(Ctls::KbWritePciConfig, &Input, sizeof(Input), &Output, sizeof(Output));
         if (BytesWritten) *BytesWritten = Output.ReadOrWritten;
         return Status;
+    }
+}
+
+namespace Hypervisor {
+    BOOL WINAPI KbVmmEnable()
+    {
+        return KbSendRequest(Ctls::KbVmmEnable);
+    }
+
+    BOOL WINAPI KbVmmDisable()
+    {
+        return KbSendRequest(Ctls::KbVmmDisable);
     }
 }
 
