@@ -4,7 +4,8 @@ kernel-mode API and wrappers written on C++17.
   
 [Precompiled and signed binaries with the SecureBoot support](https://github.com/HoShiMin/Kernel-Bridge/releases)
   
-### ✔ It supports work with:
+### ✔ Capabilites:
+* Hypervisor (AMD-V/RVI)
 * IO-ports (+ 'in/out/cli/sti' usermode forwarding by IOPL)
 * System beeper
 * MSRs, CPUID, TSC and performance counters (RDPMC)
@@ -32,6 +33,7 @@ kernel-mode API and wrappers written on C++17.
 * Python binding
   
 ### ➰ In development and plans:
+* Hypervisor with VT-x/EPT support
 * Qt-based GUI for the kernel-hacking and memory researching framework
 * Kernel WinSock support
 * Extensions for the RTL: hooks, injections, disassembling
