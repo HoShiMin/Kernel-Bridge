@@ -2,14 +2,22 @@
 #include "ui_MainWindow.h"
 
 #include <qmessagebox.h>
+#include <qgraphicseffect.h>
+#include <qdesktopwidget.h>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow), objectsStorage()
 {
     ui->setupUi(this);
+    BOOL Status = KbLoader::KbLoadAsFilter(L"C:\\Temp\\Kernel-Bridge\\Kernel-Bridge.sys", L"260000");
+    if (!Status) {
+        QMessageBox msg;
+        msg.critical(ui->MainForm, "Error!", "Unable to load driver!\r\nEnsure to run it as Administrator!");
+    }
 }
 
 MainWindow::~MainWindow()
 {
+    KbLoader::KbUnload();
     delete ui;
 }
 
@@ -143,6 +151,9 @@ void MainWindow::on_CliButton_clicked()
 void MainWindow::on_StiButton_clicked()
 {
     CPU::KbSti();
+    static int counter = 0;
+    counter++;
+    ui->FreqEdit->setText(QString::number(counter));
 }
 
 void MainWindow::on_HltButton_clicked()

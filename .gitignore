@@ -328,3 +328,5 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
+Kernel-Bridge/setup.inf
+Kernel-Bridge/setup.rpt

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>675</width>
-    <height>415</height>
+    <width>850</width>
+    <height>552</height>
    </rect>
   </property>
   <property name="palette">
@@ -16,27 +16,27 @@
      <colorrole role="Button">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>240</red>
-        <green>240</green>
-        <blue>240</blue>
+        <red>239</red>
+        <green>239</green>
+        <blue>239</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Base">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>255</red>
-        <green>255</green>
-        <blue>255</blue>
+        <red>239</red>
+        <green>239</green>
+        <blue>239</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>240</red>
-        <green>240</green>
-        <blue>240</blue>
+        <red>239</red>
+        <green>239</green>
+        <blue>239</blue>
        </color>
       </brush>
      </colorrole>
@@ -45,27 +45,27 @@
      <colorrole role="Button">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>240</red>
-        <green>240</green>
-        <blue>240</blue>
+        <red>239</red>
+        <green>239</green>
+        <blue>239</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Base">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>255</red>
-        <green>255</green>
-        <blue>255</blue>
+        <red>239</red>
+        <green>239</green>
+        <blue>239</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>240</red>
-        <green>240</green>
-        <blue>240</blue>
+        <red>239</red>
+        <green>239</green>
+        <blue>239</blue>
        </color>
       </brush>
      </colorrole>
@@ -74,27 +74,27 @@
      <colorrole role="Button">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>240</red>
-        <green>240</green>
-        <blue>240</blue>
+        <red>239</red>
+        <green>239</green>
+        <blue>239</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Base">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>240</red>
-        <green>240</green>
-        <blue>240</blue>
+        <red>239</red>
+        <green>239</green>
+        <blue>239</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>240</red>
-        <green>240</green>
-        <blue>240</blue>
+        <red>239</red>
+        <green>239</green>
+        <blue>239</blue>
        </color>
       </brush>
      </colorrole>
@@ -104,18 +104,187 @@
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
+  <property name="windowOpacity">
+   <double>1.000000000000000</double>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">/*
+QWidget {
+	background-color: rgb(239, 239, 239);
+}
+*/
+
+QWidget#widget {
+    border-style: solid;
+    border-top-style: none;
+    border-width: 1px;
+    border-color: rgb(0, 100, 150);
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    background-color: transparent;
+}
+
+QLineEdit {
+	background-color: white;
+	border: 1px solid rgb(218, 218, 218);
+	color: black;
+}
+
+QLabel {
+	background-color: none;
+	color: black;
+}
+
+/* Buttons */
+
+QPushButton {
+	border: 1px solid rgb(218, 218, 218);
+	border-radius: 4px;
+	background-color: white;
+	color: black;
+}
+
+QPushButton::hover {
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgb(10, 126, 255), stop:1 rgb(108, 179, 251));
+	border: 1px solid rgb(155, 198, 242);
+	color: white;
+}
+
+QPushButton::pressed {
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgb(108, 179, 251), stop:1 rgb(10, 126, 255));
+	border: 1px solid rgb(155, 198, 242);
+	color: white;
+}
+
+/* Radiobuttons */
+
+QRadioButton {
+	background: none;
+	color: black;
+}
+
+/* Slider */
+
+QSlider::groove:horizontal {
+    border: 1px solid rgb(218, 218, 218);
+    height: 1px;
+    background: white;
+    margin: 2px 0;
+}
+
+QSlider::handle:horizontal {
+	background-color: white;
+    border: 1px solid rgb(218, 218, 218);
+	border-radius: 1px;
+    width: 10px;
+    margin: -13px 0;
+}
+
+QSlider::handle::hover {
+	background-color: rgb(194, 255, 204);
+}
+
+QSlider::handle::pressed {
+	background-color: rgb(0, 255, 0);
+}
+
+/* TextEdit */
+
+QTextEdit {
+	background-color: white;
+	border: 1px solid rgb(218, 218, 218);
+	color: white;
+	font-family: &quot;Courier New&quot;;
+}
+
+/* Tabs */
+
+QTabWidget::pane {
+	border-radius: 2px;
+    border: 1px solid rgb(218, 218, 218);
+	top: -0.9em;
+}
+
+QTabWidget::tab-bar {
+	alignment: center;
+}
+
+QTabBar::tab {
+    background-color: white;
+    border: 1px solid rgb(218, 218, 218);
+
+    min-width: 72px;
+	min-height: 17px;
+
+    padding-left: 9px;
+	padding-right: 9px;
+	padding-top: 2px;
+	padding-bottom: 2px;
+
+	margin-left: -1px;
+
+	color: black;
+}
+
+QTabBar::tab:first {
+	border-top-left-radius: 4px;
+	border-bottom-left-radius: 4px;
+}
+
+QTabBar::tab:last {
+	border-top-right-radius: 4px;
+	border-bottom-right-radius: 4px;
+}
+
+QTabBar::tab:selected {
+	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgb(10, 126, 255), stop:1 rgb(108, 179, 251));
+	border: 1px solid rgb(155, 198, 242);
+	color: white;
+}
+
+/* MessageBox */
+
+QMessageBox QPushButton {
+	padding-left: 11px;
+	padding-right: 11px;
+	padding-top: 3px;
+	padding-bottom: 3px;
+	border-radius: 2px;
+	border-color: rgb(0, 143, 220);
+	background-color: rgb(0, 128, 197);
+	color: white;
+}
+
+QMessageBox QPushButton::hover {
+	background-color: white;
+	color: black;
+}
+
+QMessageBox QPushButton::pressed {
+	background-color: rgb(0, 255, 0);
+	color: black;
+}</string>
+  </property>
   <widget class="QWidget" name="MainForm">
    <widget class="QTabWidget" name="TabWidget">
     <property name="geometry">
      <rect>
       <x>7</x>
       <y>6</y>
-      <width>664</width>
-      <height>404</height>
+      <width>834</width>
+      <height>539</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QTabWidget {
+	background-color: rgb(226, 226, 226);
+}</string>
     </property>
     <property name="currentIndex">
      <number>0</number>
+    </property>
+    <property name="usesScrollButtons">
+     <bool>true</bool>
     </property>
     <widget class="QWidget" name="IoCpuTab">
      <attribute name="title">
@@ -124,9 +293,9 @@
      <widget class="QPushButton" name="EnableBeeperButton">
       <property name="geometry">
        <rect>
-        <x>200</x>
-        <y>14</y>
-        <width>83</width>
+        <x>209</x>
+        <y>90</y>
+        <width>97</width>
         <height>23</height>
        </rect>
       </property>
@@ -137,8 +306,8 @@
      <widget class="QLineEdit" name="FreqEdit">
       <property name="geometry">
        <rect>
-        <x>151</x>
-        <y>15</y>
+        <x>160</x>
+        <y>91</y>
         <width>47</width>
         <height>21</height>
        </rect>
@@ -159,8 +328,8 @@
      <widget class="QLabel" name="FreqLabel">
       <property name="geometry">
        <rect>
-        <x>71</x>
-        <y>16</y>
+        <x>80</x>
+        <y>92</y>
         <width>81</width>
         <height>17</height>
        </rect>
@@ -172,10 +341,10 @@
      <widget class="QSlider" name="FreqSlider">
       <property name="geometry">
        <rect>
-        <x>71</x>
-        <y>40</y>
-        <width>211</width>
-        <height>22</height>
+        <x>80</x>
+        <y>116</y>
+        <width>227</width>
+        <height>27</height>
        </rect>
       </property>
       <property name="minimum">
@@ -197,8 +366,8 @@
      <widget class="QLineEdit" name="PortNumberEdit">
       <property name="geometry">
        <rect>
-        <x>101</x>
-        <y>96</y>
+        <x>393</x>
+        <y>92</y>
         <width>45</width>
         <height>20</height>
        </rect>
@@ -213,8 +382,8 @@
      <widget class="QLineEdit" name="PortValueEdit">
       <property name="geometry">
        <rect>
-        <x>191</x>
-        <y>96</y>
+        <x>483</x>
+        <y>92</y>
         <width>91</width>
         <height>20</height>
        </rect>
@@ -229,8 +398,8 @@
      <widget class="QLabel" name="PortNumberLabel">
       <property name="geometry">
        <rect>
-        <x>72</x>
-        <y>98</y>
+        <x>364</x>
+        <y>94</y>
         <width>35</width>
         <height>16</height>
        </rect>
@@ -242,8 +411,8 @@
      <widget class="QLabel" name="PortValueLabel">
       <property name="geometry">
        <rect>
-        <x>154</x>
-        <y>98</y>
+        <x>446</x>
+        <y>94</y>
         <width>50</width>
         <height>16</height>
        </rect>
@@ -255,8 +424,8 @@
      <widget class="QPushButton" name="ReadPortButton">
       <property name="geometry">
        <rect>
-        <x>71</x>
-        <y>120</y>
+        <x>363</x>
+        <y>116</y>
         <width>104</width>
         <height>23</height>
        </rect>
@@ -268,8 +437,8 @@
      <widget class="QPushButton" name="WritePortButton">
       <property name="geometry">
        <rect>
-        <x>179</x>
-        <y>120</y>
+        <x>471</x>
+        <y>116</y>
         <width>104</width>
         <height>23</height>
        </rect>
@@ -281,8 +450,8 @@
      <widget class="QRadioButton" name="ByteRadioButton">
       <property name="geometry">
        <rect>
-        <x>71</x>
-        <y>78</y>
+        <x>363</x>
+        <y>74</y>
         <width>46</width>
         <height>18</height>
        </rect>
@@ -291,14 +460,14 @@
        <string>Byte</string>
       </property>
       <property name="checked">
-       <bool>true</bool>
+       <bool>false</bool>
       </property>
      </widget>
      <widget class="QRadioButton" name="WordRadioButton">
       <property name="geometry">
        <rect>
-        <x>122</x>
-        <y>78</y>
+        <x>414</x>
+        <y>74</y>
         <width>52</width>
         <height>17</height>
        </rect>
@@ -313,8 +482,8 @@
      <widget class="QRadioButton" name="DwordRadioButton">
       <property name="geometry">
        <rect>
-        <x>172</x>
-        <y>78</y>
+        <x>464</x>
+        <y>74</y>
         <width>80</width>
         <height>17</height>
        </rect>
@@ -326,8 +495,8 @@
      <widget class="QPushButton" name="CliButton">
       <property name="geometry">
        <rect>
-        <x>86</x>
-        <y>162</y>
+        <x>237</x>
+        <y>184</y>
         <width>59</width>
         <height>23</height>
        </rect>
@@ -339,8 +508,8 @@
      <widget class="QPushButton" name="StiButton">
       <property name="geometry">
        <rect>
-        <x>148</x>
-        <y>162</y>
+        <x>299</x>
+        <y>184</y>
         <width>59</width>
         <height>23</height>
        </rect>
@@ -348,12 +517,30 @@
       <property name="text">
        <string>STI</string>
       </property>
+      <property name="checkable">
+       <bool>false</bool>
+      </property>
+      <property name="checked">
+       <bool>false</bool>
+      </property>
+      <property name="autoExclusive">
+       <bool>false</bool>
+      </property>
+      <property name="autoDefault">
+       <bool>false</bool>
+      </property>
+      <property name="default">
+       <bool>false</bool>
+      </property>
+      <property name="flat">
+       <bool>false</bool>
+      </property>
      </widget>
      <widget class="QPushButton" name="HltButton">
       <property name="geometry">
        <rect>
-        <x>210</x>
-        <y>162</y>
+        <x>361</x>
+        <y>184</y>
         <width>59</width>
         <height>23</height>
        </rect>
@@ -365,8 +552,8 @@
      <widget class="QPushButton" name="RdmsrButton">
       <property name="geometry">
        <rect>
-        <x>43</x>
-        <y>231</y>
+        <x>77</x>
+        <y>278</y>
         <width>85</width>
         <height>23</height>
        </rect>
@@ -378,8 +565,8 @@
      <widget class="QPushButton" name="WrmsrButton">
       <property name="geometry">
        <rect>
-        <x>135</x>
-        <y>231</y>
+        <x>169</x>
+        <y>278</y>
         <width>85</width>
         <height>23</height>
        </rect>
@@ -391,11 +578,14 @@
      <widget class="QPushButton" name="RdpmcButton">
       <property name="geometry">
        <rect>
-        <x>227</x>
-        <y>231</y>
+        <x>261</x>
+        <y>278</y>
         <width>85</width>
         <height>23</height>
        </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true"/>
       </property>
       <property name="text">
        <string>RDPMC</string>
@@ -404,8 +594,8 @@
      <widget class="QLabel" name="MsrPmcIndexLabel">
       <property name="geometry">
        <rect>
-        <x>21</x>
-        <y>204</y>
+        <x>78</x>
+        <y>248</y>
         <width>84</width>
         <height>16</height>
        </rect>
@@ -417,8 +607,8 @@
      <widget class="QLabel" name="MsrPmcValueLabel">
       <property name="geometry">
        <rect>
-        <x>184</x>
-        <y>204</y>
+        <x>241</x>
+        <y>248</y>
         <width>33</width>
         <height>16</height>
        </rect>
@@ -430,8 +620,8 @@
      <widget class="QLineEdit" name="MsrPmcIndexEdit">
       <property name="geometry">
        <rect>
-        <x>105</x>
-        <y>203</y>
+        <x>162</x>
+        <y>247</y>
         <width>70</width>
         <height>20</height>
        </rect>
@@ -446,8 +636,8 @@
      <widget class="QLineEdit" name="MsrPmcValueEdit">
       <property name="geometry">
        <rect>
-        <x>218</x>
-        <y>203</y>
+        <x>275</x>
+        <y>247</y>
         <width>120</width>
         <height>20</height>
        </rect>
@@ -459,16 +649,54 @@
        <number>18</number>
       </property>
      </widget>
+     <widget class="QTableWidget" name="tableWidget">
+      <property name="geometry">
+       <rect>
+        <x>245</x>
+        <y>320</y>
+        <width>531</width>
+        <height>192</height>
+       </rect>
+      </property>
+      <property name="rowCount">
+       <number>5</number>
+      </property>
+      <property name="columnCount">
+       <number>5</number>
+      </property>
+      <row/>
+      <row/>
+      <row/>
+      <row/>
+      <row/>
+      <column/>
+      <column/>
+      <column/>
+      <column/>
+      <column/>
+     </widget>
     </widget>
     <widget class="QWidget" name="VmTab">
      <attribute name="title">
-      <string>Virtual Memory</string>
+      <string>Virtual/Physical Memory</string>
      </attribute>
-    </widget>
-    <widget class="QWidget" name="PmTab">
-     <attribute name="title">
-      <string>Physical Memory</string>
-     </attribute>
+     <widget class="QTextEdit" name="MemoryTextEdit">
+      <property name="geometry">
+       <rect>
+        <x>185</x>
+        <y>15</y>
+        <width>649</width>
+        <height>500</height>
+       </rect>
+      </property>
+      <property name="html">
+       <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Courier New'; font-size:8.25pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;0x1122334455667788 | 00 11 22 33 44 55 66 77  88 99 AA BB CC DD EE FF | 0123456789abcdef&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+     </widget>
     </widget>
     <widget class="QWidget" name="PsTab">
      <attribute name="title">
