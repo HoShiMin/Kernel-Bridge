@@ -1,5 +1,51 @@
 #pragma once
 
+/*
+    Page size (max VA = 64 bit, max PA = 52 bit):
+     * Long Mode (CR4.PAE always = 1, CR4.PSE ignored): 
+         // Maximum VA = 64 bit
+         // Maximum PA = 52 bit
+         if (PDPE.PS) {
+             PageSize = 1 Gbyte;
+         }
+         else {
+             if (PDE.PS) {
+                 PageSize = 2 Mbyte;
+             } else {
+                 PageSize = 4 Kbyte;
+             }
+         }
+
+     * Legacy Mode:
+         // PDPE.PS always = 0
+         // Maximum VA = 32 bit
+         if (CR4.PAE) {
+             // CR4.PSE ignored
+             // Maximum PA = 52 bit
+             if (PDE.PS) {
+                 PageSize = 2 Mbyte;
+             } else {
+                 PageSize = 4 Kbyte;
+             }
+         }
+         else {
+             if (CR4.PSE) {
+                 if (PDE.PS) {
+                     // Maximum PA = 40 bit
+                     PageSize = 4 Mbyte;
+                 } else {
+                     // Maximum PA = 32 bit
+                     PageSize = 4 Kbyte;
+                 }
+             }
+             else {
+                 // PDE.PS ignored
+                 // Maximum PA = 32 bit
+                 PageSize = 4 Kbyte;
+             }
+         }
+*/
+
 #define PFN_TO_PAGE(pfn) (pfn << 12)
 
 #pragma pack(push, 1)
@@ -10,7 +56,7 @@ union VIRTUAL_ADDRESS {
         struct {
             unsigned int PageOffset : 12; // Offset into the physical page
             unsigned int PageTableOffset : 10; // Index into the 1024-entry page-table
-            unsigned int PageDirectoryOffset : 10; // Index into the 2014-entry page-directory table
+            unsigned int PageDirectoryOffset : 10; // Index into the 1024-entry page-directory table
         } NonPae4Kb;
         struct {
             unsigned int PageOffset : 22; // Offset into the physical page
