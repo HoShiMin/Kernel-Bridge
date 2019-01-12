@@ -17,7 +17,7 @@ struct DESCRIPTOR_TABLE_REGISTER_LEGACY {
     unsigned int BaseAddress; // Points to the first entry in a descriptor table
 };
 
-// Value of the IDTR/GDTR/LDTR registers in the long mode mode:
+// Value of the IDTR/GDTR/LDTR registers in the long mode:
 struct DESCRIPTOR_TABLE_REGISTER_LONG {
     unsigned short Limit; // Size of descriptor table in bytes
     unsigned long long BaseAddress; // Points to the first entry in a descriptor table
