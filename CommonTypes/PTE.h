@@ -60,8 +60,12 @@ union VIRTUAL_ADDRESS {
         } NonPae4Kb;
         struct {
             unsigned int PageOffset : 22; // Offset into the physical page
-            unsigned int PageDirectoryOffset : 10;
+            unsigned int PageDirectoryOffset : 10; // Index into the 1024-entry page-directory table
         } NonPae4Mb;
+        struct {
+            unsigned int Reserved0 : 22; // Depends on page size
+            unsigned int PageDirectoryOffset : 10;
+        } NonPaeGeneric;
         struct {
             unsigned int PageOffset : 12; // Byte offset into the physical page
             unsigned int PageTableOffset : 9; // Index into the 512-entry page table
@@ -73,28 +77,38 @@ union VIRTUAL_ADDRESS {
             unsigned int PageDirectoryOffset : 9; // Index into the 512-entry page-directory table
             unsigned int PageDirectoryPointerOffset : 2; // Index into a 4-entry page-directory-pointer table
         } Pae2Mb;
+        struct {
+            unsigned int Reserved0 : 30; // Depends on page size
+            unsigned int PageDirectoryPointerOffset : 2;
+        } PaeGeneric;
     } x32;
     union {
         unsigned long long Value;
         struct {
-            unsigned long long PageOffset : 12;
-            unsigned long long PageTableOffset : 9;
-            unsigned long long PageDirectoryOffset : 9;
+            unsigned long long Reserved0 : 30; // Depends on page size
             unsigned long long PageDirectoryPointerOffset : 9;
             unsigned long long PageMapLevel4Offset : 9;
+            unsigned long long SignExtend : 16;
+        } Generic;
+        struct {
+            unsigned long long PageOffset : 12; // Byte offset into the physical page
+            unsigned long long PageTableOffset : 9; // Index into the 512-entry page table
+            unsigned long long PageDirectoryOffset : 9; // Index into the 512-entry page-directory table
+            unsigned long long PageDirectoryPointerOffset : 9; // Index into the 512-entry page-directory pointer table
+            unsigned long long PageMapLevel4Offset : 9; // Index into the 512-entry page-map level-4 table
             unsigned long long SignExtend : 16;
         } Page4Kb;
         struct {
-            unsigned long long PageOffset : 21;
-            unsigned long long PageDirectoryOffset : 9;
-            unsigned long long PageDirectoryPointerOffset : 9;
-            unsigned long long PageMapLevel4Offset : 9;
+            unsigned long long PageOffset : 21; // Byte offset into the physical page
+            unsigned long long PageDirectoryOffset : 9; // Index into the 512-entry page-directory table
+            unsigned long long PageDirectoryPointerOffset : 9; // Index into the 512-entry page-directory pointer table
+            unsigned long long PageMapLevel4Offset : 9; // Index into the 512-entry page-map level-4 table
             unsigned long long SignExtend : 16;
         } Page2Mb;
         struct {
-            unsigned long long PageOffset : 30;
-            unsigned long long PageDirectoryPointerOffset : 9;
-            unsigned long long PageMapLevel4Offset : 9;
+            unsigned long long PageOffset : 30; // Byte offset into the physical page
+            unsigned long long PageDirectoryPointerOffset : 9; // Index into the 512-entry page-directory pointer table
+            unsigned long long PageMapLevel4Offset : 9; // Index into the 512-entry page-map level-4 table
             unsigned long long SignExtend : 16;
         } Page1Gb;
     } x64;
@@ -104,47 +118,60 @@ union PML4E {
     union {
         unsigned long long Value;
         struct {
-            unsigned long long P : 1;
-            unsigned long long RW : 1;
-            unsigned long long US : 1;
-            unsigned long long PWT : 1;
-            unsigned long long PCD : 1;
-            unsigned long long A : 1;
+            unsigned long long P : 1; // Present
+            unsigned long long RW : 1; // Read/Write
+            unsigned long long US : 1; // User/Supervisor
+            unsigned long long PWT : 1; // Page-Level Writethrough
+            unsigned long long PCD : 1; // Page-Level Cache Disable
+            unsigned long long A : 1; // Accessed
             unsigned long long Ignored0 : 1;
             unsigned long long Reserved1 : 2;
-            unsigned long long AVL : 3;
+            unsigned long long AVL : 3; // Available to software
             unsigned long long PDP : 40;
             unsigned long long Available : 11;
-            unsigned long long NX : 1;
+            unsigned long long NX : 1; // No Execute
+        } Generic; // Same for the 4Kb, 2Mb and 1Gb page size
+        struct {
+            unsigned long long P : 1; // Present
+            unsigned long long RW : 1; // Read/Write
+            unsigned long long US : 1; // User/Supervisor
+            unsigned long long PWT : 1; // Page-Level Writethrough
+            unsigned long long PCD : 1; // Page-Level Cache Disable
+            unsigned long long A : 1; // Accessed
+            unsigned long long Ignored0 : 1;
+            unsigned long long Reserved1 : 2;
+            unsigned long long AVL : 3; // Available to software
+            unsigned long long PDP : 40;
+            unsigned long long Available : 11;
+            unsigned long long NX : 1; // No Execute
         } Page4Kb;
         struct {
-            unsigned long long P : 1;
-            unsigned long long RW : 1;
-            unsigned long long US : 1;
-            unsigned long long PWT : 1;
-            unsigned long long PCD : 1;
-            unsigned long long A : 1;
+            unsigned long long P : 1; // Present
+            unsigned long long RW : 1; // Read/Write
+            unsigned long long US : 1; // User/Supervisor
+            unsigned long long PWT : 1; // Page-Level Writethrough
+            unsigned long long PCD : 1; // Page-Level Cache Disable
+            unsigned long long A : 1; // Accessed
             unsigned long long Ignored0 : 1;
             unsigned long long Reserved1 : 2;
-            unsigned long long AVL : 3;
+            unsigned long long AVL : 3; // Available to software
             unsigned long long PDP : 40;
             unsigned long long Available : 11;
-            unsigned long long NX : 1;
+            unsigned long long NX : 1; // No Execute
         } Page2Mb;
         struct {
-            unsigned long long P : 1;
-            unsigned long long RW : 1;
-            unsigned long long US : 1;
-            unsigned long long PWT : 1;
-            unsigned long long PCD : 1;
-            unsigned long long A : 1;
+            unsigned long long P : 1; // Present
+            unsigned long long RW : 1; // Read/Write
+            unsigned long long US : 1; // User/Supervisor
+            unsigned long long PWT : 1; // Page-Level Writethrough
+            unsigned long long PCD : 1; // Page-Level Cache Disable
+            unsigned long long A : 1; // Accessed
             unsigned long long Ignored0 : 1;
-            unsigned long long Zero : 1;
-            unsigned long long Ignored1 : 1;
-            unsigned long long AVL : 3;
+            unsigned long long Reserved0 : 2;
+            unsigned long long AVL : 3; // Available to software
             unsigned long long PDP : 40;
             unsigned long long Available : 11;
-            unsigned long long NX : 1;
+            unsigned long long NX : 1; // No Execute
         } Page1Gb;
     } x64;
 };
@@ -154,75 +181,90 @@ union PDPE {
         union {
             unsigned long long Value;
             struct {
-                unsigned long long P : 1;
+                unsigned long long P : 1; // Present
                 unsigned long long Reserved0 : 2;
-                unsigned long long PWT : 1;
-                unsigned long long PCD : 1;
+                unsigned long long PWT : 1; // Page-Level Writethrough
+                unsigned long long PCD : 1; // Page-Level Cache Disable
                 unsigned long long Reserved1 : 4;
-                unsigned long long AVL : 3;
+                unsigned long long AVL : 3; // Available to software
                 unsigned long long PT : 40;
-                unsigned long long Reserved : 12;
+                unsigned long long Reserved2 : 12;
+            } PaeGeneric; // Same for the 4Kb and 2Mb page size
+            struct {
+                unsigned long long P : 1; // Present
+                unsigned long long Reserved0 : 2;
+                unsigned long long PWT : 1; // Page-Level Writethrough
+                unsigned long long PCD : 1; // Page-Level Cache Disable
+                unsigned long long Reserved1 : 4;
+                unsigned long long AVL : 3; // Available to software
+                unsigned long long PT : 40;
+                unsigned long long Reserved2 : 12;
             } Pae4Kb;
             struct {
-                unsigned long long P : 1;
+                unsigned long long P : 1; // Present
                 unsigned long long Reserved0 : 2;
-                unsigned long long PWT : 1;
-                unsigned long long PCD : 1;
+                unsigned long long PWT : 1; // Page-Level Writethrough
+                unsigned long long PCD : 1; // Page-Level Cache Disable
                 unsigned long long Reserved1 : 4;
-                unsigned long long AVL : 3;
+                unsigned long long AVL : 3; // Available to software
                 unsigned long long PT : 40;
-                unsigned long long Reserved : 12;
+                unsigned long long Reserved2 : 12;
             } Pae2Mb;
         } Pae;
     } x32;
     union {
         unsigned long long Value;
         struct {
-            unsigned long long P : 1;
-            unsigned long long RW : 1;
-            unsigned long long US : 1;
-            unsigned long long PWT : 1;
-            unsigned long long PCD : 1;
-            unsigned long long A : 1;
+            unsigned long long Reserved0 : 7;
+            unsigned long long PS : 1; // PageSize bit
+            unsigned long long Reserved1 : 56;
+        } PageSize;
+        struct {
+            unsigned long long P : 1; // Present
+            unsigned long long RW : 1; // Read/Write
+            unsigned long long US : 1; // User/Supervisor
+            unsigned long long PWT : 1; // Page-Level Writethrough
+            unsigned long long PCD : 1; // Page-Level Cache Disable
+            unsigned long long A : 1; // Accessed
             unsigned long long Ignored0 : 1;
-            unsigned long long Zero : 1;
+            unsigned long long PS : 1; // PageSize == 0
             unsigned long long Reserved0 : 1;
-            unsigned long long AVL : 3;
+            unsigned long long AVL : 3; // Available to software
             unsigned long long PD : 40;
             unsigned long long Available : 11;
-            unsigned long long NX : 1;
+            unsigned long long NX : 1; // No Execute
         } Page4Kb;
         struct {
-            unsigned long long P : 1;
-            unsigned long long RW : 1;
-            unsigned long long US : 1;
-            unsigned long long PWT : 1;
-            unsigned long long PCD : 1;
-            unsigned long long A : 1;
+            unsigned long long P : 1; // Present
+            unsigned long long RW : 1; // Read/Write
+            unsigned long long US : 1; // User/Supervisor
+            unsigned long long PWT : 1; // Page-Level Writethrough
+            unsigned long long PCD : 1; // Page-Level Cache Disable
+            unsigned long long A : 1; // Accessed
             unsigned long long Ignored0 : 1;
-            unsigned long long Zero : 1;
+            unsigned long long PS : 1; // PageSize == 0
             unsigned long long Reserved0 : 1;
-            unsigned long long AVL : 3;
+            unsigned long long AVL : 3; // Available to software
             unsigned long long PD : 40;
             unsigned long long Available : 11;
-            unsigned long long NX : 1;
+            unsigned long long NX : 1; // No Execute
         } Page2Mb;
         struct {
-            unsigned long long P : 1;
-            unsigned long long RW : 1;
-            unsigned long long US : 1;
-            unsigned long long PWT : 1;
-            unsigned long long PCD : 1;
-            unsigned long long A : 1;
-            unsigned long long D : 1;
-            unsigned long long One : 1;
-            unsigned long long G : 1;
-            unsigned long long AVL : 3;
-            unsigned long long PAT : 1;
+            unsigned long long P : 1; // Present
+            unsigned long long RW : 1; // Read/Write
+            unsigned long long US : 1; // User/Supervisor
+            unsigned long long PWT : 1; // Page-Level Writethrough
+            unsigned long long PCD : 1; // Page-Level Cache Disable
+            unsigned long long A : 1; // Accessed
+            unsigned long long D : 1; // Dirty
+            unsigned long long PS : 1; // PageSize == 1
+            unsigned long long G : 1; // Global Page
+            unsigned long long AVL : 3; // Available to software
+            unsigned long long PAT : 1; // Page-Attribute Table
             unsigned long long Reserved0 : 17;
             unsigned long long PhysicalPageBase : 22;
             unsigned long long Available : 11;
-            unsigned long long NX : 1;
+            unsigned long long NX : 1; // No Execute
         } Page1Gb;
     } x64;
 };
@@ -232,104 +274,119 @@ union PDE {
         union {
             unsigned int Value;
             struct {
-                unsigned int P : 1;
-                unsigned int RW : 1;
-                unsigned int US : 1;
-                unsigned int PWT : 1;
-                unsigned int PCD : 1;
-                unsigned int A : 1;
+                unsigned int Reserved0 : 7;
+                unsigned int PS : 1; // PageSize bit
+                unsigned int Reserved1 : 24;
+            } PageSize;
+            struct {
+                unsigned int P : 1; // Present
+                unsigned int RW : 1; // Read/Write
+                unsigned int US : 1; // User/Supervisor
+                unsigned int PWT : 1; // Page-Level Writethrough
+                unsigned int PCD : 1; // Page-Level Cache Disable
+                unsigned int A : 1; // Accessed
                 unsigned int Ignored0 : 1;
-                unsigned int Zero : 1;
+                unsigned int PS : 1; // PageSize == 0
                 unsigned int Ignored1 : 1;
-                unsigned int AVL : 3;
+                unsigned int AVL : 3; // Available to software
                 unsigned int PT : 20;
             } Page4Kb;
             struct {
-                unsigned int P : 1;
-                unsigned int RW : 1;
-                unsigned int US : 1;
-                unsigned int PWT : 1;
-                unsigned int PCD : 1;
-                unsigned int A : 1;
-                unsigned int D : 1;
-                unsigned int One : 1;
-                unsigned int G : 1;
-                unsigned int AVL : 3;
-                unsigned int PAT : 1;
+                unsigned int P : 1; // Present
+                unsigned int RW : 1; // Read/Write
+                unsigned int US : 1; // User/Supervisor
+                unsigned int PWT : 1; // Page-Level Writethrough
+                unsigned int PCD : 1; // Page-Level Cache Disable
+                unsigned int A : 1; // Accessed
+                unsigned int D : 1; // Dirty
+                unsigned int PS : 1; // PageSize == 1
+                unsigned int G : 1; // Global Page
+                unsigned int AVL : 3; // Available to software
+                unsigned int PAT : 1; // Page-Attribute Table
                 unsigned int PhysicalPageBaseHigh : 8;
-                unsigned int Zero : 1;
+                unsigned int Reserved0 : 1;
                 unsigned int PhysicalPageBaseLow : 10;
             } Page4Mb;
         } NonPae;
         union {
             unsigned long long Value;
             struct {
-                unsigned long long P : 1;
-                unsigned long long RW : 1;
-                unsigned long long US : 1;
-                unsigned long long PWT : 1;
-                unsigned long long PCD : 1;
-                unsigned long long A : 1;
+                unsigned long long Reserved0 : 7;
+                unsigned long long PS : 1; // PageSize bit
+                unsigned long long Reserved1 : 56;
+            } PageSize;
+            struct {
+                unsigned long long P : 1; // Present
+                unsigned long long RW : 1; // Read/Write
+                unsigned long long US : 1; // User/Supervisor
+                unsigned long long PWT : 1; // Page-Level Writethrough
+                unsigned long long PCD : 1; // Page-Level Cache Disable
+                unsigned long long A : 1; // Accessed
                 unsigned long long Ignored0 : 1;
-                unsigned long long Zero : 1;
+                unsigned long long PS : 1; // PageSize == 0
                 unsigned long long Ignored1 : 1;
-                unsigned long long AVL : 3;
+                unsigned long long AVL : 3; // Available to software
                 unsigned long long PT : 40;
-                unsigned long long Reserved : 11;
-                unsigned long long NX : 1;
+                unsigned long long Reserved0 : 11;
+                unsigned long long NX : 1; // No Execute
             } Page4Kb;
             struct {
-                unsigned long long P : 1;
-                unsigned long long RW : 1;
-                unsigned long long US : 1;
-                unsigned long long PWT : 1;
-                unsigned long long PCD : 1;
-                unsigned long long A : 1;
-                unsigned long long D : 1;
-                unsigned long long One : 1;
-                unsigned long long G : 1;
-                unsigned long long AVL : 3;
-                unsigned long long PAT : 1;
+                unsigned long long P : 1; // Present
+                unsigned long long RW : 1; // Read/Write
+                unsigned long long US : 1; // User/Supervisor
+                unsigned long long PWT : 1; // Page-Level Writethrough
+                unsigned long long PCD : 1; // Page-Level Cache Disable
+                unsigned long long A : 1; // Accessed
+                unsigned long long D : 1; // Dirty
+                unsigned long long PS : 1; // PageSize == 1
+                unsigned long long G : 1; // Global Page
+                unsigned long long AVL : 3; // Available to software
+                unsigned long long PAT : 1; // Page-Attribute Table
                 unsigned long long Reserved0 : 8;
                 unsigned long long PhysicalPageBase : 31;
                 unsigned long long Reserved1 : 11;
-                unsigned long long NX : 1;
+                unsigned long long NX : 1; // No Execute
             } Page2Mb;
         } Pae;
     } x32;
     union {
         unsigned long long Value;
         struct {
-            unsigned long long P : 1;
-            unsigned long long RW : 1;
-            unsigned long long US : 1;
-            unsigned long long PWT : 1;
-            unsigned long long PCD : 1;
-            unsigned long long A : 1;
+            unsigned long long Reserved0 : 7;
+            unsigned long long PS : 1; // PageSize bit
+            unsigned long long Reserved1 : 56;
+        } PageSize;
+        struct {
+            unsigned long long P : 1; // Present
+            unsigned long long RW : 1; // Read/Write
+            unsigned long long US : 1; // User/Supervisor
+            unsigned long long PWT : 1; // Page-Level Writethrough
+            unsigned long long PCD : 1; // Page-Level Cache Disable
+            unsigned long long A : 1; // Accessed
             unsigned long long Ignored0 : 1;
-            unsigned long long Zero : 1;
+            unsigned long long PS : 1; // PageSize == 0
             unsigned long long Ignored1 : 1;
-            unsigned long long AVL : 3;
+            unsigned long long AVL : 3; // Available to software
             unsigned long long PT : 40;
             unsigned long long Available : 11;
-            unsigned long long NX : 1;
+            unsigned long long NX : 1; // No Execute
         } Page4Kb;
         struct {
-            unsigned long long P : 1;
-            unsigned long long RW : 1;
-            unsigned long long US : 1;
-            unsigned long long PWT : 1;
-            unsigned long long PCD : 1;
-            unsigned long long A : 1;
-            unsigned long long D : 1;
-            unsigned long long One : 1;
-            unsigned long long G : 1;
-            unsigned long long AVL : 3;
-            unsigned long long PAT : 1;
+            unsigned long long P : 1; // Present
+            unsigned long long RW : 1; // Read/Write
+            unsigned long long US : 1; // User/Supervisor
+            unsigned long long PWT : 1; // Page-Level Writethrough
+            unsigned long long PCD : 1; // Page-Level Cache Disable
+            unsigned long long A : 1; // Accessed
+            unsigned long long D : 1; // Dirty
+            unsigned long long PS : 1; // PageSize == 1
+            unsigned long long G : 1; // Global Page
+            unsigned long long AVL : 3; // Available to software
+            unsigned long long PAT : 1; // Page-Attribute Table
             unsigned long long Reserved0 : 8;
             unsigned long long PhysicalPageBase : 31;
             unsigned long long Available : 11;
-            unsigned long long NX : 1;
+            unsigned long long NX : 1; // No Execute
         } Page2Mb;
     } x64;
 };
@@ -339,54 +396,54 @@ union PTE {
         union {
             unsigned int Value;
             struct {
-                unsigned int P : 1;
-                unsigned int RW : 1;
-                unsigned int US : 1;
-                unsigned int PWT : 1;
-                unsigned int PCD : 1;
-                unsigned int A : 1;
-                unsigned int D : 1;
-                unsigned int Zero : 1;
-                unsigned int G : 1;
-                unsigned int AVL : 3;
-                unsigned int PT : 20;
+                unsigned int P : 1; // Present
+                unsigned int RW : 1; // Read/Write
+                unsigned int US : 1; // User/Supervisor
+                unsigned int PWT : 1; // Page-Level Writethrough
+                unsigned int PCD : 1; // Page-Level Cache Disable
+                unsigned int A : 1; // Accessed
+                unsigned int D : 1; // Dirty
+                unsigned int PAT : 1; // Page-Attribute Table
+                unsigned int G : 1; // Global Page
+                unsigned int AVL : 3; // Available to software
+                unsigned int PhysicalPageBase : 20;
             } Page4Kb;
         } NonPae;
         union {
             unsigned long long Value;
             struct {
-                unsigned long long P : 1;
-                unsigned long long RW : 1;
-                unsigned long long US : 1;
-                unsigned long long PWT : 1;
-                unsigned long long PCD : 1;
-                unsigned long long A : 1;
-                unsigned long long D : 1;
-                unsigned long long Zero : 1;
-                unsigned long long G : 1;
-                unsigned long long AVL : 3;
+                unsigned long long P : 1; // Present
+                unsigned long long RW : 1; // Read/Write
+                unsigned long long US : 1; // User/Supervisor
+                unsigned long long PWT : 1; // Page-Level Writethrough
+                unsigned long long PCD : 1; // Page-Level Cache Disable
+                unsigned long long A : 1; // Accessed
+                unsigned long long D : 1; // Dirty
+                unsigned long long PAT : 1; // Page-Attribute Table
+                unsigned long long G : 1; // Global Page
+                unsigned long long AVL : 3; // Available to software
                 unsigned long long PT : 40;
-                unsigned long long Reserved : 11;
-                unsigned long long NX : 1;
+                unsigned long long Reserved0 : 11;
+                unsigned long long NX : 1; // No Execute
             } Page4Kb;
         } Pae;
     } x32;
     union {
         unsigned long long Value;
         struct {
-            unsigned long long P : 1;
-            unsigned long long RW : 1;
-            unsigned long long US : 1;
-            unsigned long long PWT : 1;
-            unsigned long long PCD : 1;
-            unsigned long long A : 1;
-            unsigned long long D : 1;
-            unsigned long long PAT : 1;
-            unsigned long long G : 1;
-            unsigned long long AVL : 3;
+            unsigned long long P : 1; // Present
+            unsigned long long RW : 1; // Read/Write
+            unsigned long long US : 1; // User/Supervisor
+            unsigned long long PWT : 1; // Page-Level Writethrough
+            unsigned long long PCD : 1; // Page-Level Cache Disable
+            unsigned long long A : 1; // Accessed
+            unsigned long long D : 1; // Dirty
+            unsigned long long PAT : 1; // Page-Attribute Table
+            unsigned long long G : 1; // Global Page
+            unsigned long long AVL : 3; // Available to software
             unsigned long long PhysicalPageBase : 40;
             unsigned long long Available : 11;
-            unsigned long long NX : 1;
+            unsigned long long NX : 1; // No Execute
         } Page4Kb;
     } x64;
 };

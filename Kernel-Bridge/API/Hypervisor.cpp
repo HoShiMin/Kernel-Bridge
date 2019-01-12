@@ -155,7 +155,7 @@ namespace NestedPaging {
                 Npt->Pde[i][j].x64.Page2Mb.P = TRUE; // Present
                 Npt->Pde[i][j].x64.Page2Mb.RW = TRUE; // Writeable
                 Npt->Pde[i][j].x64.Page2Mb.US = TRUE; // User
-                Npt->Pde[i][j].x64.Page2Mb.One = TRUE; // Large page
+                Npt->Pde[i][j].x64.Page2Mb.PS = TRUE; // Large page
                 Npt->Pde[i][j].x64.Page2Mb.PhysicalPageBase = i * _ARRAYSIZE(Npt->Pde[i]) + j;
             }
         }
