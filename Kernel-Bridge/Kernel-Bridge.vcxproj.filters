@@ -104,6 +104,9 @@
     <ClCompile Include="API\Hypervisor.cpp">
       <Filter>API</Filter>
     </ClCompile>
+    <ClCompile Include="API\PteUtils.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h">
@@ -195,6 +198,9 @@
     </ClInclude>
     <ClInclude Include="..\CommonTypes\DescriptorTables.h">
       <Filter>CommonTypes</Filter>
+    </ClInclude>
+    <ClInclude Include="API\PteUtils.h">
+      <Filter>API</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -156,22 +156,19 @@ public:
     }
 };
 
-void TranslationTest()
+void TranslationTest(PVOID Address)
 {
     using namespace VirtualMemory;
     using namespace PhysicalMemory;
     using namespace KernelShells;
-
-    WdkTypes::PVOID KernelMemory = NULL;
-    KbAllocNonCachedMemory(4096, &KernelMemory);
-    KbFillMemory(KernelMemory, 0x90, 4096);
+    using namespace Processes::MemoryManagement;
 
     VIRTUAL_ADDRESS Va = {};
-    Va.Value = KernelMemory;
+    Va.Value = reinterpret_cast<SIZE_T>(Address);
 
-    printf("Target VA: %p\r\n", (PVOID)KernelMemory);
+    printf("Target VA: %p\r\n", Address);
 
-    VirtualLock(&Va, sizeof(Va));
+    VirtualLock(Address, 1);
 
     using REGS = struct {
         CR3 Cr3;
@@ -192,39 +189,46 @@ void TranslationTest()
     PTE Pte = {};
 
     try {
-        WdkTypes::PVOID pPml4e = PFN_TO_PAGE(Regs.Cr3.x64.Bitmap.PML4) + Va.x64.Page4Kb.PageMapLevel4Offset * sizeof(Pml4e);
+        WdkTypes::PVOID pPml4e = PFN_TO_PAGE(Regs.Cr3.x64.Bitmap.PML4) + Va.x64.NonPageSize.Page4Kb.PageMapLevel4Offset * sizeof(Pml4e);
         WdkTypes::PVOID VirtPml4e = PhysMem::GetVirtualForPhysical(pPml4e);
         Pml4e.x64.Value = VirtMem::ReadQword(VirtPml4e);
         printf("PML4E: VA = %p, PA = %p\r\n", (PVOID)VirtPml4e, (PVOID)pPml4e);
-        Pml4e.x64.Page4Kb.US = 1;
+        //Pml4e.x64.Page4Kb.US = 1;
         VirtMem::WriteQword(VirtPml4e, Pml4e.x64.Value);
 
-        WdkTypes::PVOID pPdpe = PFN_TO_PAGE(Pml4e.x64.Page4Kb.PDP) + Va.x64.Page4Kb.PageDirectoryPointerOffset * sizeof(Pdpe);
+        WdkTypes::PVOID pPdpe = PFN_TO_PAGE(Pml4e.x64.Page4Kb.PDP) + Va.x64.NonPageSize.Page4Kb.PageDirectoryPointerOffset * sizeof(Pdpe);
         WdkTypes::PVOID VirtPdpe = PhysMem::GetVirtualForPhysical(pPdpe);
         Pdpe.x64.Value = VirtMem::ReadQword(VirtPdpe);
         printf("PDPE: VA = %p, PA = %p\r\n", (PVOID)VirtPdpe, (PVOID)pPdpe);
-        Pdpe.x64.Page4Kb.US = 1;
+        //Pdpe.x64.Page4Kb.US = 1;
         VirtMem::WriteQword(VirtPdpe, Pdpe.x64.Value);
 
-        WdkTypes::PVOID pPde = PFN_TO_PAGE(Pdpe.x64.Page4Kb.PD) + Va.x64.Page4Kb.PageDirectoryOffset * sizeof(Pde);
+        WdkTypes::PVOID pPde = PFN_TO_PAGE(Pdpe.x64.NonPageSize.Page4Kb.PD) + Va.x64.NonPageSize.Page4Kb.PageDirectoryOffset * sizeof(Pde);
         WdkTypes::PVOID VirtPde = PhysMem::GetVirtualForPhysical(pPde);
         Pde.x64.Value = VirtMem::ReadQword(VirtPde);
         printf("PDE: VA = %p, PA = %p\r\n", (PVOID)VirtPde, (PVOID)pPde);
-        Pde.x64.Page4Kb.US = 1;
+        //Pde.x64.Page4Kb.US = 1;
         VirtMem::WriteQword(VirtPde, Pde.x64.Value);
 
-        WdkTypes::PVOID pPte = PFN_TO_PAGE(Pde.x64.Page4Kb.PT) + Va.x64.Page4Kb.PageTableOffset * sizeof(Pte);
+        WdkTypes::PVOID pPte = PFN_TO_PAGE(Pde.x64.Page4Kb.PT) + Va.x64.NonPageSize.Page4Kb.PageTableOffset * sizeof(Pte);
         WdkTypes::PVOID VirtPte = PhysMem::GetVirtualForPhysical(pPte);
         Pte.x64.Value = VirtMem::ReadQword(VirtPte);
         printf("PTE: VA = %p, PA = %p\r\n", (PVOID)VirtPte, (PVOID)pPte);
-        Pte.x64.Page4Kb.US = 1;
+        //Pte.x64.Page4Kb.US = 1;
+        printf("> AVL: %i, G: %i, A: %i, D: %i\n", (int)Pte.x64.Page4Kb.AVL, (int)Pte.x64.Page4Kb.G, (int)Pte.x64.Page4Kb.A, (int)Pte.x64.Page4Kb.D);
+        Pte.x64.Page4Kb.AVL = 0b101; // Trigger CoW
         VirtMem::WriteQword(VirtPte, Pte.x64.Value);
 
-        WdkTypes::PVOID PhysicalAddress = PFN_TO_PAGE(Pte.x64.Page4Kb.PhysicalPageBase) + Va.x64.Page4Kb.PageOffset;
+        WdkTypes::PVOID PhysicalAddress = PFN_TO_PAGE(Pte.x64.Page4Kb.PhysicalPageBase) + Va.x64.NonPageSize.Page4Kb.PageOffset;
         WdkTypes::PVOID ValidPhysicalAddress = PhysMem::GetPhysAddress(Va.Value);
+        printf("PA = 0x%llX, VPA = 0x%llX\n", PhysicalAddress, ValidPhysicalAddress);
 
-        PULONG KMem = (PULONG)KernelMemory;
-        *KMem = 0x1EE7C0DE;
+        PULONG KMem = (PULONG)Address;
+        *KMem = *KMem;
+
+        PhysicalAddress = PFN_TO_PAGE(Pte.x64.Page4Kb.PhysicalPageBase) + Va.x64.NonPageSize.Page4Kb.PageOffset;
+        ValidPhysicalAddress = PhysMem::GetPhysAddress(Va.Value);
+        printf("PA = 0x%llX, VPA = 0x%llX\n", PhysicalAddress, ValidPhysicalAddress);
 
         if (PhysicalAddress == ValidPhysicalAddress)
             printf("Addresses are matches, PA = 0x%llX\n", PhysicalAddress);
@@ -233,7 +237,7 @@ void TranslationTest()
         printf("LE: 0x%X\r\n", LastError);
     }
 
-    KbFreeNonCachedMemory(KernelMemory, 4096);
+    //KbFreeNonCachedMemory(KernelMemory, 4096);
 }
 
 void SmmTest() {
@@ -289,7 +293,13 @@ int main() {
         L"C:\\Temp\\Kernel-Bridge\\Kernel-Bridge.sys",
         L"260000" // Altitude of minifilter
     )) {
-        if (Hypervisor::KbVmmEnable()) {
+        using namespace Processes::MemoryManagement;
+        BYTE Buffer[8] = {};
+        
+        PVOID Addr = GetProcAddress(GetModuleHandle(L"kernel32.dll"), "SetLastError");
+        TranslationTest(Addr);
+
+        if (false && Hypervisor::KbVmmEnable()) {
             printf("VMM enabled!\r\n");
             while (true) {
                 print_cpuid();

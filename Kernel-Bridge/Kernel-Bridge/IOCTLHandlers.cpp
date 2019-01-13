@@ -7,7 +7,10 @@
 #include "IOCTLHandlers.h"
 #include "LoadableModules.h"
 
+#include "PTE.h"
+
 #include "../API/MemoryUtils.h"
+#include "../API/PteUtils.h"
 #include "../API/ProcessesUtils.h"
 #include "../API/SectionsUtils.h"
 #include "../API/IO.h"
@@ -624,7 +627,6 @@ namespace
             SrcProcess,
             DestProcess,
             Input->NeedProbeAndLock,
-            static_cast<KPROCESSOR_MODE>(Input->ProbeAccessMode),
             static_cast<KPROCESSOR_MODE>(Input->MapToAddressSpace),
             Input->Protect,
             static_cast<MEMORY_CACHING_TYPE>(Input->CacheType),
@@ -743,7 +745,6 @@ namespace
             DestProcess,
             reinterpret_cast<PVOID>(Input->VirtualAddress),
             Input->Size,
-            static_cast<KPROCESSOR_MODE>(Input->ProbeAccessMode),
             static_cast<KPROCESSOR_MODE>(Input->MapToAddressSpace),
             Input->Protect,
             static_cast<MEMORY_CACHING_TYPE>(Input->CacheType),
@@ -1370,10 +1371,10 @@ namespace
     {
         UNREFERENCED_PARAMETER(ResponseLength);
 
-        if (RequestInfo->InputBufferSize != sizeof(KB_READ_WRITE_PROCESS_MEMORY_IN))
+        if (RequestInfo->InputBufferSize != sizeof(KB_READ_PROCESS_MEMORY_IN))
             return STATUS_INFO_LENGTH_MISMATCH;
 
-        auto Input = static_cast<PKB_READ_WRITE_PROCESS_MEMORY_IN>(RequestInfo->InputBuffer);
+        auto Input = static_cast<PKB_READ_PROCESS_MEMORY_IN>(RequestInfo->InputBuffer);
         if (!Input) return STATUS_INVALID_PARAMETER;
 
         HANDLE ProcessId = Input->ProcessId ? reinterpret_cast<HANDLE>(Input->ProcessId) : PsGetCurrentProcessId();
@@ -1384,8 +1385,7 @@ namespace
             Process,
             reinterpret_cast<PVOID>(Input->BaseAddress),
             reinterpret_cast<PVOID>(Input->Buffer),
-            Input->Size,
-            static_cast<KPROCESSOR_MODE>(Input->AccessMode)
+            Input->Size
         );
 
         ObDereferenceObject(Process);
@@ -1397,22 +1397,39 @@ namespace
     {
         UNREFERENCED_PARAMETER(ResponseLength);
 
-        if (RequestInfo->InputBufferSize != sizeof(KB_READ_WRITE_PROCESS_MEMORY_IN))
+        if (RequestInfo->InputBufferSize != sizeof(KB_WRITE_PROCESS_MEMORY_IN))
             return STATUS_INFO_LENGTH_MISMATCH;
 
-        auto Input = static_cast<PKB_READ_WRITE_PROCESS_MEMORY_IN>(RequestInfo->InputBuffer);
+        auto Input = static_cast<PKB_WRITE_PROCESS_MEMORY_IN>(RequestInfo->InputBuffer);
         if (!Input) return STATUS_INVALID_PARAMETER;
 
         HANDLE ProcessId = Input->ProcessId ? reinterpret_cast<HANDLE>(Input->ProcessId) : PsGetCurrentProcessId();
         PEPROCESS Process = Processes::Descriptors::GetEPROCESS(ProcessId);
         if (!Process) return STATUS_UNSUCCESSFUL;
 
+        PVOID Address = reinterpret_cast<PVOID>(Input->BaseAddress);
+        SIZE_T Size = Input->Size;
+        if (Input->PerformCopyOnWrite) {
+            using namespace Pte;
+            PVOID PageCounter = Address;
+            while (PageCounter < reinterpret_cast<PVOID>(reinterpret_cast<SIZE_T>(Address) + Size)) {   
+                ULONG PageSize = 0;
+                BOOLEAN Status = TriggerCopyOnWrite(Process, PageCounter, &PageSize);
+                if (!Status || !PageSize) {
+                    ObDereferenceObject(Process);
+                    return STATUS_PARTIAL_COPY;
+                }
+                PageCounter = reinterpret_cast<PVOID>(
+                    reinterpret_cast<SIZE_T>(ALIGN_DOWN_POINTER_BY(PageCounter, PageSize)) + PageSize
+                );
+            };
+        }
+
         NTSTATUS Status = Processes::MemoryManagement::WriteProcessMemory(
             Process,
-            reinterpret_cast<PVOID>(Input->BaseAddress),
+            Address,
             reinterpret_cast<PVOID>(Input->Buffer),
-            Input->Size,
-            static_cast<KPROCESSOR_MODE>(Input->AccessMode)
+            Input->Size
         );
 
         ObDereferenceObject(Process);

@@ -401,12 +401,11 @@ namespace Processes {
         };
 
         _IRQL_requires_max_(APC_LEVEL)
-        NTSTATUS OperateProcessMemory(
+        static NTSTATUS OperateProcessMemory(
             PEPROCESS Process,
             __in_data_source(USER_MODE) PVOID BaseAddress,
             PVOID Buffer,
             ULONG Size,
-            KPROCESSOR_MODE AccessMode,
             MEMORY_OPERATION_TYPE Operation
         ) {
             if (!Process) return STATUS_INVALID_PARAMETER_1;
@@ -436,8 +435,7 @@ namespace Processes {
                 Process,
                 NULL,
                 BaseAddress,
-                Size,
-                AccessMode
+                Size
             );
 
             if (!NT_SUCCESS(Status)) { 
@@ -453,8 +451,7 @@ namespace Processes {
                 NULL,
                 NULL,
                 Buffer,
-                Size,
-                AccessMode
+                Size
             );
 
             if (!NT_SUCCESS(Status)) {
@@ -490,10 +487,9 @@ namespace Processes {
             PEPROCESS Process,
             __in_data_source(USER_MODE) IN PVOID BaseAddress,
             OUT PVOID Buffer,
-            ULONG Size,
-            KPROCESSOR_MODE AccessMode
+            ULONG Size
         ) {
-            return OperateProcessMemory(Process, BaseAddress, Buffer, Size, AccessMode, MemRead);
+            return OperateProcessMemory(Process, BaseAddress, Buffer, Size, MemRead);
         }
 
         _IRQL_requires_max_(APC_LEVEL)
@@ -501,10 +497,9 @@ namespace Processes {
             PEPROCESS Process,
             __in_data_source(USER_MODE) OUT PVOID BaseAddress,
             IN PVOID Buffer,
-            ULONG Size,
-            KPROCESSOR_MODE AccessMode
+            ULONG Size
         ) {
-            return OperateProcessMemory(Process, BaseAddress, Buffer, Size, AccessMode, MemWrite);
+            return OperateProcessMemory(Process, BaseAddress, Buffer, Size, MemWrite);
         }
     }
 

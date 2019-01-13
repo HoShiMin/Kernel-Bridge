@@ -461,7 +461,6 @@ namespace Mdl {
         OPTIONAL PEPROCESS SrcProcess,
         OPTIONAL PEPROCESS DestProcess,
         BOOLEAN NeedProbeAndLock,
-        OPTIONAL KPROCESSOR_MODE ProbeAccessMode,
         KPROCESSOR_MODE MapToAddressSpace, 
         ULONG Protect,
         MEMORY_CACHING_TYPE CacheType,
@@ -486,9 +485,9 @@ namespace Mdl {
             // Lock and prepare pages in target process:
             if (NeedProbeAndLock) {
                 if (!SrcProcess || SrcProcess == CurrentProcess)
-                    MmProbeAndLockPages(Mdl, ProbeAccessMode, IoReadAccess);
+                    MmProbeAndLockPages(Mdl, KernelMode, IoReadAccess);
                 else
-                    MmProbeAndLockProcessPages(Mdl, SrcProcess, ProbeAccessMode, IoReadAccess);
+                    MmProbeAndLockProcessPages(Mdl, SrcProcess, KernelMode, IoReadAccess);
                 IsLocked = TRUE;
             }
 
@@ -533,7 +532,6 @@ namespace Mdl {
         OPTIONAL PEPROCESS DestProcess,
         IN PVOID VirtualAddress,
         ULONG Size,
-        KPROCESSOR_MODE ProbeAccessMode,
         KPROCESSOR_MODE MapToAddressSpace,
         ULONG Protect,
         MEMORY_CACHING_TYPE CacheType,
@@ -552,7 +550,6 @@ namespace Mdl {
             SrcProcess,
             DestProcess,
             TRUE,
-            ProbeAccessMode,
             MapToAddressSpace,
             Protect,
             CacheType,

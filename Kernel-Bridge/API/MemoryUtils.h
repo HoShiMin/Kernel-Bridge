@@ -196,7 +196,6 @@ namespace Mdl {
         OPTIONAL PEPROCESS SrcProcess, // Set NULL to use the address space of current process 
         OPTIONAL PEPROCESS DestProcess, // Set NULL to use the address space of current process
         BOOLEAN NeedProbeAndLock,
-        OPTIONAL KPROCESSOR_MODE ProbeAccessMode = KernelMode, // Uses only if NeedProbeAndLock is TRUE
         KPROCESSOR_MODE MapToAddressSpace = KernelMode,
         ULONG Protect = PAGE_READWRITE,
         MEMORY_CACHING_TYPE CacheType = MmNonCached,
@@ -220,7 +219,6 @@ namespace Mdl {
         OPTIONAL PEPROCESS DestProcess,
         IN PVOID VirtualAddress, // Address in SrcProcess to map in the DestProcess
         ULONG Size,
-        KPROCESSOR_MODE ProbeAccessMode = KernelMode,
         KPROCESSOR_MODE MapToAddressSpace = KernelMode,
         ULONG Protect = PAGE_READWRITE,
         MEMORY_CACHING_TYPE CacheType = MmNonCached,

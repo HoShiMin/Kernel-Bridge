@@ -1,6 +1,6 @@
 #pragma once
 
-constexpr int KB_API_VERSION = 7;
+constexpr int KB_API_VERSION = 8;
 
 namespace Ctls {
     enum KbCtlIndices {
@@ -312,7 +312,6 @@ DECLARE_STRUCT(KB_MAP_MDL_IN, {
     OPTIONAL UINT64 DestProcessId;
     WdkTypes::PMDL Mdl;
     BOOLEAN NeedProbeAndLock;
-    WdkTypes::KPROCESSOR_MODE ProbeAccessMode;
     WdkTypes::KPROCESSOR_MODE MapToAddressSpace;
     ULONG Protect;
     WdkTypes::MEMORY_CACHING_TYPE CacheType;
@@ -328,7 +327,6 @@ DECLARE_STRUCT(KB_MAP_MEMORY_IN, {
     OPTIONAL UINT64 DestProcessId;
     WdkTypes::PVOID VirtualAddress;
     ULONG Size;
-    WdkTypes::KPROCESSOR_MODE ProbeAccessMode;
     WdkTypes::KPROCESSOR_MODE MapToAddressSpace;
     ULONG Protect;
     WdkTypes::MEMORY_CACHING_TYPE CacheType;
@@ -529,12 +527,19 @@ DECLARE_STRUCT(KB_UNSECURE_VIRTUAL_MEMORY_IN, {
     ULONG ProcessId;
 });
 
-DECLARE_STRUCT(KB_READ_WRITE_PROCESS_MEMORY_IN, {
+DECLARE_STRUCT(KB_READ_PROCESS_MEMORY_IN, {
     UINT64 ProcessId;
     WdkTypes::PVOID BaseAddress;
     WdkTypes::PVOID Buffer;
     ULONG Size;
-    WdkTypes::KPROCESSOR_MODE AccessMode;
+});
+
+DECLARE_STRUCT(KB_WRITE_PROCESS_MEMORY_IN, {
+    UINT64 ProcessId;
+    WdkTypes::PVOID BaseAddress;
+    WdkTypes::PVOID Buffer;
+    ULONG Size;
+    BOOLEAN PerformCopyOnWrite;
 });
 
 DECLARE_STRUCT(KB_SUSPEND_RESUME_PROCESS_IN, {

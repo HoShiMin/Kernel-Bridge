@@ -489,7 +489,6 @@ namespace Mdl {
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PMDL Mdl,
         BOOLEAN NeedProbeAndLock,
-        WdkTypes::KPROCESSOR_MODE ProbeAccessMode,
         WdkTypes::KPROCESSOR_MODE MapToAddressSpace,
         ULONG Protect,
         WdkTypes::MEMORY_CACHING_TYPE CacheType,
@@ -502,7 +501,6 @@ namespace Mdl {
         Input.DestProcessId = DestProcessId;
         Input.Mdl = Mdl;
         Input.NeedProbeAndLock = NeedProbeAndLock;
-        Input.ProbeAccessMode = ProbeAccessMode;
         Input.MapToAddressSpace = MapToAddressSpace;
         Input.Protect = Protect;
         Input.CacheType = CacheType;
@@ -549,7 +547,6 @@ namespace Mdl {
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PVOID VirtualAddress,
         ULONG Size,
-        WdkTypes::KPROCESSOR_MODE ProbeAccessMode,
         WdkTypes::KPROCESSOR_MODE MapToAddressSpace,
         ULONG Protect,
         WdkTypes::MEMORY_CACHING_TYPE CacheType,
@@ -562,7 +559,6 @@ namespace Mdl {
         Input.DestProcessId = DestProcessId;
         Input.VirtualAddress = VirtualAddress;
         Input.Size = Size;
-        Input.ProbeAccessMode = ProbeAccessMode;
         Input.MapToAddressSpace = MapToAddressSpace;
         Input.Protect = Protect;
         Input.CacheType = CacheType;
@@ -1000,16 +996,14 @@ namespace Processes {
             ULONG ProcessId,
             IN WdkTypes::PVOID BaseAddress,
             OUT PVOID Buffer,
-            ULONG Size,
-            WdkTypes::KPROCESSOR_MODE AccessMode
+            ULONG Size
         ) {
             if (!ProcessId || !BaseAddress || !Buffer || !Size) return FALSE;
-            KB_READ_WRITE_PROCESS_MEMORY_IN Input = {};
+            KB_READ_PROCESS_MEMORY_IN Input = {};
             Input.ProcessId = ProcessId;
             Input.BaseAddress = BaseAddress;
             Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
             Input.Size = Size;
-            Input.AccessMode = AccessMode;
             return KbSendRequest(Ctls::KbReadProcessMemory, &Input, sizeof(Input));
         }
 
@@ -1018,15 +1012,15 @@ namespace Processes {
             OUT WdkTypes::PVOID BaseAddress,
             IN PVOID Buffer,
             ULONG Size,
-            WdkTypes::KPROCESSOR_MODE AccessMode
+            BOOLEAN PerformCopyOnWrite
         ) {
             if (!ProcessId || !BaseAddress || !Buffer || !Size) return FALSE;
-            KB_READ_WRITE_PROCESS_MEMORY_IN Input = {};
+            KB_WRITE_PROCESS_MEMORY_IN Input = {};
             Input.ProcessId = ProcessId;
             Input.BaseAddress = BaseAddress;
             Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
             Input.Size = Size;
-            Input.AccessMode = AccessMode;
+            Input.PerformCopyOnWrite = PerformCopyOnWrite;
             return KbSendRequest(Ctls::KbWriteProcessMemory, &Input, sizeof(Input));
         }
 

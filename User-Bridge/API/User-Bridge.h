@@ -126,7 +126,6 @@ namespace Mdl {
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PMDL Mdl,
         BOOLEAN NeedProbeAndLock,
-        OPTIONAL WdkTypes::KPROCESSOR_MODE ProbeAccessMode = WdkTypes::UserMode,
         WdkTypes::KPROCESSOR_MODE MapToAddressSpace = WdkTypes::UserMode,
         ULONG Protect = PAGE_READWRITE,
         WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
@@ -150,7 +149,6 @@ namespace Mdl {
         OPTIONAL UINT64 DestProcessId,
         WdkTypes::PVOID VirtualAddress,
         ULONG Size,
-        WdkTypes::KPROCESSOR_MODE ProbeAccessMode = WdkTypes::UserMode,
         WdkTypes::KPROCESSOR_MODE MapToAddressSpace = WdkTypes::UserMode,
         ULONG Protect = PAGE_READWRITE,
         WdkTypes::MEMORY_CACHING_TYPE CacheType = WdkTypes::MmNonCached,
@@ -328,8 +326,7 @@ namespace Processes {
             ULONG ProcessId,
             IN WdkTypes::PVOID BaseAddress,
             OUT PVOID Buffer,
-            ULONG Size,
-            WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode
+            ULONG Size
         );
 
         BOOL WINAPI KbWriteProcessMemory(
@@ -337,7 +334,7 @@ namespace Processes {
             OUT WdkTypes::PVOID BaseAddress,
             IN PVOID Buffer,
             ULONG Size,
-            WdkTypes::KPROCESSOR_MODE AccessMode = WdkTypes::UserMode
+            BOOLEAN PerformCopyOnWrite = TRUE
         );
 
         BOOL WINAPI KbGetProcessCr3Cr4(ULONG ProcessId, OUT OPTIONAL PUINT64 Cr3, OUT OPTIONAL PUINT64 Cr4);

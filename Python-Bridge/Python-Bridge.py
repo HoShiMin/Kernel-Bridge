@@ -5,7 +5,7 @@ from ctypes import *
 
 
 class KernelBridge:
-    __api_version = 7
+    __api_version = 8
 
     class KProcessorMode(enum.Enum):
         kernel_mode = 0
@@ -215,8 +215,8 @@ class KernelBridge:
                 c_uint(lock_operation)
             )
 
-        def map_mdl(self, src_pid, dst_pid, mdl, need_probe_and_lock, probe_access_mode,
-                    map_to_address_space, protect, cache_type, user_requested_address):
+        def map_mdl(self, src_pid, dst_pid, mdl, need_probe_and_lock, map_to_address_space,
+                    protect, cache_type, user_requested_address):
             ptr = c_uint64()
             status = self.__kb.KbMapMdl(
                 byref(ptr),
@@ -224,7 +224,6 @@ class KernelBridge:
                 c_uint64(dst_pid),
                 c_uint64(mdl),
                 c_byte(need_probe_and_lock),
-                c_uint(probe_access_mode),
                 c_uint(map_to_address_space),
                 c_uint(protect),
                 c_uint(cache_type),
@@ -248,8 +247,8 @@ class KernelBridge:
             _fields_ = [("MappedAddress", c_uint64),
                         ("Mdl", c_uint64)]
 
-        def map_memory(self, src_pid, dst_pid, virtual_address, size, probe_access_mode,
-                       map_to_address_space, protect, cache_type, user_requested_address):
+        def map_memory(self, src_pid, dst_pid, virtual_address, size, map_to_address_space,
+                       protect, cache_type, user_requested_address):
             mapping_info = self.MappingInfo()
             status = self.__kb.KbMapMemory(
                 byref(mapping_info),
@@ -257,7 +256,6 @@ class KernelBridge:
                 c_uint64(dst_pid),
                 c_uint64(virtual_address),
                 c_uint(size),
-                c_uint(probe_access_mode),
                 c_uint(map_to_address_space),
                 c_uint(protect),
                 c_uint(cache_type),
@@ -487,13 +485,14 @@ class KernelBridge:
                 c_uint(access_mode)
             )
 
-        def write_process_memory(self, pid, address, buffer, size, access_mode):
+        def write_process_memory(self, pid, address, buffer, size, access_mode, perform_copy_on_write):
             return self.__kb.KbWriteProcessMemory(
                 c_uint(pid),
                 c_uint64(address),
                 c_void_p(buffer),
                 c_uint(size),
-                c_uint(access_mode)
+                c_uint(access_mode),
+                c_byte(perform_copy_on_write)
             )
 
         def get_process_cr3_cr4(self, pid):

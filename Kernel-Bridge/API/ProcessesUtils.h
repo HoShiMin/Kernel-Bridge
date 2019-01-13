@@ -181,8 +181,7 @@ namespace Processes {
             PEPROCESS Process,
             __in_data_source(USER_MODE) IN PVOID BaseAddress, // In the target process
             OUT PVOID Buffer, // User or kernel address in the current process
-            ULONG Size,
-            KPROCESSOR_MODE AccessMode = UserMode
+            ULONG Size
         );
 
         _IRQL_requires_max_(APC_LEVEL)
@@ -190,8 +189,7 @@ namespace Processes {
             PEPROCESS Process,
             __in_data_source(USER_MODE) OUT PVOID BaseAddress, // In the target process
             IN PVOID Buffer, // User or kernel address in the current process
-            ULONG Size,
-            KPROCESSOR_MODE AccessMode = UserMode
+            ULONG Size
         );
     }
 

@@ -146,10 +146,10 @@ namespace NestedPaging {
         Npt->Pml4e.x64.Page2Mb.PDP = reinterpret_cast<UINT64>(GetPhysicalAddress(&Npt->Pdpe[0])) >> PAGE_SHIFT;
 
         for (int i = 0; i < _ARRAYSIZE(Npt->Pdpe); i++) {
-            Npt->Pdpe[i].x64.Page2Mb.P = TRUE; // Present
-            Npt->Pdpe[i].x64.Page2Mb.RW = TRUE; // Writeable
-            Npt->Pdpe[i].x64.Page2Mb.US = TRUE; // User
-            Npt->Pdpe[i].x64.Page2Mb.PD = reinterpret_cast<UINT64>(GetPhysicalAddress(&Npt->Pde[i][0])) >> PAGE_SHIFT;
+            Npt->Pdpe[i].x64.NonPageSize.Page2Mb.P = TRUE; // Present
+            Npt->Pdpe[i].x64.NonPageSize.Page2Mb.RW = TRUE; // Writeable
+            Npt->Pdpe[i].x64.NonPageSize.Page2Mb.US = TRUE; // User
+            Npt->Pdpe[i].x64.NonPageSize.Page2Mb.PD = reinterpret_cast<UINT64>(GetPhysicalAddress(&Npt->Pde[i][0])) >> PAGE_SHIFT;
 
             for (int j = 0; j < _ARRAYSIZE(Npt->Pde[i]); j++) {
                 Npt->Pde[i][j].x64.Page2Mb.P = TRUE; // Present
