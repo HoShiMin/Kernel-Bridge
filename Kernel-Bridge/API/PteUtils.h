@@ -23,4 +23,10 @@ namespace Pte {
 
     _IRQL_requires_max_(APC_LEVEL)
     BOOLEAN TriggerCopyOnWrite(PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize = NULL);
+
+    _IRQL_requires_max_(APC_LEVEL)
+    BOOLEAN IsPagePresent(PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize);
+
+    //_IRQL_requires_max_(APC_LEVEL)
+    //BOOLEAN IsMemoryRangePresent(PEPROCESS Process, PVOID Address, SIZE_T Size);
 }

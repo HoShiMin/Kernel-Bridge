@@ -1,5 +1,7 @@
 #include <ntifs.h>
 
+#include <intrin.h>
+
 #include "MemoryUtils.h"
 #include "PTE.h"
 #include "PteUtils.h"
@@ -205,4 +207,72 @@ namespace Pte {
 
         return Status;
     }
+
+    _IRQL_requires_max_(APC_LEVEL)
+    BOOLEAN IsPagePresent(PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize) {
+        if (!Process) return FALSE;
+        BOOLEAN NeedToAttach = Process != PsGetCurrentProcess();
+        KAPC_STATE ApcState;
+        if (NeedToAttach)
+            KeStackAttachProcess(Process, &ApcState);
+
+        BOOLEAN IsPresent = FALSE;
+        PAGE_TABLES_INFO Info = {};
+        if (GetPageTables(Address, &Info)) __try {
+
+            if (PageSize) *PageSize = 0;
+
+            switch (Info.Type) {
+            case PAGE_TABLES_INFO::pt32NonPaePage4Kb:
+                // PDE -> PTE -> PA:
+                if (PageSize) *PageSize = 4096;
+                IsPresent = Info.Pte->x32.NonPae.Page4Kb.P;
+                break;
+            case PAGE_TABLES_INFO::pt32NonPaePage4Mb:
+                // PDE -> PA:
+                if (PageSize) *PageSize = 4096 * 1024;
+                IsPresent = Info.Pde->x32.NonPae.Page4Mb.P;
+                break;
+            case PAGE_TABLES_INFO::pt32PaePage4Kb:
+                // PDPE -> PDE -> PTE -> PA:
+                if (PageSize) *PageSize = 4096;
+                IsPresent = Info.Pte->x32.Pae.Page4Kb.P;
+                break;
+            case PAGE_TABLES_INFO::pt32PaePage2Mb:
+                // PDPE -> PDE -> PA:
+                if (PageSize) *PageSize = 2048 * 1024;
+                IsPresent = Info.Pde->x32.Pae.Page2Mb.P;
+                break;
+            case PAGE_TABLES_INFO::pt64Page4Kb:
+                // PML4E -> PDPE -> PDE -> PTE -> PA:
+                if (PageSize) *PageSize = 4096;
+                IsPresent = Info.Pte->x64.Page4Kb.P;
+                break;
+            case PAGE_TABLES_INFO::pt64Page2Mb:
+                // PML4E -> PDPE -> PDE -> PA:
+                if (PageSize) *PageSize = 2048 * 1024;
+                IsPresent = Info.Pde->x64.Page2Mb.P;
+                break;
+            case PAGE_TABLES_INFO::pt64Page1Gb:
+                // PML4E -> PDPE -> PA:
+                if (PageSize) *PageSize = 1024 * 1024 * 1024;
+                IsPresent = Info.Pdpe->x64.PageSize.Page1Gb.P;
+                break;
+            }
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            IsPresent = FALSE;
+        }
+
+        if (NeedToAttach)
+            KeUnstackDetachProcess(&ApcState);
+
+        return IsPresent;
+    }
+
+    //_IRQL_requires_max_(APC_LEVEL)
+    //BOOLEAN IsMemoryRangePresent(PEPROCESS Process, PVOID Address, SIZE_T Size) {
+    //    BOOLEAN IsRangePresent = FALSE;
+    //    return TRUE;
+    //}
 }

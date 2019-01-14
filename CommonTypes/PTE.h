@@ -46,7 +46,9 @@
          }
 */
 
-#define PFN_TO_PAGE(pfn) (pfn << 12)
+// 1 << 12 == 4096:
+#define PFN_TO_PAGE(pfn)  ((pfn)  << 12)
+#define PAGE_TO_PFN(page) ((page) >> 12)
 
 #pragma pack(push, 1)
 union VIRTUAL_ADDRESS {
@@ -400,7 +402,7 @@ union PTE {
                 unsigned long long PAT : 1; // Page-Attribute Table
                 unsigned long long G : 1; // Global Page
                 unsigned long long AVL : 3; // Available to software
-                unsigned long long PT : 40;
+                unsigned long long PhysicalPageBase : 40;
                 unsigned long long Reserved0 : 11;
                 unsigned long long NX : 1; // No Execute
             } Page4Kb;
