@@ -22,11 +22,14 @@ namespace Pte {
     BOOLEAN GetPageTables(PVOID Address, OUT PAGE_TABLES_INFO* Info);
 
     _IRQL_requires_max_(APC_LEVEL)
-    BOOLEAN TriggerCopyOnWrite(PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize = NULL);
+    BOOLEAN TriggerCopyOnWrite(OPTIONAL PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize = NULL);
 
     _IRQL_requires_max_(APC_LEVEL)
-    BOOLEAN IsPagePresent(PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize);
+    BOOLEAN IsPagePresent(PVOID Address, OPTIONAL OUT PULONG PageSize);
 
-    //_IRQL_requires_max_(APC_LEVEL)
-    //BOOLEAN IsMemoryRangePresent(PEPROCESS Process, PVOID Address, SIZE_T Size);
+    _IRQL_requires_max_(APC_LEVEL)
+    BOOLEAN IsProcessPagePresent(OPTIONAL PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize);
+
+    _IRQL_requires_max_(APC_LEVEL)
+    BOOLEAN IsMemoryRangePresent(OPTIONAL PEPROCESS Process, PVOID Address, SIZE_T Size);
 }

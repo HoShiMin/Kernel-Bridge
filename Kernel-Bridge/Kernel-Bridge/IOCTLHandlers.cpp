@@ -477,14 +477,21 @@ namespace
 
         if (!Input->Size) return STATUS_SUCCESS;
 
-        VirtualMemory::CopyMemory(
-            reinterpret_cast<PVOID>(Input->Dest),
-            reinterpret_cast<PVOID>(Input->Src),
-            Input->Size, 
-            Input->Intersects
-        );
+        BOOLEAN Status = FALSE; 
+        __try {
+            Status = VirtualMemory::CopyMemory(
+                reinterpret_cast<PVOID>(Input->Dest),
+                reinterpret_cast<PVOID>(Input->Src),
+                Input->Size,
+                Input->Intersects,
+                TRUE
+            );
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            return STATUS_UNSUCCESSFUL;
+        }
 
-        return STATUS_SUCCESS;
+        return Status ? STATUS_SUCCESS : STATUS_MEMORY_NOT_ALLOCATED;
     }
 
     NTSTATUS FASTCALL KbFillMemory(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength) 
@@ -497,7 +504,14 @@ namespace
         auto Input = static_cast<PKB_FILL_MEMORY_IN>(RequestInfo->InputBuffer);
         if (!Input || !Input->Address) return STATUS_INVALID_PARAMETER;
 
-        RtlFillMemory(reinterpret_cast<PVOID>(Input->Address), Input->Size, Input->Filler);
+        if (!Pte::IsMemoryRangePresent(NULL, reinterpret_cast<PVOID>(Input->Address), Input->Size))
+            return STATUS_MEMORY_NOT_ALLOCATED;
+
+        __try {
+            RtlFillMemory(reinterpret_cast<PVOID>(Input->Address), Input->Size, Input->Filler);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            return STATUS_UNSUCCESSFUL;
+        }
 
         return STATUS_SUCCESS;
     }
@@ -512,13 +526,25 @@ namespace
         auto Input = static_cast<PKB_EQUAL_MEMORY_IN>(RequestInfo->InputBuffer);
         if (!Input || !Input->Src || !Input->Dest || !RequestInfo->OutputBuffer) return STATUS_INVALID_PARAMETER;
 
-        static_cast<PKB_EQUAL_MEMORY_OUT>(RequestInfo->OutputBuffer)->Equals = RtlEqualMemory(
-            reinterpret_cast<PVOID>(Input->Src), 
-            reinterpret_cast<PVOID>(Input->Dest), 
-            Input->Size
-        );
+        if (!Pte::IsMemoryRangePresent(NULL, reinterpret_cast<PVOID>(Input->Src), Input->Size))
+            return STATUS_MEMORY_NOT_ALLOCATED;
+
+        if (!Pte::IsMemoryRangePresent(NULL, reinterpret_cast<PVOID>(Input->Dest), Input->Size))
+            return STATUS_MEMORY_NOT_ALLOCATED;
 
         *ResponseLength = RequestInfo->OutputBufferSize;
+
+        __try {
+            static_cast<PKB_EQUAL_MEMORY_OUT>(RequestInfo->OutputBuffer)->Equals = RtlEqualMemory(
+                reinterpret_cast<PVOID>(Input->Src),
+                reinterpret_cast<PVOID>(Input->Dest),
+                Input->Size
+            );
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            static_cast<PKB_EQUAL_MEMORY_OUT>(RequestInfo->OutputBuffer)->Equals = FALSE;
+            return STATUS_UNSUCCESSFUL;
+        }
+
         return STATUS_SUCCESS;
     }
 

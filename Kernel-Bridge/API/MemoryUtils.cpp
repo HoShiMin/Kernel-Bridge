@@ -1,5 +1,7 @@
 #include <fltKernel.h>
 
+#include "PTE.h"
+#include "PteUtils.h"
 #include "MemoryUtils.h"
 
 namespace VirtualMemory {
@@ -70,7 +72,12 @@ namespace VirtualMemory {
         MmFreeNonCachedMemory(Address, Bytes);
     }
 
-    VOID CopyMemory(PVOID Dest, PVOID Src, SIZE_T Size, BOOLEAN Intersects) {
+    BOOLEAN CopyMemory(PVOID Dest, PVOID Src, SIZE_T Size, BOOLEAN Intersects, OPTIONAL BOOLEAN CheckBuffersPresence) {
+        if (CheckBuffersPresence) {
+            if (!Pte::IsMemoryRangePresent(NULL, Src, Size)) return FALSE;
+            if (!Pte::IsMemoryRangePresent(NULL, Dest, Size)) return FALSE;
+        }
+
         switch (Size) {
         case sizeof(UCHAR): {
             *reinterpret_cast<PUCHAR>(Dest) = *reinterpret_cast<PUCHAR>(Src);
@@ -106,6 +113,7 @@ namespace VirtualMemory {
             }
         }
         }
+        return TRUE;
     }
 
     _IRQL_requires_max_(APC_LEVEL)

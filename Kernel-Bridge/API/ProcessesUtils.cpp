@@ -1,6 +1,8 @@
 #include <fltKernel.h>
 #include "Importer.h"
 #include "MemoryUtils.h"
+#include "PTE.h"
+#include "PteUtils.h"
 #include "ProcessesUtils.h"
 
 namespace Processes {
@@ -412,6 +414,16 @@ namespace Processes {
             if (!BaseAddress) return STATUS_INVALID_PARAMETER_2;
             if (!Buffer) return STATUS_INVALID_PARAMETER_3;
             if (!Size) return STATUS_INVALID_PARAMETER_4;
+
+            if (AddressRange::IsKernelAddress(BaseAddress)) {
+                if (!Pte::IsMemoryRangePresent(Process, BaseAddress, Size))
+                    return STATUS_MEMORY_NOT_ALLOCATED;
+            }
+
+            if (AddressRange::IsKernelAddress(Buffer)) {
+                if (!Pte::IsMemoryRangePresent(NULL, Buffer, Size))
+                    return STATUS_MEMORY_NOT_ALLOCATED;
+            }
 
             // Attempt to lock process memory from freeing:
             HANDLE hProcessSecure = NULL;

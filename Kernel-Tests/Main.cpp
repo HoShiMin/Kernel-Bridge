@@ -286,13 +286,35 @@ void print_cpuid() {
     printf("CPU: %s\r\n", str);
 }
 
+void RandomRpmTest() {
+    using namespace VirtualMemory;
+    using namespace Processes::MemoryManagement;
+
+    PVOID Buffer = VirtualAlloc(NULL, 4096, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    VirtualLock(Buffer, 4096);
+
+    const WdkTypes::PVOID Base = 0xFFFFFFFFFFFFFFFF;
+    for (auto i = Base; i >= 0x7FFFFFFFFFFFFFFF; i -= 4096) {
+        BOOL Status = KbReadProcessMemory(GetCurrentProcessId(), Base, Buffer, 4096);
+        if (Status) printf("[%p] OK\r\n", (PVOID)i);
+    }
+
+    VirtualFree(Buffer, 4096, MEM_FREE);
+    printf("Random RPM OK\r\n");
+}
+
 int main() {
+
     printf("[Kernel-Tests]: PID: %i, TID: %i\r\n", GetCurrentProcessId(), GetCurrentThreadId());
 
     if (KbLoader::KbLoadAsFilter(
         L"C:\\Temp\\Kernel-Bridge\\Kernel-Bridge.sys",
         L"260000" // Altitude of minifilter
     )) {
+        RandomRpmTest();
+        getchar();
+        return 0;
+
         using namespace Processes::MemoryManagement;
         BYTE Buffer[8] = {};
         

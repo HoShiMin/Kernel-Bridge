@@ -1,7 +1,5 @@
 #include <ntifs.h>
 
-#include <intrin.h>
-
 #include "MemoryUtils.h"
 #include "PTE.h"
 #include "PteUtils.h"
@@ -126,9 +124,8 @@ namespace Pte {
     }
 
     _IRQL_requires_max_(APC_LEVEL)
-    BOOLEAN TriggerCopyOnWrite(PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize) {
-        if (!Process) return FALSE;
-        BOOLEAN NeedToAttach = Process != PsGetCurrentProcess();
+    BOOLEAN TriggerCopyOnWrite(OPTIONAL PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize) {
+        BOOLEAN NeedToAttach = Process && Process != PsGetCurrentProcess();
         KAPC_STATE ApcState;
         if (NeedToAttach)
             KeStackAttachProcess(Process, &ApcState);
@@ -209,13 +206,7 @@ namespace Pte {
     }
 
     _IRQL_requires_max_(APC_LEVEL)
-    BOOLEAN IsPagePresent(PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize) {
-        if (!Process) return FALSE;
-        BOOLEAN NeedToAttach = Process != PsGetCurrentProcess();
-        KAPC_STATE ApcState;
-        if (NeedToAttach)
-            KeStackAttachProcess(Process, &ApcState);
-
+    BOOLEAN IsPagePresent(PVOID Address, OPTIONAL OUT PULONG PageSize) {
         BOOLEAN IsPresent = FALSE;
         PAGE_TABLES_INFO Info = {};
         if (GetPageTables(Address, &Info)) __try {
@@ -264,15 +255,42 @@ namespace Pte {
             IsPresent = FALSE;
         }
 
+        return IsPresent;
+    }
+
+    _IRQL_requires_max_(APC_LEVEL)
+    BOOLEAN IsProcessPagePresent(OPTIONAL PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize) {
+        if (!Process || Process == PsGetCurrentProcess()) 
+            return IsPagePresent(Address, PageSize);
+        KAPC_STATE ApcState;
+        KeStackAttachProcess(Process, &ApcState);
+        BOOLEAN IsPresent = IsPagePresent(Address, PageSize);
+        KeUnstackDetachProcess(&ApcState);
+        return IsPresent;
+    }
+
+    _IRQL_requires_max_(APC_LEVEL)
+    BOOLEAN IsMemoryRangePresent(OPTIONAL PEPROCESS Process, PVOID Address, SIZE_T Size) {
+        if (!Size) return FALSE;
+
+        BOOLEAN NeedToAttach = Process && Process != PsGetCurrentProcess();
+        KAPC_STATE ApcState;
+        if (NeedToAttach)
+            KeStackAttachProcess(Process, &ApcState);
+
+        BOOLEAN IsPresent = TRUE;
+
+        PVOID Page = Address;
+        while (Page < reinterpret_cast<PVOID>(reinterpret_cast<SIZE_T>(Address) + Size)) {
+            ULONG PageSize = 0;
+            IsPresent = IsPagePresent(Address, &PageSize) && PageSize;
+            if (!IsPresent) break;
+            Page = reinterpret_cast<PVOID>(reinterpret_cast<SIZE_T>(ALIGN_DOWN_POINTER_BY(Page, PageSize)) + PageSize);
+        }
+
         if (NeedToAttach)
             KeUnstackDetachProcess(&ApcState);
 
         return IsPresent;
     }
-
-    //_IRQL_requires_max_(APC_LEVEL)
-    //BOOLEAN IsMemoryRangePresent(PEPROCESS Process, PVOID Address, SIZE_T Size) {
-    //    BOOLEAN IsRangePresent = FALSE;
-    //    return TRUE;
-    //}
 }
