@@ -6,12 +6,15 @@
          // Maximum VA = 64 bit
          // Maximum PA = 52 bit
          if (PDPE.PS) {
+             PML4E -> PDPE -> PA
              PageSize = 1 Gbyte;
          }
          else {
              if (PDE.PS) {
+                 PML4E -> PDPE -> PDE -> PA
                  PageSize = 2 Mbyte;
              } else {
+                 PML4E -> PDPE -> PDE -> PTE -> PA
                  PageSize = 4 Kbyte;
              }
          }
@@ -23,8 +26,10 @@
              // CR4.PSE ignored
              // Maximum PA = 52 bit
              if (PDE.PS) {
+                 PDPE -> PDE -> PA
                  PageSize = 2 Mbyte;
              } else {
+                 PDPE -> PDE -> PTE -> PA
                  PageSize = 4 Kbyte;
              }
          }
@@ -32,15 +37,18 @@
              if (CR4.PSE) {
                  if (PDE.PS) {
                      // Maximum PA = 40 bit
+                     PDE -> PA
                      PageSize = 4 Mbyte;
                  } else {
                      // Maximum PA = 32 bit
+                     PDE -> PTE -> PA
                      PageSize = 4 Kbyte;
                  }
              }
              else {
                  // PDE.PS ignored
                  // Maximum PA = 32 bit
+                 PDE -> PTE -> PA
                  PageSize = 4 Kbyte;
              }
          }
