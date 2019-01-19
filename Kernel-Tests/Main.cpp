@@ -37,131 +37,13 @@ void RunTests() {
     StuffTest tStuff(L"Stuff");
 }
 
-class PhysMem {
-public:
-    static VOID Read(WdkTypes::PVOID Address, OUT PVOID Buffer, ULONG Size, WdkTypes::MEMORY_CACHING_TYPE CachingType) {
-        if (!PhysicalMemory::KbReadPhysicalMemory(Address, Buffer, Size, CachingType))
-            throw GetLastError();
-    }
-
-    static VOID Write(WdkTypes::PVOID Address, IN PVOID Buffer, ULONG Size, WdkTypes::MEMORY_CACHING_TYPE CachingType) {
-        if (!PhysicalMemory::KbWritePhysicalMemory(Address, Buffer, Size, CachingType))
-            throw GetLastError();
-    }
-
-    static BYTE ReadByte(WdkTypes::PVOID PhysicalAddress, WdkTypes::MEMORY_CACHING_TYPE CachingType) {
-        BYTE Buffer = 0;
-        Read(PhysicalAddress, &Buffer, sizeof(Buffer), CachingType);
-        return Buffer;
-    }
-
-    static WORD ReadWord(WdkTypes::PVOID PhysicalAddress, WdkTypes::MEMORY_CACHING_TYPE CachingType) {
-        WORD Buffer = 0;
-        Read(PhysicalAddress, &Buffer, sizeof(Buffer), CachingType);
-        return Buffer;
-    }
-
-    static DWORD ReadDword(WdkTypes::PVOID PhysicalAddress, WdkTypes::MEMORY_CACHING_TYPE CachingType) {
-        DWORD Buffer = 0;
-        Read(PhysicalAddress, &Buffer, sizeof(Buffer), CachingType);
-        return Buffer;
-    }
-
-    static DWORD64 ReadQword(WdkTypes::PVOID PhysicalAddress, WdkTypes::MEMORY_CACHING_TYPE CachingType) {
-        DWORD64 Buffer = 0;
-        Read(PhysicalAddress, &Buffer, sizeof(Buffer), CachingType);
-        return Buffer;
-    }
-
-    static VOID WriteByte(WdkTypes::PVOID PhysicalAddress, BYTE Value, WdkTypes::MEMORY_CACHING_TYPE CachingType) {
-        Write(PhysicalAddress, &Value, sizeof(Value), CachingType);
-    }
-
-    static VOID WriteWord(WdkTypes::PVOID PhysicalAddress, WORD Value, WdkTypes::MEMORY_CACHING_TYPE CachingType) {
-        Write(PhysicalAddress, &Value, sizeof(Value), CachingType);
-    }
-
-    static VOID WriteDword(WdkTypes::PVOID PhysicalAddress, DWORD Value, WdkTypes::MEMORY_CACHING_TYPE CachingType) {
-        Write(PhysicalAddress, &Value, sizeof(Value), CachingType);
-    }
-
-    static VOID WriteQword(WdkTypes::PVOID PhysicalAddress, DWORD64 Value, WdkTypes::MEMORY_CACHING_TYPE CachingType) {
-        Write(PhysicalAddress, &Value, sizeof(Value), CachingType);
-    }
-
-    static WdkTypes::PVOID GetPhysAddress(WdkTypes::PVOID Address) {
-        WdkTypes::PVOID PA = NULL;
-        if (!PhysicalMemory::KbGetPhysicalAddress(NULL, Address, &PA))
-            throw GetLastError();
-        return PA;
-    }
-
-    static WdkTypes::PVOID GetVirtualForPhysical(WdkTypes::PVOID PhysicalAddress) {
-        WdkTypes::PVOID VirtualAddress = NULL;
-        PhysicalMemory::KbGetVirtualForPhysical(PhysicalAddress, &VirtualAddress);
-        return VirtualAddress;
-    }
-};
-
-class VirtMem {
-public:
-    static VOID Read(WdkTypes::PVOID Dest, WdkTypes::PVOID Src, ULONG Size) {
-        if (!VirtualMemory::KbCopyMoveMemory(Dest, Src, Size, FALSE))
-            throw GetLastError();
-    }
-
-    static VOID Write(WdkTypes::PVOID Dest, WdkTypes::PVOID Src, ULONG Size) {
-        if (!VirtualMemory::KbCopyMoveMemory(Dest, Src, Size, FALSE))
-            throw GetLastError();
-    }
-
-    static BYTE ReadByte(WdkTypes::PVOID VirtualAddress) {
-        BYTE Buffer = 0;
-        Read(reinterpret_cast<WdkTypes::PVOID>(&Buffer), VirtualAddress, sizeof(Buffer));
-        return Buffer;
-    }
-
-    static WORD ReadWord(WdkTypes::PVOID VirtualAddress) {
-        WORD Buffer = 0;
-        Read(reinterpret_cast<WdkTypes::PVOID>(&Buffer), VirtualAddress, sizeof(Buffer));
-        return Buffer;
-    }
-
-    static DWORD ReadDword(WdkTypes::PVOID VirtualAddress) {
-        DWORD Buffer = 0;
-        Read(reinterpret_cast<WdkTypes::PVOID>(&Buffer), VirtualAddress, sizeof(Buffer));
-        return Buffer;
-    }
-
-    static DWORD64 ReadQword(WdkTypes::PVOID VirtualAddress) {
-        DWORD64 Buffer = 0;
-        Read(reinterpret_cast<WdkTypes::PVOID>(&Buffer), VirtualAddress, sizeof(Buffer));
-        return Buffer;
-    }
-
-    static VOID WriteByte(WdkTypes::PVOID VirtualAddress, BYTE Value) {
-        Write(VirtualAddress, reinterpret_cast<WdkTypes::PVOID>(&Value), sizeof(Value));
-    }
-
-    static VOID WriteWord(WdkTypes::PVOID VirtualAddress, WORD Value) {
-        Write(VirtualAddress, reinterpret_cast<WdkTypes::PVOID>(&Value), sizeof(Value));
-    }
-
-    static VOID WriteDword(WdkTypes::PVOID VirtualAddress, DWORD Value) {
-        Write(VirtualAddress, reinterpret_cast<WdkTypes::PVOID>(&Value), sizeof(Value));
-    }
-
-    static VOID WriteQword(WdkTypes::PVOID VirtualAddress, DWORD64 Value) {
-        Write(VirtualAddress, reinterpret_cast<WdkTypes::PVOID>(&Value), sizeof(Value));
-    }
-};
-
 void TranslationTest(PVOID Address)
 {
     using namespace VirtualMemory;
     using namespace PhysicalMemory;
     using namespace KernelShells;
     using namespace Processes::MemoryManagement;
+    using namespace KbRtl;
 
     VIRTUAL_ADDRESS Va = {};
     Va.Value = reinterpret_cast<SIZE_T>(Address);
