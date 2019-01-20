@@ -8,6 +8,7 @@ namespace Pte {
 #ifdef _AMD64_
     extern "C" unsigned long long __readcr3();
     extern "C" unsigned long long __readcr4();
+    extern "C" void __invlpg(void* Page);
 #else
     extern "C" unsigned long __readcr3();
     extern "C" unsigned long __readcr4();
@@ -277,12 +278,12 @@ namespace Pte {
         BOOLEAN IsPresent = TRUE;
 
         PVOID Page = Address;
-        while (Page < reinterpret_cast<PVOID>(reinterpret_cast<SIZE_T>(Address) + Size)) {
+        do {
             ULONG PageSize = 0;
             IsPresent = IsPagePresent(Address, &PageSize) && PageSize;
             if (!IsPresent) break;
             Page = reinterpret_cast<PVOID>(reinterpret_cast<SIZE_T>(ALIGN_DOWN_POINTER_BY(Page, PageSize)) + PageSize);
-        }
+        } while (Page < reinterpret_cast<PVOID>(reinterpret_cast<SIZE_T>(Address) + Size));
 
         if (NeedToAttach)
             KeUnstackDetachProcess(&ApcState);

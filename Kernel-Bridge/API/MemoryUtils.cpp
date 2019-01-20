@@ -74,8 +74,8 @@ namespace VirtualMemory {
 
     BOOLEAN CopyMemory(PVOID Dest, PVOID Src, SIZE_T Size, BOOLEAN Intersects, OPTIONAL BOOLEAN CheckBuffersPresence) {
         if (CheckBuffersPresence) {
-            if (!Pte::IsMemoryRangePresent(NULL, Src, Size)) return FALSE;
-            if (!Pte::IsMemoryRangePresent(NULL, Dest, Size)) return FALSE;
+            if (AddressRange::IsKernelAddress(Src) && !IsMemoryRangePresent(Src, Size)) return FALSE;
+            if (AddressRange::IsKernelAddress(Dest) && !IsMemoryRangePresent(Dest, Size)) return FALSE;
         }
 
         switch (Size) {
@@ -173,6 +173,21 @@ namespace VirtualMemory {
     _IRQL_requires_max_(DISPATCH_LEVEL)
     BOOLEAN IsAddressValid(PVOID Address) {
         return MmIsAddressValid(Address);
+    }
+
+    _IRQL_requires_max_(DISPATCH_LEVEL)
+    BOOLEAN IsPagePresent(PVOID Address) {
+        return PhysicalMemory::GetPhysicalAddress(Address) || MmIsAddressValid(Address);
+    }
+
+    _IRQL_requires_max_(DISPATCH_LEVEL)
+    BOOLEAN IsMemoryRangePresent(PVOID Address, SIZE_T Size) {
+        PVOID PageCounter = ALIGN_DOWN_POINTER_BY(Address, PAGE_SIZE);
+        do {
+            if (!IsPagePresent(PageCounter)) return FALSE;
+            PageCounter = reinterpret_cast<PVOID>(reinterpret_cast<SIZE_T>(PageCounter) + PAGE_SIZE);
+        } while (reinterpret_cast<SIZE_T>(PageCounter) < reinterpret_cast<SIZE_T>(Address) + Size);
+        return TRUE;
     }
 
     _IRQL_requires_max_(APC_LEVEL)

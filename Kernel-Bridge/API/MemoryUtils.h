@@ -78,6 +78,12 @@ namespace VirtualMemory {
     _IRQL_requires_max_(DISPATCH_LEVEL)
     BOOLEAN IsAddressValid(PVOID Address);
 
+    _IRQL_requires_max_(DISPATCH_LEVEL)
+    BOOLEAN IsPagePresent(PVOID Address);
+
+    _IRQL_requires_max_(DISPATCH_LEVEL)
+    BOOLEAN IsMemoryRangePresent(PVOID Address, SIZE_T Size);
+
     _IRQL_requires_max_(APC_LEVEL)
     BOOLEAN CheckUserMemoryReadable(__in_data_source(USER_MODE) PVOID UserAddress, SIZE_T Size);
 

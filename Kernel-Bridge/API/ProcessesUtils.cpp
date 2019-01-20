@@ -416,12 +416,12 @@ namespace Processes {
             if (!Size) return STATUS_INVALID_PARAMETER_4;
 
             if (AddressRange::IsKernelAddress(BaseAddress)) {
-                if (!Pte::IsMemoryRangePresent(Process, BaseAddress, Size))
+                if (!VirtualMemory::IsMemoryRangePresent(BaseAddress, Size))
                     return STATUS_MEMORY_NOT_ALLOCATED;
             }
 
             if (AddressRange::IsKernelAddress(Buffer)) {
-                if (!Pte::IsMemoryRangePresent(NULL, Buffer, Size))
+                if (!VirtualMemory::IsMemoryRangePresent(Buffer, Size))
                     return STATUS_MEMORY_NOT_ALLOCATED;
             }
 

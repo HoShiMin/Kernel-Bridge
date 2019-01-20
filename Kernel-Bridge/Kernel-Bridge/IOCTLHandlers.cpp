@@ -504,7 +504,11 @@ namespace
         auto Input = static_cast<PKB_FILL_MEMORY_IN>(RequestInfo->InputBuffer);
         if (!Input || !Input->Address) return STATUS_INVALID_PARAMETER;
 
-        if (!Pte::IsMemoryRangePresent(NULL, reinterpret_cast<PVOID>(Input->Address), Input->Size))
+        PVOID Address = reinterpret_cast<PVOID>(Input->Address);
+
+        using namespace VirtualMemory;
+        using namespace AddressRange;
+        if (IsKernelAddress(Address) && !IsMemoryRangePresent(Address, Input->Size))
             return STATUS_MEMORY_NOT_ALLOCATED;
 
         __try {
@@ -526,10 +530,16 @@ namespace
         auto Input = static_cast<PKB_EQUAL_MEMORY_IN>(RequestInfo->InputBuffer);
         if (!Input || !Input->Src || !Input->Dest || !RequestInfo->OutputBuffer) return STATUS_INVALID_PARAMETER;
 
-        if (!Pte::IsMemoryRangePresent(NULL, reinterpret_cast<PVOID>(Input->Src), Input->Size))
+        PVOID Src = reinterpret_cast<PVOID>(Input->Src);
+        PVOID Dest = reinterpret_cast<PVOID>(Input->Dest);
+
+        using namespace VirtualMemory;
+        using namespace AddressRange;
+
+        if (IsKernelAddress(Src) && !IsMemoryRangePresent(Src, Input->Size))
             return STATUS_MEMORY_NOT_ALLOCATED;
 
-        if (!Pte::IsMemoryRangePresent(NULL, reinterpret_cast<PVOID>(Input->Dest), Input->Size))
+        if (IsKernelAddress(Dest) && !IsMemoryRangePresent(Dest, Input->Size))
             return STATUS_MEMORY_NOT_ALLOCATED;
 
         *ResponseLength = RequestInfo->OutputBufferSize;
@@ -1438,7 +1448,7 @@ namespace
         if (Input->PerformCopyOnWrite) {
             using namespace Pte;
             PVOID PageCounter = Address;
-            while (PageCounter < reinterpret_cast<PVOID>(reinterpret_cast<SIZE_T>(Address) + Size)) {   
+            do {   
                 ULONG PageSize = 0;
                 BOOLEAN Status = TriggerCopyOnWrite(Process, PageCounter, &PageSize);
                 if (!Status || !PageSize) {
@@ -1448,7 +1458,7 @@ namespace
                 PageCounter = reinterpret_cast<PVOID>(
                     reinterpret_cast<SIZE_T>(ALIGN_DOWN_POINTER_BY(PageCounter, PageSize)) + PageSize
                 );
-            };
+            } while (PageCounter < reinterpret_cast<PVOID>(reinterpret_cast<SIZE_T>(Address) + Size));
         }
 
         NTSTATUS Status = Processes::MemoryManagement::WriteProcessMemory(

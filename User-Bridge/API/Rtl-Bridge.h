@@ -156,14 +156,14 @@ namespace KbRtl {
             Pid = ProcessId;
         }
 
-        static WdkTypes::PVOID Alloc(ULONG ProcessId, SIZE_T Size, ULONG Protect = PAGE_EXECUTE_READWRITE) {
+        static WdkTypes::PVOID Alloc(ULONG ProcessId, ULONG Size, ULONG Protect = PAGE_EXECUTE_READWRITE) {
             WdkTypes::PVOID BaseAddress = NULL;
             if (!Processes::MemoryManagement::KbAllocUserMemory(ProcessId, Protect, Size, &BaseAddress))
                 throw GetLastError();
             return BaseAddress;
         }
 
-        WdkTypes::PVOID Alloc(SIZE_T Size, ULONG Protect = PAGE_EXECUTE_READWRITE) {
+        WdkTypes::PVOID Alloc(ULONG Size, ULONG Protect = PAGE_EXECUTE_READWRITE) {
             return Alloc(Pid, Size, Protect);
         }
 

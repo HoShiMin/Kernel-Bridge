@@ -233,19 +233,29 @@ namespace KbCallbacks {
 static WideString GetWin32Path(const PFLT_CALLBACK_DATA Data) {
     if (!Data || !Data->Iopb || !Data->Iopb->TargetFileObject) return WideString();
     const PFILE_OBJECT FileObject = Data->Iopb->TargetFileObject;
-    if (!FileObject || !FileObject->FileName.Buffer) return WideString();
+    if (!FileObject || !FileObject->DeviceObject || !FileObject->FileName.Buffer) return WideString();
     
     if (KeGetCurrentIrql() > PASSIVE_LEVEL || KeAreAllApcsDisabled())
         return WideString(&FileObject->FileName);
-    
+
     UNICODE_STRING VolumeName;
     if (NT_SUCCESS(IoVolumeDeviceToDosName(FileObject->DeviceObject, &VolumeName))) {
         WideString Volume(&VolumeName);
         ExFreePool(VolumeName.Buffer);
         return Volume + WideString(&FileObject->FileName);
-    } else {
+    }
+    else {
         return WideString(&FileObject->FileName);
     }
+
+    //POBJECT_NAME_INFORMATION Name = NULL;
+    //if (NT_SUCCESS(IoQueryFileDosDeviceName(FileObject, &Name)) && Name) {
+    //    WideString Path(&Name->Name);
+    //    ExFreePool(Name);
+    //    return Path;
+    //} else {
+    //    return WideString(&FileObject->FileName);
+    //}
 }
 
 static WideString GetNtFileName(const PFLT_CALLBACK_DATA Data) {
