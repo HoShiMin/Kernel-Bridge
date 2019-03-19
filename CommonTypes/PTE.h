@@ -56,7 +56,7 @@
 
 // 1 << 12 == 4096:
 #define PFN_TO_PAGE(pfn)  ((pfn)  << 12)
-#define PAGE_TO_PFN(page) ((page) >> 12
+#define PAGE_TO_PFN(page) ((page) >> 12)
 
 // CR3 in PAE : PDP at 5:31
 #define PFN_TO_PDP_PAE(pfn) ((pfn) << 5)
