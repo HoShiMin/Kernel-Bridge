@@ -63,7 +63,7 @@ namespace Pte {
         }
 #else
         if (Cr4.x32.Bitmap.PAE) {
-            PVOID64 PdpePhys = reinterpret_cast<PVOID64>(PFN_TO_PAGE(Cr3.x32.Pae.PDP) + Va.x32.Pae.Generic.PageDirectoryPointerOffset * sizeof(PDPE::x32));
+            PVOID64 PdpePhys = reinterpret_cast<PVOID64>(PFN_TO_PDP_PAE(Cr3.x32.Pae.PDP) + Va.x32.Pae.Generic.PageDirectoryPointerOffset * sizeof(PDPE::x32));
             Info->Pdpe = reinterpret_cast<PDPE*>(GetVirtualForPhysical(PdpePhys));
             if (!Info->Pdpe) return FALSE;
             if (!Info->Pdpe->x32.Pae.Generic.P) return TRUE;

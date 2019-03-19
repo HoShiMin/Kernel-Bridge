@@ -58,6 +58,9 @@
 #define PFN_TO_PAGE(pfn)  ((pfn)  << 12)
 #define PAGE_TO_PFN(page) ((page) >> 12)
 
+// CR3 in PAE : PDP at 5:31
+#define PFN_TO_PDP_PAE(pfn) ((pfn) << 5)
+
 #pragma pack(push, 1)
 union VIRTUAL_ADDRESS {
     unsigned long long Value;
