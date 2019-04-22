@@ -188,14 +188,46 @@ void RandomRpmTest() {
     printf("Random RPM OK\r\n");
 }
 
-int main() {
+#define FLT_TEST
 
+#ifdef FLT_TEST
+CommPortListener<KB_FLT_OB_CALLBACK_INFO, KbObCallbacks> ObCallbacks;
+
+void TestObCallbacks()
+{
+    // Prevent to open our process with PROCESS_VM_READ rights:
+    BOOL Status = ObCallbacks.Subscribe([](CommPort & Port, MessagePacket<KB_FLT_OB_CALLBACK_INFO> & Message) -> VOID {
+        auto Data = static_cast<PKB_FLT_OB_CALLBACK_INFO>(Message.GetData());
+        if (Data->Target.ProcessId == GetCurrentProcessId()) {
+            Data->CreateResultAccess &= ~(PROCESS_VM_READ | PROCESS_TERMINATE | PROCESS_SUSPEND_RESUME);
+            Data->DuplicateResultAccess &= ~(PROCESS_VM_READ | PROCESS_TERMINATE | PROCESS_SUSPEND_RESUME);
+            printf("Access attempted from %i\r\n", static_cast<int>(Data->Client.ProcessId));
+        }
+        ReplyPacket<KB_FLT_OB_CALLBACK_INFO> Reply(Message, ERROR_SUCCESS, *Data);
+        Port.Reply(Reply); // Reply info to driver
+    });
+
+    MSG Msg;
+    while (GetMessage(&Msg, NULL, 0, 0)) {
+        TranslateMessage(&Msg);
+        DispatchMessage(&Msg);
+    }
+}
+
+#endif
+
+int main()
+{
     printf("[Kernel-Tests]: PID: %i, TID: %i\r\n", GetCurrentProcessId(), GetCurrentThreadId());
 
     if (KbLoader::KbLoadAsFilter(
         L"C:\\Temp\\Kernel-Bridge\\Kernel-Bridge.sys",
         L"260000" // Altitude of minifilter
     )) {
+#ifdef FLT_TEST
+        TestObCallbacks();
+#endif
+
         RunTests();
         RandomRpmTest();
 
