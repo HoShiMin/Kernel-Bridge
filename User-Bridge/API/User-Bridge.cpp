@@ -881,7 +881,7 @@ namespace Processes {
             Input.CreateSuspended = CreateSuspended;
             BOOL Status = KbSendRequest(Ctls::KbCreateUserThread, &Input, sizeof(Input), &Output, sizeof(Output));
             if (ClientId) *ClientId = Output.ClientId;
-            if (*hThread) 
+            if (hThread) 
                 *hThread = Output.hThread;
             else
                 Descriptors::KbCloseHandle(Output.hThread);

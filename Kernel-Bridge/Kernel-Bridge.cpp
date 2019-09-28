@@ -133,7 +133,7 @@ static CONST FLT_REGISTRATION FilterRegistration =
 };
 
 
-NTSTATUS DriverEntry(
+extern "C" NTSTATUS NTAPI DriverEntry(
     _In_ PDRIVER_OBJECT DriverObject,
     _In_ PUNICODE_STRING RegistryPath
 ) {

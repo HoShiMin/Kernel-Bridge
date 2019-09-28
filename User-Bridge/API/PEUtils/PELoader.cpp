@@ -8,7 +8,7 @@ PELoader::PELoader(HMODULE RawModule, _ImportNameCallback ImportNameCallback, _I
     DeployedSize = pe.GetImageSize();
     hModule = static_cast<PBYTE>(VirtualAlloc(NULL, DeployedSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
     if (!hModule) 
-        throw std::runtime_error("Unable to allocate memory");
+        throw std::exception("Unable to allocate memory");
 
     // Copying of headers:
     CopyMemory(hModule, RawModule, pe.GetOptionalHeader()->SizeOfHeaders);

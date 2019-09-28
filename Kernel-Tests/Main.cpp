@@ -188,7 +188,7 @@ void RandomRpmTest() {
     printf("Random RPM OK\r\n");
 }
 
-#define FLT_TEST
+//#define FLT_TEST
 
 #ifdef FLT_TEST
 CommPortListener<KB_FLT_OB_CALLBACK_INFO, KbObCallbacks> ObCallbacks;
@@ -216,6 +216,79 @@ void TestObCallbacks()
 
 #endif
 
+
+DWORD GetPidByName(LPCWSTR Name)
+{
+    DWORD ProcessId = 0xFFFFFFFF;
+    
+    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hSnapshot == INVALID_HANDLE_VALUE) return ProcessId;
+
+    PROCESSENTRY32 ProcessEntry = {};
+    ProcessEntry.dwSize = sizeof(ProcessEntry);
+    if (Process32First(hSnapshot, &ProcessEntry)) do {
+        if (wcsstr(ProcessEntry.szExeFile, Name)) {
+            ProcessId = ProcessEntry.th32ProcessID;
+            break;
+        }
+    } while (Process32Next(hSnapshot, &ProcessEntry));
+
+    CloseHandle(hSnapshot);
+    return ProcessId;
+}
+
+VOID ThreadingTests()
+{
+    using namespace Processes;
+    DWORD ExplorerPid = GetPidByName(L"explorer.exe");
+    printf("PID of explorer.exe is %u\r\n", ExplorerPid);
+    PVOID Proc = GetProcAddress(GetModuleHandle(L"kernel32.dll"), "Sleep");
+    WdkTypes::CLIENT_ID ClientId = {};
+    WdkTypes::HANDLE hThread = NULL;
+    printf("Creating a thread...\r\n");
+    BOOL Status = Threads::KbCreateUserThread(ExplorerPid, reinterpret_cast<WdkTypes::PVOID>(Proc), 10000, FALSE, &ClientId, &hThread);
+    if (Status) {
+        printf("PID:%I64u, TID:%I64u, hThread = 0x%I64X\r\n", ClientId.ProcessId, ClientId.ThreadId, hThread);
+        WaitForSingleObject(reinterpret_cast<HANDLE>(hThread), INFINITE);
+        printf("Thread is finished!\r\n");
+        Descriptors::KbCloseHandle(hThread);
+        printf("Handle is closed!\r\n");
+    }
+    else {
+        printf("Unable to create a thread!\r\n");
+    }
+}
+
+VOID RunAllTests()
+{
+    ThreadingTests();
+    return;
+
+#ifdef FLT_TEST
+    TestObCallbacks();
+#endif
+
+    RunTests();
+    RandomRpmTest();
+
+    PVOID Addr = GetProcAddress(GetModuleHandle(L"kernel32.dll"), "SetLastError");
+    TranslationTest(Addr);
+
+    if (false && Hypervisor::KbVmmEnable()) {
+        printf("VMM enabled!\r\n");
+        while (true) {
+            print_cpuid();
+            Sleep(1000);
+        }
+        Hypervisor::KbVmmDisable();
+        printf("VMM disabled!\r\n");
+        print_cpuid();
+    }
+    else {
+        printf("Unable to start VMM!\r\n");
+    }
+}
+
 int main()
 {
     printf("[Kernel-Tests]: PID: %i, TID: %i\r\n", GetCurrentProcessId(), GetCurrentThreadId());
@@ -224,29 +297,7 @@ int main()
         L"C:\\Temp\\Kernel-Bridge\\Kernel-Bridge.sys",
         L"260000" // Altitude of minifilter
     )) {
-#ifdef FLT_TEST
-        TestObCallbacks();
-#endif
-
-        RunTests();
-        RandomRpmTest();
-
-        PVOID Addr = GetProcAddress(GetModuleHandle(L"kernel32.dll"), "SetLastError");
-        TranslationTest(Addr);
-
-        if (false && Hypervisor::KbVmmEnable()) {
-            printf("VMM enabled!\r\n");
-            while (true) {
-                print_cpuid();
-                Sleep(1000);
-            }
-            Hypervisor::KbVmmDisable();
-            printf("VMM disabled!\r\n");
-            print_cpuid();
-        }
-        else {
-            printf("Unable to start VMM!\r\n");
-        }
+        RunAllTests();
         KbLoader::KbUnload();
     } else {
         std::wcout << L"Unable to load driver!" << std::endl;
