@@ -11,16 +11,21 @@ VOID OnDriverLoad(
     PFLT_FILTER FilterHandle,
     PUNICODE_STRING RegistryPath
 ) {
+    NTSTATUS Status = STATUS_UNSUCCESSFUL;
     UNREFERENCED_PARAMETER(DriverObject);
     UNREFERENCED_PARAMETER(DeviceObject);
     UNREFERENCED_PARAMETER(RegistryPath);
 
     if (FilterHandle) {
         Communication::StartServer(FilterHandle);
-        KdPrint(("[Kernel-Bridge]: ObHandlesFilter status: 0x%X\r\n", KbCallbacks::StartObHandlesFilter()));
-        KdPrint(("[Kernel-Bridge]: PsProcessFilter status: 0x%X\r\n", KbCallbacks::StartPsProcessFilter()));
-        KdPrint(("[Kernel-Bridge]: PsThreadFilter status: 0x%X\r\n", KbCallbacks::StartPsThreadFilter()));
-        KdPrint(("[Kernel-Bridge]: PsImageFilter status: 0x%X\r\n", KbCallbacks::StartPsImageFilter()));
+        Status = KbCallbacks::StartObHandlesFilter();
+        KdPrint(("[Kernel-Bridge]: ObHandlesFilter status: 0x%X\r\n", Status));
+        Status = KbCallbacks::StartPsProcessFilter();
+        KdPrint(("[Kernel-Bridge]: PsProcessFilter status: 0x%X\r\n", Status));
+        Status = KbCallbacks::StartPsThreadFilter();
+        KdPrint(("[Kernel-Bridge]: PsThreadFilter status: 0x%X\r\n", Status));
+        Status = KbCallbacks::StartPsImageFilter();
+        KdPrint(("[Kernel-Bridge]: PsImageFilter status: 0x%X\r\n", Status));
     }
 }
 
