@@ -300,6 +300,7 @@ union TSS {
         unsigned short Trap : 1;
         unsigned short Reserved11 : 15;
         unsigned short IopbBaseAddress;
+        unsigned int ShadowStackPointer; // Intel platforms only
         // ... Operating system data structure ...
         // Interrupt-redirection bitmap (eight 32-bit locations)
         // IOPB (up to 8 Kbytes)
@@ -307,17 +308,27 @@ union TSS {
     } Legacy;
     struct {
         unsigned int Reserved0;
-        unsigned long long Rsp0;
-        unsigned long long Rsp1;
-        unsigned long long Rsp2;
+        unsigned int Rsp0Lower;
+        unsigned int Rsp0Upper;
+        unsigned int Rsp1Lower;
+        unsigned int Rsp1Upper;
+        unsigned int Rsp2Lower;
+        unsigned int Rsp2Upper;
         unsigned long long Reserved1;
-        unsigned long long Ist1; // Interrupt stack table
-        unsigned long long Ist2;
-        unsigned long long Ist3;
-        unsigned long long Ist4;
-        unsigned long long Ist5;
-        unsigned long long Ist6;
-        unsigned long long Ist7;
+        unsigned int Ist1Lower; // Interrupt stack table (lower part)
+        unsigned int Ist1Upper; // Interrupt stack table (higher part)
+        unsigned int Ist2Lower;
+        unsigned int Ist2Upper;
+        unsigned int Ist3Lower;
+        unsigned int Ist3Upper;
+        unsigned int Ist4Lower;
+        unsigned int Ist4Upper;
+        unsigned int Ist5Lower;
+        unsigned int Ist5Upper;
+        unsigned int Ist6Lower;
+        unsigned int Ist6Upper;
+        unsigned int Ist7Lower;
+        unsigned int Ist7Upper;
         unsigned long long Reserved2;
         unsigned short Reserved3;
         unsigned short IopbBaseAddress;

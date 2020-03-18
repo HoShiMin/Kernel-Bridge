@@ -25,11 +25,11 @@ extern "C" void __writecr4(unsigned long Value);
 
 namespace CPU {
     void CLI() {
-        _enable();
+        _disable();
     }
 
     void STI() {
-        _disable();
+        _enable();
     }
 
     void HLT() {

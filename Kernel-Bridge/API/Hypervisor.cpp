@@ -12,6 +12,7 @@
 #include "PTE.h"
 #include "DescriptorTables.h"
 #include "SVM.h"
+#include "VMX.h"
 
 extern "C" void _enable();
 extern "C" void _disable();
@@ -125,7 +126,7 @@ namespace Supplementation {
     }
 }
 
-namespace NestedPaging {
+namespace SVM {
     using namespace Supplementation;
 
     struct NESTED_PAGING_TABLES {
@@ -166,11 +167,6 @@ namespace NestedPaging {
     static void FreeNestedPagingTables(IN NESTED_PAGING_TABLES* Npt) {
         FreePhys(Npt);
     }
-}
-
-namespace SVM {
-    using namespace Supplementation;
-    using namespace NestedPaging;
 
     // Defined in the SVM.asm:
     extern "C" void SvmVmmRun(void* InitialVmmStackPointer);
@@ -506,7 +502,6 @@ namespace SVM {
 
     // Virtualize all processors:
     static bool VirtualizeAllProcessors(OUT SHARED_VM_DATA* Shared) {
-        using namespace NestedPaging;
         using namespace Supplementation;
 
         if (Shared->Virtualized) return false; // Already virtualized!
@@ -608,6 +603,63 @@ namespace SVM {
         return Shared->Virtualized;
     }
 }
+
+#if FALSE
+namespace VMX {
+    using namespace Supplementation;
+
+    enum INTEL_MSR : unsigned int {
+
+    };
+
+    enum INTEL_CPUID : unsigned int {
+        CPUID_VENDOR = 0x00000000, // EAX = Largest function number, EBX + ECX + EDX = 'AuthenticAMD'
+        CPUID_FEATURE_IDENTIFIERS = 0x00000001,
+        CPUID_FEATURE_IDENTIFIERS_EX = 0x80000001,
+
+        // Magic value, defined by hypervisor, triggers #VMEXIT and VMM shutdown:
+        CPUID_VMM_SHUTDOWN = 0x1EE7C0DE
+    };
+
+    // Shared between all processors:
+    struct SHARED_VM_DATA {
+        //NESTED_PAGING_TABLES* Npt;
+        //MSRPM* Msrpm;
+        bool Virtualized;
+    };
+
+    struct PRIVATE_VM_DATA {
+
+    };
+
+    static SHARED_VM_DATA SharedVmData = {};
+
+    // Unique for each processor:
+    struct PRIVATE_VM_DATA {
+        DECLSPEC_ALIGN(PAGE_SIZE) VMCB Guest;
+        DECLSPEC_ALIGN(PAGE_SIZE) VMCB Host;
+        DECLSPEC_ALIGN(PAGE_SIZE) unsigned char HostStateArea[PAGE_SIZE];
+        union {
+            struct INITIAL_VMM_STACK_LAYOUT {
+                PVOID GuestVmcbPa;
+                PVOID HostVmcbPa;
+                PRIVATE_VM_DATA* Private;
+            };
+            DECLSPEC_ALIGN(PAGE_SIZE) unsigned char VmmStack[KERNEL_STACK_SIZE];
+            struct {
+                unsigned char FreeSpace[KERNEL_STACK_SIZE - sizeof(INITIAL_VMM_STACK_LAYOUT)];
+                INITIAL_VMM_STACK_LAYOUT InitialStack;
+            } Layout;
+        } VmmStack;
+    };
+
+    static SHARED_VM_DATA SharedVmData = {};
+
+    static bool IsVmxSupported() {
+
+    }
+}
+#endif
 
 #endif
 

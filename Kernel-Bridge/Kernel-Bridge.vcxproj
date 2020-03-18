@@ -153,6 +153,7 @@
       <AdditionalDependencies>fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <ClCompile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
@@ -162,6 +163,8 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
       <PreprocessorDefinitions>POOL_NX_OPTIN=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <IntelJCCErratum>true</IntelJCCErratum>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
     <PostBuildEvent>
       <Command>makecab /f ../x32-release.ddf</Command>
@@ -191,6 +194,7 @@
       <AdditionalDependencies>fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <ClCompile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
@@ -200,6 +204,8 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
       <PreprocessorDefinitions>POOL_NX_OPTIN=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <IntelJCCErratum>true</IntelJCCErratum>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
     <PostBuildEvent>
       <Command>makecab /f ../x64-release.ddf</Command>
@@ -211,6 +217,7 @@
   <ItemGroup>
     <ClInclude Include="..\CommonTypes\DescriptorTables.h" />
     <ClInclude Include="..\CommonTypes\PTE.h" />
+    <ClInclude Include="..\CommonTypes\Registers.h" />
     <ClInclude Include="..\CommonTypes\SVM.h" />
     <ClInclude Include="..\CommonTypes\VMX.h" />
     <ClInclude Include="..\SharedTypes\CtlTypes.h" />
