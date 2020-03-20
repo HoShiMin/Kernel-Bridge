@@ -2,6 +2,7 @@
 
 #include "MemoryUtils.h"
 #include "PTE.h"
+#include "Registers.h"
 #include "PteUtils.h"
 
 namespace Pte {

@@ -1,8 +1,5 @@
 #pragma once
 
-// For the CR3 and CR4 registers definitions:
-#include "Registers.h"
-
 /*
     Page size (max VA = 64 bit, max PA = 52 bit):
      * Long Mode (CR4.PAE always = 1, CR4.PSE ignored): 
