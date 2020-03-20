@@ -196,30 +196,30 @@ union DR5 { // Aliased to the DR7
 union DR6 {
     unsigned long long Value;
     struct {
-        unsigned int Breakpoint0ConditionDetected : 1;
-        unsigned int Breakpoint1ConditionDetected : 1;
-        unsigned int Breakpoint2ConditionDetected : 1;
-        unsigned int Breakpoint3ConditionDetected : 1;
-        unsigned int FilledByOnes0 : 8;
+        unsigned int B0 : 1; // Breakpoint #0 condition detected
+        unsigned int B1 : 1; // Breakpoint #1 condition detected
+        unsigned int B2 : 1; // Breakpoint #2 condition detected
+        unsigned int B3 : 1; // Breakpoint #3 condition detected
+        unsigned int FilledByOnes0 : 8; // Must be 0xFF (8 bits of ones: 0b1111_1111)
         unsigned int ReservedByZero : 1;
-        unsigned int BreakpointDebugAccessDetected : 1;
-        unsigned int BreakpointSingleStep : 1;
-        unsigned int BreakpointTaskSwitch : 1;
-        unsigned int RestrictedTransactionalMemory : 1; // Intel only, must be zero on AMD platforms
-        unsigned int FilledByOnes1 : 15;
+        unsigned int BD : 1; // Debug register access detected
+        unsigned int BS : 1; // Single step
+        unsigned int BT : 1; // Task switch
+        unsigned int RTM : 1; // Intel only, must be 1 on AMD platforms
+        unsigned int FilledByOnes1 : 15; // Must be 0x7FFF (15 bits of ones: 0b111_1111_1111_1111)
     } x32;
     struct {
-        unsigned long long Breakpoint0ConditionDetected : 1;
-        unsigned long long Breakpoint1ConditionDetected : 1;
-        unsigned long long Breakpoint2ConditionDetected : 1;
-        unsigned long long Breakpoint3ConditionDetected : 1;
-        unsigned long long FilledByOnes0 : 8;
+        unsigned long long B0 : 1; // Breakpoint #0 condition detected
+        unsigned long long B1 : 1; // Breakpoint #1 condition detected
+        unsigned long long B2 : 1; // Breakpoint #2 condition detected
+        unsigned long long B3 : 1; // Breakpoint #3 condition detected
+        unsigned long long FilledByOnes0 : 8; // Must be 0xFF (8 bits of ones: 0b1111_1111)
         unsigned long long ReservedByZero : 1;
-        unsigned long long BreakpointDebugAccessDetected : 1;
-        unsigned long long BreakpointSingleStep : 1;
-        unsigned long long BreakpointTaskSwitch : 1;
-        unsigned long long RestrictedTransactionalMemory : 1; // Intel only, must be zero on AMD platforms
-        unsigned long long FilledByOnes1 : 15;
+        unsigned long long BD : 1; // Debug register access detected
+        unsigned long long BS : 1; // Single step
+        unsigned long long BT : 1; // Task switch
+        unsigned long long RTM : 1; // Intel only, must be 1 on AMD platforms
+        unsigned long long FilledByOnes1 : 15; // Must be 0x7FFF (15 bits of ones: 0b111_1111_1111_1111)
         unsigned long long MustBeZero : 32;
     } x64;
 };
@@ -227,54 +227,54 @@ union DR6 {
 union DR7 {
     unsigned long long Value;
     struct {
-        unsigned int LocalBreakpoint0Enabled : 1;
-        unsigned int GlobalBreakpoint0Enabled : 1;
-        unsigned int LocalBreakpoint1Enabled : 1;
-        unsigned int GlobalBreakpoint1Enabled : 1;
-        unsigned int LocalBreakpoint2Enabled : 1;
-        unsigned int GlobalBreakpoint2Enabled : 1;
-        unsigned int LocalBreakpoint3Enabled : 1;
-        unsigned int GlobalBreakpoint3Enabled : 1;
-        unsigned int LocalExactBreakpointEnabled : 1;
-        unsigned int GlobalExactBreakpointEnabled : 1;
+        unsigned int L0 : 1; // Local  exact breakpoint #0 enabled
+        unsigned int G0 : 1; // Global exact breakpoint #0 enabled
+        unsigned int L1 : 1; // Local  exact breakpoint #1 enabled
+        unsigned int G1 : 1; // Global exact breakpoint #1 enabled
+        unsigned int L2 : 1; // Local  exact breakpoint #2 enabled
+        unsigned int G2 : 1; // Global exact breakpoint #2 enabled
+        unsigned int L3 : 1; // Local  exact breakpoint #3 enabled
+        unsigned int G3 : 1; // Global exact breakpoint #3 enabled
+        unsigned int LE : 1; // Local  exact breakpoint enabled
+        unsigned int GE : 1; // Global exact breakpoint enabled
         unsigned int ReservedAsOne : 1;
-        unsigned int RestrictedTransactionalMemoryEnabled : 1; // Intel only, must be zero on AMD platforms
+        unsigned int RTM : 1; // Intel only, must be zero on AMD platforms
         unsigned int ReservedAsZero0 : 1;
-        unsigned int GeneralDetectEnabled : 1;
+        unsigned int GD : 1; // General detect enabled
         unsigned int ReservedAsZero1 : 2;
-        unsigned int TypeOfTransactionsToTrap0 : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
-        unsigned int LengthOfBreakpoint0 : 2;       // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
-        unsigned int TypeOfTransactionsToTrap1 : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
-        unsigned int LengthOfBreakpoint1 : 2;       // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
-        unsigned int TypeOfTransactionsToTrap2 : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
-        unsigned int LengthOfBreakpoint2 : 2;       // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
-        unsigned int TypeOfTransactionsToTrap3 : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
-        unsigned int LengthOfBreakpoint3 : 2;       // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
+        unsigned int RW0  : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
+        unsigned int LEN0 : 2; // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
+        unsigned int RW1  : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
+        unsigned int LEN1 : 2; // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
+        unsigned int RW2  : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
+        unsigned int LEN2 : 2; // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
+        unsigned int RW3  : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
+        unsigned int LEN3 : 2; // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
     } x32;
     struct {
-        unsigned long long LocalBreakpoint0Enabled : 1;
-        unsigned long long GlobalBreakpoint0Enabled : 1;
-        unsigned long long LocalBreakpoint1Enabled : 1;
-        unsigned long long GlobalBreakpoint1Enabled : 1;
-        unsigned long long LocalBreakpoint2Enabled : 1;
-        unsigned long long GlobalBreakpoint2Enabled : 1;
-        unsigned long long LocalBreakpoint3Enabled : 1;
-        unsigned long long GlobalBreakpoint3Enabled : 1;
-        unsigned long long LocalExactBreakpointEnabled : 1;
-        unsigned long long GlobalExactBreakpointEnabled : 1;
+        unsigned long long L0 : 1; // Local  exact breakpoint #0 enabled
+        unsigned long long G0 : 1; // Global exact breakpoint #0 enabled
+        unsigned long long L1 : 1; // Local  exact breakpoint #1 enabled
+        unsigned long long G1 : 1; // Global exact breakpoint #1 enabled
+        unsigned long long L2 : 1; // Local  exact breakpoint #2 enabled
+        unsigned long long G2 : 1; // Global exact breakpoint #2 enabled
+        unsigned long long L3 : 1; // Local  exact breakpoint #3 enabled
+        unsigned long long G3 : 1; // Global exact breakpoint #3 enabled
+        unsigned long long LE : 1; // Local  exact breakpoint enabled
+        unsigned long long GE : 1; // Global exact breakpoint enabled
         unsigned long long ReservedAsOne : 1;
-        unsigned long long RestrictedTransactionalMemoryEnabled : 1; // Intel only, must be zero on AMD platforms
+        unsigned long long RTM : 1; // Intel only, must be zero on AMD platforms
         unsigned long long ReservedAsZero0 : 1;
-        unsigned long long GeneralDetectEnabled : 1;
+        unsigned long long GD : 1; // General detect enabled
         unsigned long long ReservedAsZero1 : 2;
-        unsigned long long TypeOfTransactionsToTrap0 : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
-        unsigned long long LengthOfBreakpoint0 : 2;       // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
-        unsigned long long TypeOfTransactionsToTrap1 : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
-        unsigned long long LengthOfBreakpoint1 : 2;       // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
-        unsigned long long TypeOfTransactionsToTrap2 : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
-        unsigned long long LengthOfBreakpoint2 : 2;       // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
-        unsigned long long TypeOfTransactionsToTrap3 : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
-        unsigned long long LengthOfBreakpoint3 : 2;       // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
+        unsigned long long RW0  : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
+        unsigned long long LEN0 : 2; // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
+        unsigned long long RW1  : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
+        unsigned long long LEN1 : 2; // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
+        unsigned long long RW2  : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
+        unsigned long long LEN2 : 2; // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
+        unsigned long long RW3  : 2; // 0b00 - Execute, 0b01 - Write, 0b10 - CR4.DE(0 - Undefined, 1 - I/O Reads & Writes), 0b11 - Read/Write only
+        unsigned long long LEN3 : 2; // 0b00 = 1 byte, 0b01 = 2 bytes, 0b10 = 8 bytes (long mode only, otherwise undefined), 0b11 = 4 bytes
         unsigned long long ReservedAsZero2 : 32;
     } x64;
 };
