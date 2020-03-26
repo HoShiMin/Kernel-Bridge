@@ -215,6 +215,7 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\CommonTypes\CPUID.h" />
     <ClInclude Include="..\CommonTypes\DescriptorTables.h" />
     <ClInclude Include="..\CommonTypes\PTE.h" />
     <ClInclude Include="..\CommonTypes\Registers.h" />

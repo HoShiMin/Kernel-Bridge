@@ -23,6 +23,7 @@
 #include "SymParser.h"
 
 #include <PTE.h>
+#include "Registers.h"
 
 #include <intrin.h>
 
