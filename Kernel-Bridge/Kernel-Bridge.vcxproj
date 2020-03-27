@@ -216,7 +216,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\CommonTypes\CPUID.h" />
-    <ClInclude Include="..\CommonTypes\DescriptorTables.h" />
+    <ClInclude Include="..\CommonTypes\Segmentation.h" />
     <ClInclude Include="..\CommonTypes\PTE.h" />
     <ClInclude Include="..\CommonTypes\Registers.h" />
     <ClInclude Include="..\CommonTypes\SVM.h" />

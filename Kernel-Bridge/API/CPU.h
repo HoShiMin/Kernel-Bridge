@@ -5,18 +5,11 @@ namespace CPU {
     void STI();
     void HLT();
     
+    void CPUID(unsigned int FunctionIdEax, int Regs[4]);
+    void CPUIDEX(unsigned int FunctionIdEax, unsigned int SubfunctionIdEcx, int Regs[4]);
+
     unsigned long long RDMSR(unsigned long Index);
     void WRMSR(unsigned long Index, unsigned long long Value);
-
-    typedef struct _CPUID_INFO {
-        unsigned int Eax;
-        unsigned int Ebx;
-        unsigned int Ecx;
-        unsigned int Edx;
-    } CPUID_INFO, *PCPUID_INFO;
-
-    void CPUID(int FunctionIdEax, PCPUID_INFO Cpuid);
-    void CPUIDEX(int FunctionIdEax, int SubfunctionIdEcx, PCPUID_INFO Cpuid);
 
     unsigned long long RDPMC(unsigned long Counter);
     unsigned long long RDTSC();

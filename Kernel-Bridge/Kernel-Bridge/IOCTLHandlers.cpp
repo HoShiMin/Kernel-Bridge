@@ -324,7 +324,7 @@ namespace
 
         CPU::CPUID(
             static_cast<PKB_CPUID_IN>(RequestInfo->InputBuffer)->FunctionIdEax,
-            static_cast<CPU::PCPUID_INFO>(RequestInfo->OutputBuffer)
+            static_cast<int*>(RequestInfo->OutputBuffer)
         );
 
         *ResponseLength = RequestInfo->OutputBufferSize;
@@ -343,7 +343,7 @@ namespace
         CPU::CPUIDEX(
             static_cast<PKB_CPUIDEX_IN>(RequestInfo->InputBuffer)->FunctionIdEax,
             static_cast<PKB_CPUIDEX_IN>(RequestInfo->InputBuffer)->SubfunctionIdEcx,
-            static_cast<CPU::PCPUID_INFO>(RequestInfo->OutputBuffer)
+            static_cast<int*>(RequestInfo->OutputBuffer)
         );
 
         *ResponseLength = RequestInfo->OutputBufferSize;

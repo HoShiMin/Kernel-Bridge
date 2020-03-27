@@ -10,7 +10,9 @@
 
 #include "Hypervisor.h"
 #include "PTE.h"
-#include "DescriptorTables.h"
+#include "Registers.h"
+#include "CPUID.h"
+#include "Segmentation.h"
 #include "SVM.h"
 #include "VMX.h"
 
@@ -25,18 +27,14 @@ extern "C" void __writemsr(unsigned long Index, unsigned long long Value);
 
 extern "C" void __writeeflags(unsigned long long RFlags);
 
-struct CPUID_INFO {
-    unsigned int Eax;
-    unsigned int Ebx;
-    unsigned int Ecx;
-    unsigned int Edx;
-};
-extern "C" void __cpuid(__out CPUID_INFO* Info, int FunctionIdEax);
+extern "C" void __cpuid(__out CPUID_REGS* Info, int FunctionIdEax);
 
 extern "C" unsigned long long __readcr0();
 extern "C" unsigned long long __readcr2();
 extern "C" unsigned long long __readcr3();
 extern "C" unsigned long long __readcr4();
+
+extern "C" void __writecr4(unsigned long long Cr4);
 
 extern "C" void __svm_clgi();
 extern "C" void __svm_invlpga(void* Va, int ASID);
@@ -327,10 +325,10 @@ namespace SVM {
         VMM_STATUS Status = VMM_CONTINUE;
         switch (Private->Guest.ControlArea.ExitCode) {
         case VMEXIT_CPUID: {
-            CPUID_INFO Info = {};
+            CPUID_REGS Regs = {};
             int Function = static_cast<int>(Context->Rax);
             int SubLeaf = static_cast<int>(Context->Rcx);
-            __cpuidex(reinterpret_cast<int*>(&Info), Function, SubLeaf);
+            __cpuidex(Regs.Raw, Function, SubLeaf);
 
             switch (Function) {
             case CPUID_VMM_SHUTDOWN:
@@ -339,17 +337,17 @@ namespace SVM {
                 break;
             case CPUID_VENDOR: {
                 // Vendor = 'Hyper-Bridge' as RBX + RDX + RCX:
-                Context->Rax = Info.Eax;
+                Context->Rax = Regs.Regs.Eax;
                 Context->Rbx = 'epyH';
                 Context->Rcx = 'egdi';
                 Context->Rdx = 'rB-r';
                 break;
             }
             default: {
-                Context->Rax = Info.Eax;
-                Context->Rbx = Info.Ebx;
-                Context->Rcx = Info.Ecx;
-                Context->Rdx = Info.Edx;
+                Context->Rax = Regs.Regs.Eax;
+                Context->Rbx = Regs.Regs.Ebx;
+                Context->Rcx = Regs.Regs.Ecx;
+                Context->Rdx = Regs.Regs.Edx;
                 break;
             }
             }
@@ -535,9 +533,9 @@ namespace SVM {
 
     static bool DevirtualizeProcessor() {
         // Trigger the #VMEXIT with the predefined arguments:
-        CPUID_INFO Info = {};
-        __cpuid(&Info, CPUID_VMM_SHUTDOWN);
-        if (Info.Ecx != CPUID_VMM_SHUTDOWN) return false; // Processor not virtualized!
+        CPUID_REGS Regs = {};
+        __cpuid(&Regs, CPUID_VMM_SHUTDOWN);
+        if (Regs.Regs.Ecx != CPUID_VMM_SHUTDOWN) return false; // Processor not virtualized!
 
         // Processor is devirtualized now:
         //  Info.Eax -> PRIVATE_VM_DATA* Private LOW
@@ -546,8 +544,8 @@ namespace SVM {
         //  Info.Edx -> PRIVATE_VM_DATA* Private HIGH
 
         auto Private = reinterpret_cast<PRIVATE_VM_DATA*>(
-            (static_cast<UINT64>(Info.Edx) << 32) |
-            (static_cast<UINT64>(Info.Eax))
+            (static_cast<UINT64>(Regs.Regs.Edx) << 32) |
+            (static_cast<UINT64>(Regs.Regs.Eax))
         );
 
         FreePhys(Private);
@@ -575,21 +573,21 @@ namespace SVM {
     }
 
     static bool IsSvmSupported() {
-        CPUID_INFO Info = {};
+        CPUID_REGS Regs = {};
         
         // Check the 'AuthenticAMD' vendor name:
-        __cpuid(&Info, CPUID_VENDOR);
-        if (Info.Ebx != 'htuA' || Info.Edx != 'itne' || Info.Ecx != 'DMAc') return false;
+        __cpuid(&Regs, CPUID_VENDOR);
+        if (Regs.Regs.Ebx != 'htuA' || Regs.Regs.Edx != 'itne' || Regs.Regs.Ecx != 'DMAc') return false;
 
         // Check the AMD SVM (AMD-V) support:
         constexpr unsigned int CPUID_FN80000001_ECX_SVM = 1 << 2;
-        __cpuid(&Info, CPUID_FEATURE_IDENTIFIERS_EX);
-        if ((Info.Ecx & CPUID_FN80000001_ECX_SVM) == 0) return false;
+        __cpuid(&Regs, CPUID_FEATURE_IDENTIFIERS_EX);
+        if ((Regs.Regs.Ecx & CPUID_FN80000001_ECX_SVM) == 0) return false;
 
         // Check the Nested Paging support (AMD-RVI):
         constexpr unsigned int CPUID_FN8000000A_EDX_NESTED_PAGING = 1 << 0;
-        __cpuid(&Info, CPUID_SVM_FEATURES_IDENTIFICATION);
-        if ((Info.Edx & CPUID_FN8000000A_EDX_NESTED_PAGING) == 0) return false;
+        __cpuid(&Regs, CPUID_SVM_FEATURES_IDENTIFICATION);
+        if ((Regs.Regs.Edx & CPUID_FN8000000A_EDX_NESTED_PAGING) == 0) return false;
 
         // Check that the EFER.SVME is writeable (we can enable the SVM):
         VM_CR VmCr = {};
@@ -604,7 +602,7 @@ namespace SVM {
     }
 }
 
-#if FALSE
+#ifdef VMX_SUPPORT
 namespace VMX {
     using namespace Supplementation;
 
@@ -623,40 +621,31 @@ namespace VMX {
 
     // Shared between all processors:
     struct SHARED_VM_DATA {
-        //NESTED_PAGING_TABLES* Npt;
-        //MSRPM* Msrpm;
         bool Virtualized;
-    };
-
-    struct PRIVATE_VM_DATA {
-
     };
 
     static SHARED_VM_DATA SharedVmData = {};
 
     // Unique for each processor:
     struct PRIVATE_VM_DATA {
-        DECLSPEC_ALIGN(PAGE_SIZE) VMCB Guest;
-        DECLSPEC_ALIGN(PAGE_SIZE) VMCB Host;
-        DECLSPEC_ALIGN(PAGE_SIZE) unsigned char HostStateArea[PAGE_SIZE];
-        union {
-            struct INITIAL_VMM_STACK_LAYOUT {
-                PVOID GuestVmcbPa;
-                PVOID HostVmcbPa;
-                PRIVATE_VM_DATA* Private;
-            };
-            DECLSPEC_ALIGN(PAGE_SIZE) unsigned char VmmStack[KERNEL_STACK_SIZE];
-            struct {
-                unsigned char FreeSpace[KERNEL_STACK_SIZE - sizeof(INITIAL_VMM_STACK_LAYOUT)];
-                INITIAL_VMM_STACK_LAYOUT InitialStack;
-            } Layout;
-        } VmmStack;
+
     };
 
-    static SHARED_VM_DATA SharedVmData = {};
+    static bool VirtualizeProcessor() {
+        CR4 Cr4 = {};
+        Cr4.Value = __readcr4();
+        Cr4.x64.Bitmap.VMXE = TRUE;
+        __writecr4(Cr4.Value);
+    }
 
     static bool IsVmxSupported() {
+        CPUID_REGS Regs = {};
 
+        // Check the 'GenuineIntel' vendor name:
+        __cpuid(&Regs, CPUID_VENDOR);
+        if (Regs.Regs.Ebx != 'uneG' || Regs.Regs.Edx != 'Ieni' || Regs.Regs.Ecx != 'letn') return false;
+
+        return true;
     }
 }
 #endif
@@ -664,6 +653,23 @@ namespace VMX {
 #endif
 
 namespace Hypervisor {
+    enum GENERIC_CPUID {
+        CPUID_VENDOR = 0x00000000
+    };
+    
+    enum CPU_VENDOR {
+        cpuIntel,
+        cpuAmd,
+        cpuUnknown
+    };
+
+    //CpuVendor GetCpuVendor() {
+    //    CPUID_INFO Info = {};
+    //    __cpuid(&Info, CPUID_VENDOR);
+    //    if (Info.Ebx != 'uneG' || Info.Edx != 'Ieni' || Info.Ecx != 'letn') return false;
+    //}
+
+
     bool IsVirtualized() {
 #ifdef _AMD64_
         return SVM::IsVirtualized(&SVM::SharedVmData);

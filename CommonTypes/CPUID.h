@@ -223,20 +223,20 @@ namespace CPUID {
             // ECX:
             unsigned int SSE3 : 1;
             unsigned int PCLMULQDQ : 1;
-            unsigned int Reserved0 : 1;
+            unsigned int Reserved2 : 1;
             unsigned int MONITOR : 1;
-            unsigned int Reserved1 : 5;
+            unsigned int Reserved3 : 5;
             unsigned int SSSE3 : 1;
-            unsigned int Reserved2 : 2;
+            unsigned int Reserved4 : 2;
             unsigned int FMA : 1;
             unsigned int CMPXCHG16B : 1;
-            unsigned int Reserved3 : 5;
+            unsigned int Reserved5 : 5;
             unsigned int SSE41 : 1;
             unsigned int SSE42 : 1;
-            unsigned int Reserved4 : 1;
+            unsigned int Reserved6 : 1;
             unsigned int MOVBE : 1;
             unsigned int POPCNT : 1;
-            unsigned int Reserved5 : 1;
+            unsigned int Reserved7 : 1;
             unsigned int AES : 1;
             unsigned int XSAVE : 1;
             unsigned int OSXSAVE : 1;
@@ -256,7 +256,7 @@ namespace CPUID {
             unsigned int MCE : 1; // Machine check exception
             unsigned int CMPXCHG8B : 1;
             unsigned int APIC : 1;
-            unsigned int Reserved6 : 1;
+            unsigned int Reserved8 : 1;
             unsigned int SysEnterSysExit : 1; // SYSENTER/SYSEXIT instructions support
             unsigned int MTRR : 1; // Memory-Type Range Registers support
             unsigned int PGE : 1; // Page global bit (CR4.PGE bit controls this feature)
@@ -264,21 +264,54 @@ namespace CPUID {
             unsigned int CMOV : 1; // Conditional move instruction support
             unsigned int PAT : 1; // Page attribute table
             unsigned int PSE36 : 1; // 36-bit page size extension
-            unsigned int Reserved7 : 1;
+            unsigned int Reserved9 : 1;
             unsigned int CLFSH : 1; // CLFLUSH instruction support
-            unsigned int Reserved8 : 3;
+            unsigned int Reserved10 : 3;
             unsigned int MMX : 1;
             unsigned int FXSR : 1; // FXSAVE and FXRSTOR support
             unsigned int SSE : 1;
             unsigned int SSE2 : 1;
-            unsigned int Reserved9 : 1;
+            unsigned int Reserved11 : 1;
             unsigned int HTT : 1; // Max APIC IDs reserved field is Valid (CPUID.1.EBX.LogicalProcessorCount is valid)
-            unsigned int Reserved10 : 3;
+            unsigned int Reserved12 : 3;
         } Generic, AMD;
     };
 
     union EXTENDED_FEATURE_INFORMATION {
         CPUID_REGS Regs;
+        struct {
+            // EAX:
+            unsigned int Stepping : 4;
+            unsigned int Model : 4;
+            unsigned int FamilyId : 4;
+            unsigned int Reserved0 : 4;
+            unsigned int ExtendedModelId : 4;
+            unsigned int ExtendedFamilyId : 8;
+            unsigned int Reserved1 : 4;
+
+            // EBX:
+            unsigned int Reserved2 : 32;
+
+            // ECX:
+            unsigned int LahfSahf : 1;
+            unsigned int Reserved3 : 4;
+            unsigned int LZCNT : 1;
+            unsigned int Reserved4 : 2;
+            unsigned int PREFETCHW : 1;
+            unsigned int Reserved5 : 23;
+
+            // EDX:
+            unsigned int Reserved6 : 11;
+            unsigned int SysCallSysRet : 1;
+            unsigned int Reserved7 : 8;
+            unsigned int NX : 1;
+            unsigned int Reserved8 : 5;
+            unsigned int Page1Gb : 1; // 1-Gb large page support
+            unsigned int RDTSCP : 1;
+            unsigned int Reserved9 : 1;
+            unsigned int LongMode : 1; // 64-bit mode
+            unsigned int Reserved10 : 2;
+        } Generic;
         struct {
             // EAX:
             unsigned int Stepping : 4;
@@ -387,34 +420,34 @@ namespace CPUID {
             unsigned int _3DNow : 1;
         } AMD;
     };
+
+    union PROCESSOR_BRAND_STRING_0 {
+        CPUID_REGS Regs;
+        struct {
+            unsigned int Part0;
+            unsigned int Part1;
+            unsigned int Part2;
+            unsigned int Part3;
+        } ProcessorName;
+    };
+
+    union PROCESSOR_BRAND_STRING_1 {
+        CPUID_REGS Regs;
+        struct {
+            unsigned int Part4;
+            unsigned int Part5;
+            unsigned int Part6;
+            unsigned int Part7;
+        } ProcessorName;
+    };
+
+    union PROCESSOR_BRAND_STRING_2 {
+        CPUID_REGS Regs;
+        struct {
+            unsigned int Part8;
+            unsigned int Part9;
+            unsigned int Part10;
+            unsigned int Part11;
+        } ProcessorName;
+    };
 }
-
-union PROCESSOR_BRAND_STRING_0 {
-    CPUID_REGS Regs;
-    struct {
-        unsigned int Part0;
-        unsigned int Part1;
-        unsigned int Part2;
-        unsigned int Part3;
-    } ProcessorName;
-};
-
-union PROCESSOR_BRAND_STRING_1 {
-    CPUID_REGS Regs;
-    struct {
-        unsigned int Part4;
-        unsigned int Part5;
-        unsigned int Part6;
-        unsigned int Part7;
-    } ProcessorName;
-};
-
-union PROCESSOR_BRAND_STRING_2 {
-    CPUID_REGS Regs;
-    struct {
-        unsigned int Part8;
-        unsigned int Part9;
-        unsigned int Part10;
-        unsigned int Part11;
-    } ProcessorName;
-};
