@@ -218,7 +218,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="API\SVM.asm">
+    <MASM Include="API\VMM.asm">
       <Filter>API</Filter>
     </MASM>
   </ItemGroup>

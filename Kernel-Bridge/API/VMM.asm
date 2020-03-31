@@ -1,6 +1,7 @@
 .CODE
 
 EXTERN SvmVmexitHandler: PROC
+;EXTERN VmxVmexitHandler: PROC
 
 GPR_CONTEXT_ENTRIES equ 15 ; rax, rbx, rcx, rdx, rsi, rdi, rbp, r8..r15
 GPR_CONTEXT_SIZE    equ GPR_CONTEXT_ENTRIES * sizeof(QWORD)
@@ -145,5 +146,11 @@ VmmExit:
     mov ecx, CPUID_VMM_SHUTDOWN ; Signature that says about the VM shutdown
     jmp rbx
 SvmVmmRun ENDP
+
+
+
+VmxVmmRun PROC
+
+VmxVmmRun ENDP
 
 END

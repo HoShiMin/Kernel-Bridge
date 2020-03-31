@@ -62,6 +62,7 @@
     <DriverType>WDM</DriverType>
     <DriverTargetPlatform>Desktop</DriverTargetPlatform>
     <_NT_TARGET_VERSION>0x0601</_NT_TARGET_VERSION>
+    <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <TargetVersion>Windows7</TargetVersion>
@@ -71,6 +72,7 @@
     <DriverType>WDM</DriverType>
     <DriverTargetPlatform>Desktop</DriverTargetPlatform>
     <_NT_TARGET_VERSION>0x0601</_NT_TARGET_VERSION>
+    <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <TargetVersion>Windows7</TargetVersion>
@@ -80,6 +82,7 @@
     <DriverType>WDM</DriverType>
     <DriverTargetPlatform>Desktop</DriverTargetPlatform>
     <_NT_TARGET_VERSION>0x0601</_NT_TARGET_VERSION>
+    <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <TargetVersion>Windows7</TargetVersion>
@@ -89,6 +92,7 @@
     <DriverType>WDM</DriverType>
     <DriverTargetPlatform>Desktop</DriverTargetPlatform>
     <_NT_TARGET_VERSION>0x0601</_NT_TARGET_VERSION>
+    <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings" />
@@ -254,7 +258,7 @@
     <None Include="Exports.def" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="API\SVM.asm">
+    <MASM Include="API\VMM.asm">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </MASM>

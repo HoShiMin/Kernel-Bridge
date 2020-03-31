@@ -307,8 +307,10 @@ static NTSTATUS DriverControl(_In_ PDEVICE_OBJECT DeviceObject, _In_ PIRP Irp)
     }
     }
 
+    NTSTATUS Status = Irp->IoStatus.Status;
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
-    return Irp->IoStatus.Status;
+
+    return Status;
 }
 
 _Dispatch_type_(IRP_MJ_CREATE)
@@ -332,6 +334,7 @@ static NTSTATUS DriverStub(_In_ PDEVICE_OBJECT DeviceObject, _In_ PIRP Irp)
     Irp->IoStatus.Status = STATUS_SUCCESS;
     Irp->IoStatus.Information = 0;
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
+
     return STATUS_SUCCESS;
 }
 
