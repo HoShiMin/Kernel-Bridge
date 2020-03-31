@@ -504,7 +504,7 @@ namespace Mdl {
         Input.MapToAddressSpace = MapToAddressSpace;
         Input.Protect = Protect;
         Input.CacheType = CacheType;
-        Input.UserRequestedAddress;
+        Input.UserRequestedAddress = UserRequestedAddress;
         BOOL Status = KbSendRequest(Ctls::KbMapMdl, &Input, sizeof(Input), &Output, sizeof(Output));
         *MappedMemory = Output.BaseAddress;
         return Status;
@@ -562,7 +562,7 @@ namespace Mdl {
         Input.MapToAddressSpace = MapToAddressSpace;
         Input.Protect = Protect;
         Input.CacheType = CacheType;
-        Input.UserRequestedAddress;
+        Input.UserRequestedAddress = UserRequestedAddress;
         BOOL Status = KbSendRequest(Ctls::KbMapMemory, &Input, sizeof(Input), &Output, sizeof(Output));
         MappingInfo->MappedAddress = Output.BaseAddress;
         MappingInfo->Mdl = Output.Mdl;
