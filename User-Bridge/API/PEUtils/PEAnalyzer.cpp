@@ -36,10 +36,10 @@ SIZE_T PEAnalyzer::rvaToOffset(SIZE_T rva) const
         if (m_needToAlign)
         {
             sectionBase = alignDown(static_cast<SIZE_T>(section.offsetInMemory), m_sectionAlignment);
-            SIZE_T AlignedFileSize, AlignedSectionSize;
-            AlignedFileSize    = alignUp(section.sizeOnDisk, m_fileAlignment);
-            AlignedSectionSize = alignUp(section.sizeInMemory, m_sectionAlignment);
-            sectionSize        = AlignedFileSize > AlignedSectionSize ? AlignedSectionSize : AlignedFileSize;
+            SIZE_T alignedFileSize, alignedSectionSize;
+            alignedFileSize    = alignUp(section.sizeOnDisk, m_fileAlignment);
+            alignedSectionSize = alignUp(section.sizeInMemory, m_sectionAlignment);
+            sectionSize        = alignedFileSize > alignedSectionSize ? alignedSectionSize : alignedFileSize;
             sectionOffset      = alignDown(section.offsetInFile, FORCED_FILE_ALIGNMENT);
         }
         else

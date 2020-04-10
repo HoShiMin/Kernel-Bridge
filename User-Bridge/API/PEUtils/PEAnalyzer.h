@@ -5,11 +5,11 @@
 #include <Windows.h>
 
 /*
-    RAW или Offset - смещение от начала файла
-    RVA - смещение в загруженном модуле в памяти
-    VA = m_imageBase + RVA - реальный адрес чего-либо в памяти модуля
+    RAW or Offset - offset from the beginning of file
+    RVA - offset in the loaded module (in memory)
+    VA = ImageBase + RVA - real address of something in memory of the module
     RVA -> Offset: SectionRAW + (RVA - SectionRVA)
-                                            ^- Хранится в заголовке секции
+                                            ^- In section's header
 */
 
 constexpr int SEC_NAME_SIZE = 8;
