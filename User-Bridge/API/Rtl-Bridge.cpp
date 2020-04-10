@@ -89,15 +89,15 @@ namespace KbRtl {
             );
 
             WdkTypes::PVOID KImageAddress = NULL;
-            BOOL Status = VirtualMemory::KbAllocKernelMemory(Loader.GetDeployedSize(), TRUE, &KImageAddress);
+            BOOL Status = VirtualMemory::KbAllocKernelMemory(Loader.getDeployedSize(), TRUE, &KImageAddress);
             if (!Status) throw KbLdrKernelMemoryNotAllocated;
 
-            Loader.Relocate(reinterpret_cast<HMODULE>(KImageAddress));
+            Loader.relocate(reinterpret_cast<HMODULE>(KImageAddress));
 
             Status = VirtualMemory::KbCopyMoveMemory(
                 KImageAddress, 
-                reinterpret_cast<WdkTypes::PVOID>(Loader.Get()), 
-                Loader.GetDeployedSize(), 
+                reinterpret_cast<WdkTypes::PVOID>(Loader.get()), 
+                Loader.getDeployedSize(), 
                 FALSE
             );
 
@@ -109,7 +109,7 @@ namespace KbRtl {
             return LoadableModules::KbCreateDriver(
                 DriverName,
                 reinterpret_cast<WdkTypes::PVOID>(
-                    Loader.GetBaseRelativeEntryPoint(reinterpret_cast<HMODULE>(KImageAddress))
+                    Loader.getBaseRelativeEntryPoint(reinterpret_cast<HMODULE>(KImageAddress))
                 )
             ) ? KbLdrSuccess : KbLdrCreationFailure;
         } 
@@ -140,18 +140,18 @@ namespace KbRtl {
                 }
             );
 
-            PEAnalyzer Module(Loader.Get(), FALSE);
+            PEAnalyzer Module(Loader.get(), FALSE);
 
             WdkTypes::HMODULE hModule = NULL;
-            BOOL Status = VirtualMemory::KbAllocKernelMemory(Loader.GetDeployedSize(), TRUE, &hModule);
+            BOOL Status = VirtualMemory::KbAllocKernelMemory(Loader.getDeployedSize(), TRUE, &hModule);
             if (!Status) throw KbLdrKernelMemoryNotAllocated;
 
-            Loader.Relocate(reinterpret_cast<HMODULE>(hModule));
+            Loader.relocate(reinterpret_cast<HMODULE>(hModule));
 
             Status = VirtualMemory::KbCopyMoveMemory(
                 hModule, 
-                reinterpret_cast<WdkTypes::PVOID>(Loader.Get()), 
-                Loader.GetDeployedSize(), 
+                reinterpret_cast<WdkTypes::PVOID>(Loader.get()), 
+                Loader.getDeployedSize(), 
                 FALSE
             );
 
@@ -160,16 +160,16 @@ namespace KbRtl {
                 return KbLdrTransitionFailure;
             }
 
-            WdkTypes::PVOID ModuleBase = reinterpret_cast<WdkTypes::PVOID>(Module.GetImageBase());
+            WdkTypes::PVOID ModuleBase = reinterpret_cast<WdkTypes::PVOID>(Module.getImageBase());
             WdkTypes::PVOID OnLoad = NULL, OnUnload = NULL, OnDeviceControl = NULL;
-            const auto& Exports = Module.GetExportsInfo();
-            for (const auto& Export : Exports.Exports) {
-                WdkTypes::PVOID VA = hModule + static_cast<WdkTypes::PVOID>(Export.RVA);
-                if (Export.Name == "OnLoad") {
+            const auto& Exports = Module.getExportsInfo();
+            for (const auto& Export : Exports.exports) {
+                WdkTypes::PVOID VA = hModule + static_cast<WdkTypes::PVOID>(Export.rva);
+                if (Export.name == "OnLoad") {
                     OnLoad = VA;
-                } else if (Export.Name == "OnUnload") {
+                } else if (Export.name == "OnUnload") {
                     OnUnload = VA;
-                } else if (Export.Name == "OnDeviceControl") {
+                } else if (Export.name == "OnDeviceControl") {
                     OnDeviceControl = VA;
                 }
             }

@@ -7,137 +7,139 @@
 /*
     RAW или Offset - смещение от начала файла
     RVA - смещение в загруженном модуле в памяти
-    VA = ImageBase + RVA - реальный адрес чего-либо в памяти модуля
+    VA = m_imageBase + RVA - реальный адрес чего-либо в памяти модуля
     RVA -> Offset: SectionRAW + (RVA - SectionRVA)
                                             ^- Хранится в заголовке секции
 */
 
-#define MZ_SIGNATURE 0x5A4D // MZ
-#define PE_SIGNATURE 0x4550 // PE
+constexpr int SEC_NAME_SIZE = 8;
 
-#define PE32_SIGNATURE 0x010B
-#define PE64_SIGNATURE 0x020B
-
-#define SEC_NAME_SIZE 8
-
-typedef struct _SECTION_INFO {
-    DWORD OffsetInMemory;
-    DWORD OffsetInFile;
-    DWORD SizeInMemory;
-    DWORD SizeOnDisk;
-    DWORD Characteristics;
-    WORD NumberOfRelocs;
-    CHAR Name[SEC_NAME_SIZE + 1];
-} SECTION_INFO, *PSECTION_INFO;
+struct SECTION_INFO
+{
+    DWORD offsetInMemory;
+    DWORD offsetInFile;
+    DWORD sizeInMemory;
+    DWORD sizeOnDisk;
+    DWORD characteristics;
+    WORD numberOfRelocs;
+    CHAR name[SEC_NAME_SIZE + 1];
+};
 
 typedef std::vector<SECTION_INFO> SECTIONS_SET;
 
-typedef struct _RELOC_INFO {
-    DWORD Rva; // Page RVA + Offset
-    BYTE Type;
-} RELOC_INFO, *PRELOC_INFO;
+struct RELOC_INFO
+{
+    DWORD rva; // Page RVA + Offset
+    BYTE relocType;
+};
 
 typedef std::vector<RELOC_INFO> RELOCS_SET;
 
-typedef struct _IMPORT_INFO {
-    PVOID OFT; // OFT = OriginalFirstThunk
-    PVOID FT; // FT = FirstThunk, адрес в IAT (реальный адрес в памяти)
-    BOOL IsOrdinalImport;
-    SIZE_T Ordinal;
-    WORD Hint;
-    std::string Name;
-} IMPORT_INFO, *PIMPORT_INFO;
+struct IMPORT_INFO
+{
+    PVOID oft; // OFT = OriginalFirstThunk
+    PVOID ft; // FT = FirstThunk, адрес в IAT (реальный адрес в памяти)
+    bool isOrdinalImport;
+    SIZE_T ordinal;
+    WORD hint;
+    std::string name;
+};
 
 typedef std::vector<IMPORT_INFO> IMPORTS_SET;
-typedef std::unordered_map<std::string, IMPORTS_SET> IMPORTS_MAP; // LibName -> Imports
+typedef std::unordered_map<std::string, IMPORTS_SET> IMPORTS_MAP; // LibName -> imports
 
-typedef struct _DELAYED_IMPORT_INFO {
-    DWORD Attributes;
+struct DELAYED_IMPORT_INFO
+{
+    DWORD attributes;
     HMODULE hModule;
-    std::string DllName;
-    IMPORTS_SET Imports;
-} DELAYED_IMPORT_INFO, *PDELAYED_IMPORT_INFO;
+    std::string dllName;
+    IMPORTS_SET imports;
+};
 
 typedef std::vector<DELAYED_IMPORT_INFO> DELAYED_IMPORTS_SET;
 
-typedef struct _EXPORT_INFO {
-    PVOID VA;
-    DWORD RVA;
-    DWORD Ordinal;
-    BOOL OrdinalExport;
-    std::string Name;
-} EXPORT_INFO, *PEXPORT_INFO;
+struct EXPORT_INFO
+{
+    PVOID va;
+    DWORD rva;
+    DWORD ordinal;
+    bool ordinalExport;
+    std::string name;
+};
 
 typedef std::vector<EXPORT_INFO> EXPORTS_SET;
 
-typedef struct _EXPORTS_INFO {
-    DWORD TimeStamp;
-    DWORD NumberOfNames;
-    DWORD NumberOfFunctions;
-    std::string Name;
-    EXPORTS_SET Exports;
-} EXPORTS_INFO, *PEXPORTS_INFO;
+struct EXPORTS_INFO
+{
+    DWORD timeStamp;
+    DWORD numberOfNames;
+    DWORD numberOfFunctions;
+    std::string name;
+    EXPORTS_SET exports;
+};
 
-class PEAnalyzer {
+class PEAnalyzer
+{
 private:
-    BOOL IsRawModule;
-    BOOL IsValidPESignatures;
+    bool m_isRawModule;
+    bool m_areValidPeSignatures;
 
-    PIMAGE_DOS_HEADER DosHeader;
-    PIMAGE_NT_HEADERS NtHeaders;
-    PIMAGE_OPTIONAL_HEADER OptionalHeader;
+    PIMAGE_DOS_HEADER m_dosHeader;
+    PIMAGE_NT_HEADERS m_ntHeaders;
+    PIMAGE_OPTIONAL_HEADER m_optionalHeader;
 
-    ULONG ImageSize;
+    ULONG m_imageSize;
 
-    PVOID LocalBase;
+    PVOID m_localBase;
 
-    PVOID ImageBase;
-    PVOID EntryPoint;
+    PVOID m_imageBase;
+    PVOID m_entryPoint;
 
-    BOOL NeedToAlign;
-    DWORD FileAlignment;
-    DWORD SectionAlignment;
+    BOOL m_needToAlign;
+    DWORD m_fileAlignment;
+    DWORD m_sectionAlignment;
 
-    SECTIONS_SET Sections;
-    RELOCS_SET Relocs;
-    IMPORTS_MAP Imports;
-    DELAYED_IMPORTS_SET DelayedImports;
-    EXPORTS_INFO Exports;
+    SECTIONS_SET m_sections;
+    RELOCS_SET m_relocs;
+    IMPORTS_MAP m_imports;
+    DELAYED_IMPORTS_SET m_delayedImports;
+    EXPORTS_INFO m_exports;
 
-    BOOL ValidatePESignatures();
+    bool validatePeSignatures();
 
-    void FillSectionsInfo();
-    void FillRelocsInfo();
-    void FillImportsInfo();
-    void FillDelayedImportsInfo();
-    void FillExportsInfo();
+    void fillSectionsInfo();
+    void fillRelocsInfo();
+    void fillImportsInfo();
+    void fillDelayedImportsInfo();
+    void fillExportsInfo();
 
-    void FillImportsSet(PIMAGE_THUNK_DATA Thunk, PIMAGE_THUNK_DATA OriginalThunk, OUT IMPORTS_SET& ImportsSet);
+    void fillImportsSet(__in PIMAGE_THUNK_DATA thunk, __in PIMAGE_THUNK_DATA originalThunk, __out IMPORTS_SET& importsSet);
+
 public:
     PEAnalyzer();
-    PEAnalyzer(HMODULE hModule, BOOL RawModule);
+    PEAnalyzer(HMODULE hModule, bool isRawModule);
     ~PEAnalyzer();
 
-    BOOL LoadModule(HMODULE hModule, BOOL RawModule);
+    bool load(HMODULE hModule, bool isRawModule);
 
-    void Clear();
+    void clear();
 
-    const SECTIONS_SET& GetSectionsInfo() const { return Sections; }
-    const RELOCS_SET& GetRelocsInfo() const { return Relocs; }
-    const IMPORTS_MAP& GetImportsInfo() const { return Imports; }
-    const DELAYED_IMPORTS_SET& GetDelayedImports() const { return DelayedImports; }
-    const EXPORTS_INFO& GetExportsInfo() const { return Exports; }
+    [[nodiscard]] const SECTIONS_SET& getSectionsInfo() const { return m_sections; }
+    [[nodiscard]] const RELOCS_SET& getRelocsInfo() const { return m_relocs; }
+    [[nodiscard]] const IMPORTS_MAP& getImportsInfo() const { return m_imports; }
+    [[nodiscard]] const DELAYED_IMPORTS_SET& getDelayedImports() const { return m_delayedImports; }
+    [[nodiscard]] const EXPORTS_INFO& getExportsInfo() const { return m_exports; }
 
-    ULONG GetImageSize() const { return ImageSize; }
-    PVOID GetImageBase() const { return ImageBase; }
-    PVOID GetLocalBase() const { return LocalBase; }
-    PVOID GetEntryPoint() const { return EntryPoint; }
+    [[nodiscard]] ULONG getImageSize() const { return m_imageSize; }
+    [[nodiscard]] PVOID getImageBase() const { return m_imageBase; }
+    [[nodiscard]] PVOID getLocalBase() const { return m_localBase; }
+    [[nodiscard]] PVOID getEntryPoint() const { return m_entryPoint; }
 
-    PIMAGE_DOS_HEADER GetDosHeader() const { return DosHeader; }
-    PIMAGE_NT_HEADERS GetNtHeaders() const { return NtHeaders; }
-    PIMAGE_OPTIONAL_HEADER GetOptionalHeader() const { return OptionalHeader; }
+    [[nodiscard]] PIMAGE_DOS_HEADER getDosHeader() const { return m_dosHeader; }
+    [[nodiscard]] PIMAGE_NT_HEADERS getNtHeaders() const { return m_ntHeaders; }
+    [[nodiscard]] PIMAGE_OPTIONAL_HEADER getOptionalHeader() const { return m_optionalHeader; }
 
-    BOOL IsValidPE() const { return IsValidPESignatures; };
+    [[nodiscard]] bool isValidPe() const { return m_areValidPeSignatures; };
 
-    SIZE_T Rva2Offset(SIZE_T Rva) const;
+    [[nodiscard]] SIZE_T rvaToOffset(SIZE_T rva) const;
 };
