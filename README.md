@@ -1,11 +1,11 @@
 # The Kernel-Bridge Framework
-The "Kernel-Bridge" project is a Windows kernel driver template, development framework and
-kernel-mode API and wrappers written on C++17.  
+The "Kernel-Bridge" project is a C++20-ready Windows kernel driver template, development framework and
+kernel-mode API and wrappers.  
   
 [Precompiled and signed binaries with the SecureBoot support](https://github.com/HoShiMin/Kernel-Bridge/releases)
   
 ### ✔ Capabilites:
-* Hypervisor (AMD-V/RVI)
+* Hypervisor (both Intel VT-x/EPT and AMD-V/RVI) with the Hyper-V support
 * IO-ports (+ 'in/out/cli/sti' usermode forwarding by IOPL)
 * System beeper
 * MSRs, CPUID, TSC and performance counters (RDPMC)
@@ -33,7 +33,6 @@ kernel-mode API and wrappers written on C++17.
 * Python binding
   
 ### ➰ In development and plans:
-* Hypervisor with VT-x/EPT support
 * Qt-based GUI for the kernel-hacking and memory researching framework
 * Kernel WinSock support
 * Extensions for the RTL: hooks, injections, disassembling
