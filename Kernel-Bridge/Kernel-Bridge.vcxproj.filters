@@ -211,6 +211,15 @@
     <ClInclude Include="..\CommonTypes\Segmentation.h">
       <Filter>CommonTypes</Filter>
     </ClInclude>
+    <ClInclude Include="..\CommonTypes\MSR.h">
+      <Filter>CommonTypes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CommonTypes\Interrupts.h">
+      <Filter>CommonTypes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CommonTypes\Hyper-V.h">
+      <Filter>CommonTypes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Exports.def">

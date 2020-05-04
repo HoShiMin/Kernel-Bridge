@@ -1,6 +1,7 @@
 #pragma once
 
-namespace SVM {
+namespace SVM
+{
     struct VMCB_CONTROL_AREA {
         union {
             unsigned int Value;

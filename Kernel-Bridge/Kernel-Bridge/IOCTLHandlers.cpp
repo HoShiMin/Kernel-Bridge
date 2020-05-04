@@ -1717,7 +1717,7 @@ namespace
 
                 PsTerminateSystemThread(Status);
             },
-            reinterpret_cast<PVOID>(Input->Argument),
+            reinterpret_cast<PVOID>(&Params),
             &hThread,
             &ClientId
         );

@@ -1,6 +1,7 @@
 #pragma once
 
-namespace VMX {
+namespace VMX
+{
     struct VMCS {
         union {
             unsigned int Value;
@@ -43,7 +44,7 @@ namespace VMX {
         VMCS_FIELD_GUEST_LDTR_SELECTOR = 0x0000080C,
         VMCS_FIELD_GUEST_TR_SELECTOR = 0x0000080E,
         VMCS_FIELD_GUEST_INTERRUPT_STATUS = 0x00000810,
-        VMCS_FIELD_PML_INDEX = 0x00000820,
+        VMCS_FIELD_PML_INDEX = 0x00000812,
 
         // 16-bit host-state fields:
         VMCS_FIELD_HOST_ES_SELECTOR = 0x00000C00,
@@ -133,6 +134,8 @@ namespace VMX {
         VMCS_FIELD_GUEST_PDPTE_3_HIGH = 0x00002811,
         VMCS_FIELD_GUEST_IA32_BNDCFGS_FULL = 0x00002812,
         VMCS_FIELD_GUEST_IA32_BNDCFGS_HIGH = 0x00002813,
+        VMCS_FIELD_GUEST_IA32_RTIT_CTL_FULL = 0x00002814,
+        VMCS_FIELD_GUEST_IA32_RTIT_CTL_HIGH = 0x00002815,
 
         // 64-bit host-state fields:
         VMCS_FIELD_HOST_IA32_PAT_FULL = 0x00002C00,
@@ -216,6 +219,7 @@ namespace VMX {
         VMCS_FIELD_IO_RSI = 0x00006404,
         VMCS_FIELD_IO_RDI = 0x00006406,
         VMCS_FIELD_IO_RIP = 0x00006408,
+        VMCS_FIELD_GUEST_LINEAR_ADDRESS = 0x0000640A,
 
         // Natural-width guest-state fields:
         VMCS_FIELD_GUEST_CR0 = 0x00006800,
@@ -238,6 +242,9 @@ namespace VMX {
         VMCS_FIELD_GUEST_PENDING_DEBUG_EXCEPTIONS = 0x00006822,
         VMCS_FIELD_GUEST_IA32_SYSENTER_ESP = 0x00006824,
         VMCS_FIELD_GUEST_IA32_SYSENTER_EIP = 0x00006826,
+        VMCS_FIELD_GUEST_IA32_S_CET = 0x00006828,
+        VMCS_FIELD_GUEST_SSP = 0x0000682A,
+        VMCS_FIELD_GUEST_IA32_INTERRUPT_SSP_TABLE_ADDR = 0x0000682C,
 
         // Natural-width host-state fields:
         VMCS_FIELD_HOST_CR0 = 0x00006C00,
@@ -251,10 +258,13 @@ namespace VMX {
         VMCS_FIELD_HOST_IA32_SYSENTER_ESP = 0x00006C10,
         VMCS_FIELD_HOST_IA32_SYSENTER_EIP = 0x00006C12,
         VMCS_FIELD_HOST_RSP = 0x00006C14,
-        VMCS_FIELD_HOST_RIP = 0x00006C16
+        VMCS_FIELD_HOST_RIP = 0x00006C16,
+        VMCS_FIELD_HOST_IA32_S_CET = 0x00006C18,
+        VMCS_FIELD_HOST_SSP = 0x00006C1A,
+        VMCS_FIELD_HOST_IA32_INTERRUPT_SSP_TABLE_ADDR = 0x00006C1C,
     };
 
-    enum VMX_EXIT_REASON {
+    enum VMX_EXIT_REASON : unsigned int {
         EXIT_REASON_EXCEPTION_OR_NMI = 0,
         EXIT_REASON_EXTERNAL_INTERRUPT = 1,
         EXIT_REASON_TRIPLE_FAULT = 2,
@@ -318,8 +328,445 @@ namespace VMX {
         EXIT_REASON_XSAVES = 63,
         EXIT_REASON_XRSTORS = 64,
         EXIT_REASON_PCOMMIT = 65,
-        EXIT_REASON_SPP_RELATED_EVENT = 66
+        EXIT_REASON_SPP_RELATED_EVENT = 66,
+        EXIT_REASON_UMWAIT = 67,
+        EXIT_REASON_TPAUSE = 68,
     };
+
+    union MSR_BITMAP {
+        unsigned char MsrBitmap[4096];
+        struct {
+            unsigned char Read00000000to00001FFF[1024];
+            unsigned char ReadC0000000toC0001FFF[1024];
+            unsigned char Write00000000to00001FFF[1024];
+            unsigned char WriteC0000000toC0001FFF[1024];
+        } Bitmap;
+    };
+    static_assert(sizeof(MSR_BITMAP) == 4096, "Size of MSR_BITMAP != 4096 bytes");
+
+    enum VM_INSTRUCTION_ERROR : unsigned int {
+        VmcallExecutedInVmxRootOperation = 1,
+        VmclearWithInvalidPhysicalAddress = 2,
+        VmclearWithVmxonPointer = 3,
+        VmlaunchWithNonClearVmcs = 4,
+        VmresumeWithNonLaunchedVmcs = 5,
+        VmresumeAfterVmxoff = 6,
+        VmentryWithInvalidControlFields = 7,
+        VmentryWithInvalidHostStateFields = 8,
+        VmptrldWithInvalidPhysicalAddress = 9,
+        VmptrldWithVmxonPointer = 10,
+        VmptrldWithIncorrectVmcsRevisionIdentifier = 11,
+        VmreadVmwriteFromToUnsupportedVmcsComponent = 12,
+        VmwriteToReadonlyVmcsComponent = 13,
+        VmxonExecutedInVmxRootOperation = 15,
+        VmentryWithInvalidExecutiveVmcsPointer = 16,
+        VmentryWithNonLaunchedExecutiveVmcs = 17,
+        VmentryWithExecutiveVmcsPointerNotVmxonPointer = 18,
+        VmcallWithNonClearVmcs = 19,
+        VmcallWithInvalidVmexitControlFields = 20,
+        VmcallWithIncorrectMsegRevisionIdentifier = 22,
+        VmxoffUnderDualMonitorTreatmentOfSmisAndSmm = 23,
+        VmcallWithInvalidSmmMonitorFeatures = 24,
+        VmentryWithInvalidVmExecutionControlFieldsInExecutiveVmcs = 25,
+        VmentryWithEventsBlockedByMovSs = 26,
+        InvalidOperandToInveptInvvpid = 28
+    };
+
+    union SEGMENT_ACCESS_RIGHTS {
+        unsigned int Value;
+        struct {
+            unsigned int SegmentType : 4;
+            unsigned int S : 1; // Descriptor type (0 = system, 1 = code or data)
+            unsigned int DPL : 2; // Descriptor privilege level
+            unsigned int P : 1; // Segment present
+            unsigned int Reserved0 : 4;
+            unsigned int AVL : 1; // Available for use by system software
+            unsigned int L : 1; // Reserved except for CS, 64-bit mode active (for CS only)
+            unsigned int DB : 1; // Default operation size (0 = 16-bit segment, 1 = 32-bit segment)
+            unsigned int G : 1; // Granularity
+            unsigned int SegmentUnusable : 1; // 0 = usable, 1 = unusable
+            unsigned int Reserved1 : 15;
+        } Bitmap;
+    };
+    static_assert(sizeof(SEGMENT_ACCESS_RIGHTS) == sizeof(unsigned int), "Size of SEGMENT_ACCESS_RIGHTS != sizeof(unsigned int)");
+
+    // Consult with the IA32_VMX_PINBASED_CTLS and IA32_VMX_TRUE_PINBASED_CTLS
+    // to determine how to set the reserved bits properly if you need it:
+    union PIN_BASED_VM_EXECUTION_CONTROLS {
+        unsigned int Value;
+        struct {
+            unsigned int ExternalInterruptExiting : 1;
+            unsigned int ReservedBit1 : 1; // Must be 1
+            unsigned int ReservedBit2 : 1; // Must be 1
+            unsigned int NmiExiting : 1;
+            unsigned int ReservedBit4 : 1; // Must be 1
+            unsigned int VirtualNmis : 1;
+            unsigned int ActivateVmxPreemptionTimer : 1;
+            unsigned int ProcessPostedInterrupts : 1;
+            unsigned int ReservedBit8 : 1;
+            unsigned int ReservedBit9 : 1;
+            unsigned int ReservedBit10 : 1;
+            unsigned int ReservedBit11 : 1;
+            unsigned int ReservedBit12 : 1;
+            unsigned int ReservedBit13 : 1;
+            unsigned int ReservedBit14 : 1;
+            unsigned int ReservedBit15 : 1;
+            unsigned int ReservedBit16 : 1;
+            unsigned int ReservedBit17 : 1;
+            unsigned int ReservedBit18 : 1;
+            unsigned int ReservedBit19 : 1;
+            unsigned int ReservedBit20 : 1;
+            unsigned int ReservedBit21 : 1;
+            unsigned int ReservedBit22 : 1;
+            unsigned int ReservedBit23 : 1;
+            unsigned int ReservedBit24 : 1;
+            unsigned int ReservedBit25 : 1;
+            unsigned int ReservedBit26 : 1;
+            unsigned int ReservedBit27 : 1;
+            unsigned int ReservedBit28 : 1;
+            unsigned int ReservedBit29 : 1;
+            unsigned int ReservedBit30 : 1;
+            unsigned int ReservedBit31 : 1;
+        } Bitmap;
+    };
+    static_assert(sizeof(PIN_BASED_VM_EXECUTION_CONTROLS) == sizeof(unsigned int), "Size of PIN_BASED_VM_EXECUTION_CONTROLS != sizeof(unsigned int)");
+
+    // Consult with the IA32_VMX_PROCBASED_CTLS and IA32_VMX_TRUE_PROCBASED_CTLS
+    // to determine how to set the reserved bits:
+    union PRIMARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS {
+        unsigned int Value;
+        struct {
+            unsigned int ReservedBit0 : 1;
+            unsigned int ReservedBit1 : 1; // Must be 1
+            unsigned int InterruptWindowExiting : 1;
+            unsigned int UseTscOffsetting : 1;
+            unsigned int ReservedBit4 : 1; // Must be 1
+            unsigned int ReservedBit5 : 1; // Must be 1
+            unsigned int ReservedBit6 : 1; // Must be 1
+            unsigned int HltExiting : 1;
+            unsigned int ReservedBit8 : 1; // Must be 1
+            unsigned int InvlpgExiting : 1;
+            unsigned int MwaitExiting : 1;
+            unsigned int RdpmcExiting : 1;
+            unsigned int RdtscExiting : 1;
+            unsigned int ReservedBit13 : 1; // Must be 1
+            unsigned int ReservedBit14 : 1; // Must be 1
+            unsigned int Cr3LoadExiting : 1; // Must be 1
+            unsigned int Cr3StoreExiting : 1; // Must be 1
+            unsigned int ReservedBit17 : 1;
+            unsigned int ReservedBit18 : 1;
+            unsigned int Cr8LoadExiting : 1;
+            unsigned int Cr8StoreExiting : 1;
+            unsigned int UseTprShadow : 1;
+            unsigned int NmiWindowExiting : 1;
+            unsigned int MovDrExiting : 1;
+            unsigned int UnconditionalIoExiting : 1;
+            unsigned int UseIoBitmaps : 1;
+            unsigned int ReservedBit26 : 1; // Must be 1
+            unsigned int MonitorTrapFlag : 1;
+            unsigned int UseMsrBitmaps : 1;
+            unsigned int MonitorExiting : 1;
+            unsigned int PauseExiting : 1;
+            unsigned int ActivateSecondaryControls : 1;
+        } Bitmap;
+    };
+    static_assert(sizeof(PRIMARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS) == sizeof(unsigned int), "Size of PRIMARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS != sizeof(unsigned int)");
+
+    // Consult with the IA32_VMX_EXIT_CTLS and IA32_VMX_TRUE_EXIT_CTLS
+    // to determine how to set the reserved bits:
+    union VMEXIT_CONTROLS {
+        unsigned int Value;
+        struct {
+            unsigned int ReservedBit0 : 1;
+            unsigned int ReservedBit1 : 1;
+            unsigned int SaveDebugControls : 1; // Whether DR7 and the IA32_DEBUGCTL are saved on VM exit
+            unsigned int ReservedBit3 : 1;
+            unsigned int ReservedBit4 : 1;
+            unsigned int ReservedBit5 : 1;
+            unsigned int ReservedBit6 : 1;
+            unsigned int ReservedBit7 : 1;
+            unsigned int ReservedBit8 : 1;
+            unsigned int HostAddressSpaceSize : 1; // Whether a logical processor is in 64-bit mode after the next VM exit, its value is loaded into CS.L, IA32_EFER.LME and IA32_EFER.LMA on every VM exit
+            unsigned int ReservedBit10 : 1;
+            unsigned int ReservedBit11 : 1;
+            unsigned int LoadIa32PerfGlobalCtrl : 1; // Whether the IA32_PERF_GLOBAL_CTL is loaded on VM exit
+            unsigned int ReservedBit13 : 1;
+            unsigned int ReservedBit14 : 1;
+            unsigned int AcknowledgeInterruptOnExit : 1;
+            unsigned int ReservedBit16 : 1;
+            unsigned int ReservedBit17 : 1;
+            unsigned int SaveIa32Pat : 1;
+            unsigned int LoadIa32Pat : 1;
+            unsigned int SaveIa32Efer : 1;
+            unsigned int LoadIa32Efer : 1;
+            unsigned int SaveVmxPreemptionTimerValue : 1;
+            unsigned int ClearIa32Bndcfgs : 1;
+            unsigned int ConcealVmxFromPt : 1;
+            unsigned int ClearIa32RtitCtl : 1;
+            unsigned int ReservedBit26 : 1;
+            unsigned int ReservedBit27 : 1;
+            unsigned int LoadCetState : 1;
+            unsigned int ReservedBit29 : 1;
+            unsigned int ReservedBit30 : 1;
+            unsigned int ReservedBit31 : 1;
+        } Bitmap;
+    };
+    static_assert(sizeof(VMEXIT_CONTROLS) == sizeof(unsigned int), "Size of VMEXIT_CONTROLS != sizeof(unsigned int)");
+
+    // Consult with the IA32_VMX_ENTRY_CTLS and IA32_VMX_TRUE_ENTRY_CTLS
+    // to determine how to set the reserved bits:
+    union VMENTRY_CONTROLS {
+        unsigned int Value;
+        struct {
+            unsigned int ReservedBit0 : 1;
+            unsigned int ReservedBit1 : 1;
+            unsigned int LoadDebugControls : 1; // Whether DR7 and the IA32_DEBUGCTL are loaded on VM entry
+            unsigned int ReservedBit3 : 1;
+            unsigned int ReservedBit4 : 1;
+            unsigned int ReservedBit5 : 1;
+            unsigned int ReservedBit6 : 1;
+            unsigned int ReservedBit7 : 1;
+            unsigned int ReservedBit8 : 1;
+            unsigned int Ia32ModeGuest : 1; // Whether a logical processor is in IA-32e mode on VM entry, its value loaded into IA32_EFER.LMA as part of VM entry
+            unsigned int EntryToSmm : 1;
+            unsigned int DeactivateDualMonitorTreatment : 1;
+            unsigned int ReservedBit12 : 1;
+            unsigned int LoadIa32PerfGlobalCtrl : 1;
+            unsigned int LoadIa32Pat : 1;
+            unsigned int LoadIa32Efer : 1;
+            unsigned int LoadIa32BndCfgs : 1;
+            unsigned int ConcealVmxFromPt : 1;
+            unsigned int LoadIa32RtitCtl : 1;
+            unsigned int ReservedBit19 : 1;
+            unsigned int LoadCetState : 1;
+            unsigned int ReservedBit21 : 1;
+            unsigned int ReservedBit22 : 1;
+            unsigned int ReservedBit23 : 1;
+            unsigned int ReservedBit24 : 1;
+            unsigned int ReservedBit25 : 1;
+            unsigned int ReservedBit26 : 1;
+            unsigned int ReservedBit27 : 1;
+            unsigned int ReservedBit28 : 1;
+            unsigned int ReservedBit29 : 1;
+            unsigned int ReservedBit30 : 1;
+            unsigned int ReservedBit31 : 1;
+        } Bitmap;
+    };
+    static_assert(sizeof(VMENTRY_CONTROLS) == sizeof(unsigned int), "Size of VMENTRY_CONTROLS != sizeof(unsigned int)");
+
+    // Consult with the IA32_VMX_PROCBASED_CTLS2 to determine
+    // which bits may be set to 1:
+    union SECONDARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS {
+        unsigned int Value;
+        struct {
+            unsigned int VirtualizeApicAccesses : 1;
+            unsigned int EnableEpt : 1;
+            unsigned int DescriptorTableExiting : 1;
+            unsigned int EnableRdtscp : 1;
+            unsigned int Virtualizex2ApicMode : 1;
+            unsigned int EnableVpid : 1;
+            unsigned int WbinvdExiting : 1;
+            unsigned int UnrestrictedGuest : 1;
+            unsigned int ApicRegisterVirtualization : 1;
+            unsigned int VirtualInterruptDelivery : 1;
+            unsigned int PauseLoopExiting : 1;
+            unsigned int RdrandExiting : 1;
+            unsigned int EnableInvpcid : 1;
+            unsigned int EnableVmFunctions : 1;
+            unsigned int VmcsShadowing : 1;
+            unsigned int EnableEnclsExiting : 1;
+            unsigned int RdseedExiting : 1;
+            unsigned int EnablePml : 1;
+            unsigned int EptViolation : 1;
+            unsigned int ConcealVmxFromPt : 1;
+            unsigned int EnableXsavesXrstors : 1;
+            unsigned int ReservedBit21 : 1; // Reserved to 0
+            unsigned int ModBasedExecuteControlForEpt : 1;
+            unsigned int SubPageWritePermissionsForEpt : 1;
+            unsigned int IntelPtUsesGuestPhysicalAddresses : 1;
+            unsigned int UseTscScaling : 1;
+            unsigned int EnableUserWaitAndPause : 1;
+            unsigned int ReservedBit27 : 1; // Reserved to 0
+            unsigned int EnableEnclvExiting : 1;
+            unsigned int ReservedBit29 : 1; // Reserved to 0
+            unsigned int ReservedBit30 : 1; // Reserved to 0
+            unsigned int ReservedBit31 : 1; // Reserved to 0
+        } Bitmap;
+    };
+    static_assert(sizeof(SECONDARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS) == sizeof(unsigned int), "Size of SECONDARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS != sizeof(unsigned int)");
+
+    enum class INTERRUPTION_TYPE {
+        ExternalInterrupt = 0,
+        Reserved = 1,
+        NonMaskableInterrupt = 2, // NMI
+        HardwareException = 3, // e.g. #PF
+        SoftwareInterrupt = 4, // INT n, #BP, #OF (overflow)
+        PrivilegedSoftwareException = 5, // INT1 (#DB)
+        SoftwareException = 6, // INT3 or INT0
+        OtherEvent = 7
+    };
+
+    union VMENTRY_INTERRUPTION_INFORMATION {
+        unsigned int Value;
+        struct {
+            unsigned int VectorOfInterruptOrException : 8; // Which entry in the IDT is used or which other event is injected
+            unsigned int InterruptionType : 3; // See the INTERRUPTION_TYPE enum above
+            unsigned int DeliverErrorCode : 1; // 0 - do not deliver, 1 - deliver (pushed an error code on the guest stack)
+            unsigned int Reserved : 19;
+            unsigned int Valid : 1;
+        } Bitmap;
+    };
+    static_assert(sizeof(VMENTRY_INTERRUPTION_INFORMATION) == sizeof(unsigned int), "Size of VMENTRY_INTERRUPTION_INFORMATION != sizeof(unsigned int)");
+
+    union EXIT_REASON {
+        unsigned int Value;
+        struct {
+            unsigned int BasicExitReason : 16; // See the VMX_EXIT_REASON enum above
+            unsigned int AlwaysClearedToZero : 1;
+            unsigned int ReservedAsZero0 : 10;
+            unsigned int VmexitWasIncidentToEnclaveMode : 1;
+            unsigned int PendingMtfVmexit : 1;
+            unsigned int VmexitFromVmxRootOperation : 1;
+            unsigned int ReservedAsZero1 : 1;
+            unsigned int VmentryFailure : 1; // 0 - true VM exit, 1 - VM-entry failure
+        } Bitmap;
+    };
+    static_assert(sizeof(EXIT_REASON) == sizeof(unsigned int), "Size of EXIT_REASON != sizeof(unsigned int)");
+
+    union VMEXIT_INTERRUPTION_INFORMATION {
+        unsigned int Value;
+        struct {
+            unsigned int VectorOfInterruptOrException : 8; // Which entry in the IDT is used or which other event is injected
+            unsigned int InterruptionType : 3; // See the INTERRUPTION_TYPE enum above
+            unsigned int ErrorCodeValid : 1; // 0 - invalid, 1 - valid
+            unsigned int NmiUnblockingDueToIret : 1;
+            unsigned int Reserved : 18;
+            unsigned int Valid : 1;
+        } Bitmap;
+    };
+    static_assert(sizeof(VMEXIT_INTERRUPTION_INFORMATION) == sizeof(unsigned int), "Size of VMEXIT_INTERRUPTION_INFORMATION != sizeof(unsigned int)");
+
+    union IDT_VECTORING_INFORMATION {
+        unsigned int Value;
+        struct {
+            unsigned int VectorOfInterruptOrException : 8; // Which entry in the IDT is used or which other event is injected
+            unsigned int InterruptionType : 3; // See the INTERRUPTION_TYPE enum above
+            unsigned int Undefined : 1; // 0 - invalid, 1 - valid
+            unsigned int NmiUnblockingDueToIret : 1;
+            unsigned int Reserved : 18;
+            unsigned int Valid : 1;
+        } Bitmap;
+    };
+    static_assert(sizeof(IDT_VECTORING_INFORMATION) == sizeof(unsigned int), "Size of IDT_VECTORING_INFORMATION != sizeof(unsigned int)");
+
+    union EXIT_QUALIFICATION_FOR_DEBUG_EXCEPTIONS {
+        unsigned long long Value;
+        struct {
+            unsigned long long BreakpointConditions : 4; // B0..B3 conditions in DR7
+            unsigned long long Reserved0 : 9;
+            unsigned long long BD : 1; // Debug register access detected
+            unsigned long long BS : 1; // Single instruction (RFLAGS.TF == 1 && IA32_DEBUGCTL.BTF == 0) or branch (RFLAGS.TF == IA32_DEBUGCTL.BTF == 1)
+            unsigned long long Reserved1 : 1;
+            unsigned long long RTM : 1; // #DB or #BP occured inside an RTM region
+            unsigned long long Reserved2 : 47;
+        } Bitmap;
+    };
+    static_assert(sizeof(EXIT_QUALIFICATION_FOR_DEBUG_EXCEPTIONS) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_DEBUG_EXCEPTIONS != sizeof(unsigned long long)");
+
+    union EXIT_QUALIFICATION_FOR_TASK_SWITCH {
+        unsigned long long Value;
+        struct {
+            unsigned long long SelectorOfTss : 16; // To which the guest attempted to switch
+            unsigned long long Reserved0 : 14;
+            unsigned long long SourceOfTaskSwitchInitiation : 2; // 0 = CALL, 1 = IRET, 2 = JMP, 3 = Task gate in IDT
+            unsigned long long Reserved1 : 32;
+        } Bitmap;
+    };
+    static_assert(sizeof(EXIT_QUALIFICATION_FOR_TASK_SWITCH) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_TASK_SWITCH != sizeof(unsigned long long)");
+
+    union EXIT_QUALIFICATION_FOR_CONTROL_REGISTERS_ACCESSES {
+        unsigned long long Value;
+        struct {
+            unsigned long long NumberOfControlRegister : 4; // 0 for CLTS and LMSW
+            unsigned long long AccessType : 2; // 0 = MOV to CR, 1 = MOV from CR, 2 = CLTS, 3 = LMSW
+            unsigned long long LmswOperandType : 1; // 0 = register, 1 = memory (0 for MOV CR and CLTS)
+            unsigned long long Reserved0 : 1;
+            unsigned long long Register : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned long long Reserved1 : 4;
+            unsigned long long LmswSourceData : 16; // For CLTS and MOV CR cleared to 0
+            unsigned long long Reserved2 : 32;
+        } Bitmap;
+    };
+    static_assert(sizeof(EXIT_QUALIFICATION_FOR_CONTROL_REGISTERS_ACCESSES) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_CONTROL_REGISTERS_ACCESSES != sizeof(unsigned long long)");
+
+    union EXIT_QUALIFICATION_FOR_MOV_DR {
+        unsigned long long Value;
+        struct {
+            unsigned long long NumberOfDebugRegister : 3;
+            unsigned long long Reserved0 : 1;
+            unsigned long long DirectionOfAccess : 1; // 0 = MOV to DR, 1 = MOV from DR
+            unsigned long long Reserved1 : 3;
+            unsigned long long Register : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned long long Reserved2 : 52;
+        } Bitmap;
+    };
+    static_assert(sizeof(EXIT_QUALIFICATION_FOR_MOV_DR) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_MOV_DR != sizeof(unsigned long long)");
+
+    union EXIT_QUALIFICATION_FOR_IO_INSTRUCTIONS {
+        unsigned long long Value;
+        struct {
+            unsigned long long SizeOfAccess : 3; // 0 = 1-byte, 1 = 2-byte, 3 = 4-byte
+            unsigned long long Direction : 1; // 0 = OUT, 1 = IN
+            unsigned long long StringInstruction : 1; // 0 = not string instruction, 1 = string instruction
+            unsigned long long RepPrefixed : 1; // 0 = no REP, 1 = prefixed with REP
+            unsigned long long OperandEncoding : 1; // 0 = DX, 1 = immediate
+            unsigned long long Reserved0 : 9;
+            unsigned long long PortNumber : 16; // As specified in DX or in an immediate operand
+            unsigned long long Reserved1 : 32;
+        } Bitmap;
+    };
+    static_assert(sizeof(EXIT_QUALIFICATION_FOR_IO_INSTRUCTIONS) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_IO_INSTRUCTIONS != sizeof(unsigned long long)");
+
+    union EXIT_QUALIFICATION_FOR_APIC_ACCESS {
+        unsigned long long Value;
+        struct {
+            unsigned long long OffsetInApicPage : 12; // Undefined if the APIC-access VM exit is due a guest-physical access
+            unsigned long long AccessType : 4; // 0 = linear access for a data read during instruction execution
+                                               // 1 = linear access for a data write during instruction execution
+                                               // 2 = linear access for an instruction fetch
+                                               // 3 = linear access (read or write) during event delivery
+                                               // 10 = guest-physical access during event delivery
+                                               // 15 = guest-physical access for an instruction fetch or during instruction execution
+            unsigned long long AsynchronousAndNotEventDelivery : 1;
+            unsigned long long Reserved0 : 47;
+        } Bitmap;
+    };
+    static_assert(sizeof(EXIT_QUALIFICATION_FOR_APIC_ACCESS) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_APIC_ACCESS != sizeof(unsigned long long)");
+
+    union EXIT_QUALIFICATION_FOR_EPT_VIOLATIONS {
+        unsigned long long Value;
+        struct {
+            unsigned long long AccessedRead : 1;
+            unsigned long long AccessedWrite : 1;
+            unsigned long long AccessedExecute : 1;
+            unsigned long long GuestPhysicalReadable : 1;
+            unsigned long long GuestPhysicalWriteable : 1;
+            unsigned long long GuestPhysicalExecutable : 1;
+            unsigned long long GuestPhysicalUserExecutable : 1;
+            unsigned long long GuestLinearAddressFieldIsValid : 1;
+            unsigned long long AccessToGuestPhysicalAddress : 1; // Only valid if 'GuestLinearAddressFieldIsValid' equals 1
+            unsigned long long UserModeLinearAddress : 1;
+            unsigned long long TranslatesToReadWritePage : 1; // 0 = Readonly, 1 = ReadWrite
+            unsigned long long TranslatesToNonExecutablePage : 1; // 0 = Executable, 1 = Non-executable
+            unsigned long long NmiUnblockingDueToIret : 1;
+            unsigned long long IsShadowStackAccess : 1;
+            unsigned long long TranslatesToShadowStackPage : 1;
+            unsigned long long Reserved0 : 1;
+            unsigned long long AsynchronousAndNotEventDelivery : 1;
+            unsigned long long Reserved1 : 47;
+        } Bitmap;
+    };
+    static_assert(sizeof(EXIT_QUALIFICATION_FOR_EPT_VIOLATIONS) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_EPT_VIOLATIONS != sizeof(unsigned long long)");
 
     // Extended-Page-Table Pointer:
     union EPTP {
@@ -328,8 +775,9 @@ namespace VMX {
             unsigned long long EptMemoryType : 3; // 0 = Uncacheable, 6 = Write-back, other values are reserved
             unsigned long long PageWalkLength : 3; // This value is 1 less than the EPT page-walk length
             unsigned long long AccessedAndDirtyFlagsSupport : 1; // Setting this control to 1 enables accessed and dirty flags for EPT (check IA32_VMX_EPT_VPID_CAP)
-            unsigned long long Reserved0 : 5;
-            unsigned long long EptPml4ePhysicalAddress : 52; // Maximum supported physical address width: CPUID(EAX = 0x80000008) -> EAX[7:0]
+            unsigned long long EnforcementOfAccessRightsForSupervisorShadowStack : 1;
+            unsigned long long Reserved0 : 4;
+            unsigned long long EptPml4ePhysicalPfn : 52; // Maximum supported physical address width: CPUID(EAX = 0x80000008) -> EAX[7:0]
         } Bitmap;
     };
     static_assert(sizeof(EPTP) == sizeof(unsigned long long), "Size of EPTP != sizeof(unsigned long long)");
@@ -346,7 +794,7 @@ namespace VMX {
             unsigned long long Ignored0 : 1;
             unsigned long long UserModeExecuteAccess : 1; // Ignored if "mode-based execute control for EPT" VM-execution control is 0
             unsigned long long Ignored1 : 1;
-            unsigned long long EptPdptePhysicalAddress : 40; // Maximum supported physical address width: CPUID(EAX = 0x80000008) -> EAX[7:0]
+            unsigned long long EptPdptePhysicalPfn : 40; // Maximum supported physical address width: CPUID(EAX = 0x80000008) -> EAX[7:0]
             unsigned long long Ignored2 : 12;
         } Page1Gb, Page2Mb, Page4Kb, Generic;
     };
@@ -366,8 +814,10 @@ namespace VMX {
             unsigned long long UserModeExecuteAccess : 1; // Ignored if "mode-based execute control for EPT" VM-execution control is 0
             unsigned long long Ignored0 : 1;
             unsigned long long Reserved0 : 18; // Must be zero
-            unsigned long long PagePhysicalAddress : 22; // Physical address of the 1-GByte page referenced by this entry
-            unsigned long long Ignored1 : 11;
+            unsigned long long PagePhysicalPfn : 22; // Physical address of the 1-GByte page referenced by this entry
+            unsigned long long Ignored1 : 8;
+            unsigned long long SupervisorShadowStackAccess : 1; // Ignored if bit 7 of EPTP is 0
+            unsigned long long Ignored2 : 2;
             unsigned long long SuppressVe : 1; // Ignored if "EPT-violation #VE" VM-execution control is 0
         } Page1Gb;
         struct {
@@ -379,8 +829,7 @@ namespace VMX {
             unsigned long long Ignored0 : 1;
             unsigned long long UserModeExecuteAccess : 1; // Ignored if "mode-based execute control for EPT" VM-execution control is 0
             unsigned long long Ignored1 : 1;
-            unsigned long long Reserved1 : 18; // Must be zero
-            unsigned long long EptPdePhysicalAddress : 22;
+            unsigned long long EptPdePhysicalPfn : 40;
             unsigned long long Ignored2 : 12;
         } Page2Mb, Page4Kb;
     };
@@ -400,8 +849,10 @@ namespace VMX {
             unsigned long long UserModeExecuteAccess : 1; // Ignored if "mode-based execute control for EPT" VM-execution control is 0
             unsigned long long Ignored0 : 1;
             unsigned long long Reserved0 : 9; // Must be zero
-            unsigned long long PagePhysicalAddress : 31; // Physical address of the 2-MByte page referenced by this entry
-            unsigned long long Ignored1 : 11;
+            unsigned long long PagePhysicalPfn : 31; // Physical address of the 2-MByte page referenced by this entry
+            unsigned long long Ignored1 : 8;
+            unsigned long long SupervisorShadowStackAccess : 1; // Ignored if bit 7 of EPTP is 0
+            unsigned long long Ignored2 : 2;
             unsigned long long SuppressVe : 1; // Ignored if "EPT-violation #VE" VM-execution control is 0
         } Page2Mb;
         struct {
@@ -414,7 +865,7 @@ namespace VMX {
             unsigned long long Ignored0 : 1;
             unsigned long long UserModeExecuteAccess : 1; // Ignored if "mode-based execute control for EPT" VM-execution control is 0
             unsigned long long Ignored1 : 1;
-            unsigned long long EptPtePhysicalAddress : 40;
+            unsigned long long EptPtePhysicalPfn : 40;
             unsigned long long Ignored : 12;
         } Page4Kb;
     };
@@ -433,8 +884,9 @@ namespace VMX {
             unsigned long long Dirty : 1; // Ignored if bit 6 of EPTP is 0
             unsigned long long UserModeExecuteAccess : 1; // Ignored if "mode-based execute control for EPT" VM-execution control is 0
             unsigned long long Ignored1 : 1;
-            unsigned long long PagePhysicalAddress : 40;
-            unsigned long long Ignored2 : 9;
+            unsigned long long PagePhysicalPfn : 40;
+            unsigned long long Ignored2 : 8;
+            unsigned long long SupervisorShadowStackAccess : 1; // Ignored if bit 7 of EPTP is 0
             unsigned long long SubPageWritePermissions : 1; // Ignored if "sub-page write permissions for EPT" VM-execution control is 0
             unsigned long long Ignored3 : 1;
             unsigned long long SuppressVe : 1; // Ignored if "EPT-violation #VE" VM-execution control is 0

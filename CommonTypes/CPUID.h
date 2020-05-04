@@ -106,6 +106,7 @@ namespace CPUID {
             unsigned int VendorPart2; // 'Ieni' || 'itne'
         } Bitmap;
     };
+    static_assert(sizeof(MAXIMUM_FUNCTION_NUMBER_AND_VENDOR_ID) == sizeof(CPUID_REGS), "Size of MAXIMUM_FUNCTION_NUMBER_AND_VENDOR_ID != sizeof(int[4])");
 
     union MAXIMUM_EXTENDED_FUNCTION_NUMBER_AND_VENDOR_ID {
         CPUID_REGS Regs;
@@ -116,6 +117,7 @@ namespace CPUID {
             unsigned int VendorPart2; // 'Ieni' || 'itne'
         } Bitmap;
     };
+    static_assert(sizeof(MAXIMUM_EXTENDED_FUNCTION_NUMBER_AND_VENDOR_ID) == sizeof(CPUID_REGS), "Size of MAXIMUM_EXTENDED_FUNCTION_NUMBER_AND_VENDOR_ID != sizeof(int[4])");
 
     union FEATURE_INFORMATION {
         CPUID_REGS Regs;
@@ -276,6 +278,7 @@ namespace CPUID {
             unsigned int Reserved12 : 3;
         } Generic, AMD;
     };
+    static_assert(sizeof(FEATURE_INFORMATION) == sizeof(CPUID_REGS), "Size of FEATURE_INFORMATION != sizeof(int[4])");
 
     union EXTENDED_FEATURE_INFORMATION {
         CPUID_REGS Regs;
@@ -420,6 +423,7 @@ namespace CPUID {
             unsigned int _3DNow : 1;
         } AMD;
     };
+    static_assert(sizeof(EXTENDED_FEATURE_INFORMATION) == sizeof(CPUID_REGS), "Size of EXTENDED_FEATURE_INFORMATION != sizeof(int[4])");
 
     union PROCESSOR_BRAND_STRING_0 {
         CPUID_REGS Regs;
@@ -430,6 +434,7 @@ namespace CPUID {
             unsigned int Part3;
         } ProcessorName;
     };
+    static_assert(sizeof(PROCESSOR_BRAND_STRING_0) == sizeof(CPUID_REGS), "Size of PROCESSOR_BRAND_STRING_0 != sizeof(int[4])");
 
     union PROCESSOR_BRAND_STRING_1 {
         CPUID_REGS Regs;
@@ -440,6 +445,7 @@ namespace CPUID {
             unsigned int Part7;
         } ProcessorName;
     };
+    static_assert(sizeof(PROCESSOR_BRAND_STRING_1) == sizeof(CPUID_REGS), "Size of PROCESSOR_BRAND_STRING_1 != sizeof(int[4])");
 
     union PROCESSOR_BRAND_STRING_2 {
         CPUID_REGS Regs;
@@ -450,4 +456,22 @@ namespace CPUID {
             unsigned int Part11;
         } ProcessorName;
     };
+    static_assert(sizeof(PROCESSOR_BRAND_STRING_2) == sizeof(CPUID_REGS), "Size of PROCESSOR_BRAND_STRING_2 != sizeof(int[4])");
+
+    namespace Intel {
+        union VIRTUAL_AND_PHYSICAL_ADDRESS_SIZES {
+            CPUID_REGS Regs;
+            struct {
+                // EAX:
+                unsigned int PhysicalAddressBits : 8;
+                unsigned int LinearAddressBits : 8;
+                unsigned int Reserved0 : 16;
+                
+                unsigned int Reserved1 : 32; // EBX
+                unsigned int Reserved2 : 32; // ECX
+                unsigned int Reserved3 : 32; // EDX
+            } Bitmap;
+        };
+        static_assert(sizeof(VIRTUAL_AND_PHYSICAL_ADDRESS_SIZES) == sizeof(CPUID_REGS), "Size of VIRTUAL_AND_PHYSICAL_ADDRESS_SIZES != sizeof(int[4])");
+    }
 }

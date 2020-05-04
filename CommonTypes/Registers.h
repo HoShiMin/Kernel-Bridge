@@ -6,6 +6,51 @@
 */
 
 #pragma pack(push, 1)
+union EFLAGS {
+    unsigned int Value;
+    struct {
+        unsigned int CF : 1; // Carry flag
+        unsigned int MustBe1Bit1 : 1;
+        unsigned int PF : 1; // Parity flag
+        unsigned int MustBe0Bit3 : 1;
+        unsigned int AF : 1; // Auxiliary carry flag
+        unsigned int MustBe0Bit5 : 1;
+        unsigned int ZF : 1; // Zero flag
+        unsigned int SF : 1; // Sign flag
+        unsigned int TF : 1; // Trap flag
+        unsigned int IF : 1; // Interrupt enable flag
+        unsigned int DF : 1; // Direction flag
+        unsigned int OF : 1; // Overflow flag
+        unsigned int IOPL : 2; // Input-output privilege level
+        unsigned int NT : 1; // Nested task
+        unsigned int MustBe0Bit15 : 1;
+        unsigned int RF : 1; // Resume flag
+        unsigned int VM : 1; // Virtual-8086 mode
+        unsigned int AC : 1; // Alignment-check / access control
+        unsigned int VIF : 1; // Virtual interrupt flag
+        unsigned int VIP : 1; // Virtual interrupt pending
+        unsigned int ID : 1; // ID flag
+        unsigned int MustBe0Bit22 : 1;
+        unsigned int MustBe0Bit23 : 1;
+        unsigned int MustBe0Bit24 : 1;
+        unsigned int MustBe0Bit25 : 1;
+        unsigned int MustBe0Bit26 : 1;
+        unsigned int MustBe0Bit27 : 1;
+        unsigned int MustBe0Bit28 : 1;
+        unsigned int MustBe0Bit29 : 1;
+        unsigned int MustBe0Bit30 : 1;
+        unsigned int MustBe0Bit31 : 1;
+    } Bitmap;
+};
+
+union RFLAGS {
+    unsigned long long Value;
+    struct {
+        EFLAGS Eflags;
+        unsigned int Reserved;
+    } Bitmap;
+};
+
 union CR0 {
     unsigned long long Value;
     union {

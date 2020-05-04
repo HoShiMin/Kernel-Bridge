@@ -220,6 +220,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\CommonTypes\CPUID.h" />
+    <ClInclude Include="..\CommonTypes\Hyper-V.h" />
+    <ClInclude Include="..\CommonTypes\Interrupts.h" />
+    <ClInclude Include="..\CommonTypes\MSR.h" />
     <ClInclude Include="..\CommonTypes\Segmentation.h" />
     <ClInclude Include="..\CommonTypes\PTE.h" />
     <ClInclude Include="..\CommonTypes\Registers.h" />

@@ -266,6 +266,7 @@ NTSTATUS CallIoctlDispatcher(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLen
 
 
 // IOCTLs handler:
+_Function_class_(DRIVER_DISPATCH)
 _Dispatch_type_(IRP_MJ_DEVICE_CONTROL)
 static NTSTATUS DriverControl(_In_ PDEVICE_OBJECT DeviceObject, _In_ PIRP Irp)
 {
@@ -313,6 +314,7 @@ static NTSTATUS DriverControl(_In_ PDEVICE_OBJECT DeviceObject, _In_ PIRP Irp)
     return Status;
 }
 
+_Function_class_(DRIVER_DISPATCH)
 _Dispatch_type_(IRP_MJ_CREATE)
 _Dispatch_type_(IRP_MJ_CLOSE)
 _Dispatch_type_(IRP_MJ_CLEANUP)
@@ -350,6 +352,9 @@ static VOID PowerCallback(PVOID CallbackContext, PVOID Argument1, PVOID Argument
     }
 }
 
+_Function_class_(DRIVER_UNLOAD)
+_IRQL_requires_(PASSIVE_LEVEL)
+_IRQL_requires_same_
 static NTSTATUS DriverUnload(_In_ PDRIVER_OBJECT DriverObject)
 {
     PAGED_CODE();

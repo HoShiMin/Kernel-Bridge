@@ -102,14 +102,14 @@ void TranslationTest(PVOID Address)
         //Pte.x64.Page4Kb.AVL = 0b101; // Trigger CoW
         //VirtMem::WriteQword(VirtPte, Pte.x64.Value);
 
-        WdkTypes::PVOID PhysicalAddress = PFN_TO_PAGE(Pte.x64.Page4Kb.PhysicalPageBase) + Va.x64.NonPageSize.Page4Kb.PageOffset;
+        WdkTypes::PVOID PhysicalAddress = PFN_TO_PAGE(Pte.x64.Page4Kb.PhysicalPageFrameNumber) + Va.x64.NonPageSize.Page4Kb.PageOffset;
         WdkTypes::PVOID ValidPhysicalAddress = PhysMem::GetPhysAddress(Va.Value);
         printf("PA = 0x%llX, VPA = 0x%llX\n", PhysicalAddress, ValidPhysicalAddress);
 
         //PULONG KMem = (PULONG)Address;
         //*KMem = *KMem;
 
-        PhysicalAddress = PFN_TO_PAGE(Pte.x64.Page4Kb.PhysicalPageBase) + Va.x64.NonPageSize.Page4Kb.PageOffset;
+        PhysicalAddress = PFN_TO_PAGE(Pte.x64.Page4Kb.PhysicalPageFrameNumber) + Va.x64.NonPageSize.Page4Kb.PageOffset;
         ValidPhysicalAddress = PhysMem::GetPhysAddress(Va.Value);
         printf("PA = 0x%llX, VPA = 0x%llX\n", PhysicalAddress, ValidPhysicalAddress);
 
@@ -262,30 +262,43 @@ VOID ThreadingTests()
 
 VOID RunAllTests()
 {
-    ThreadingTests();
-    return;
+    //ThreadingTests();
+    //return;
 
 #ifdef FLT_TEST
     TestObCallbacks();
 #endif
 
-    RunTests();
-    RandomRpmTest();
+    //RunTests();
+    //RandomRpmTest();
 
-    PVOID Addr = GetProcAddress(GetModuleHandle(L"kernel32.dll"), "SetLastError");
-    TranslationTest(Addr);
+    //PVOID Addr = GetProcAddress(GetModuleHandle(L"kernel32.dll"), "SetLastError");
+    //TranslationTest(Addr);
 
-    if (false && Hypervisor::KbVmmEnable()) {
+    if (Hypervisor::KbVmmEnable())
+    {
         printf("VMM enabled!\r\n");
-        while (true) {
+        while (true)
+        {
             print_cpuid();
             Sleep(1000);
+            __try
+            {
+                int buf[4] = {};
+                __cpuid(buf, 0x11223344);
+                printf("Exception not raised!\n");
+            }
+            __except (EXCEPTION_EXECUTE_HANDLER)
+            {
+                printf("Exception was raised! Events injections are working properly!\n");
+            }
         }
         Hypervisor::KbVmmDisable();
         printf("VMM disabled!\r\n");
         print_cpuid();
     }
-    else {
+    else
+    {
         printf("Unable to start VMM!\r\n");
     }
 }

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /*
     Page size (max VA = 64 bit, max PA = 52 bit):
@@ -54,9 +54,17 @@
          }
 */
 
-// 1 << 12 == 4096:
-#define PFN_TO_PAGE(pfn)  ((pfn)  << 12)
-#define PAGE_TO_PFN(page) ((page) >> 12)
+// 1 << 12 == 4096 (0x1000, 4Kb):
+#define PFN_TO_PAGE(pfn)        ((pfn)  << 12)
+#define PAGE_TO_PFN(page)       ((page) >> 12)
+
+// 1 << 20 == 1048576 (0x200000, 2Mb):
+#define PFN_TO_LARGE_PAGE(pfn)  ((pfn)  << 20)
+#define LARGE_PAGE_TO_PFN(page) ((page) >> 20)
+
+// 1 << 30 == 1'073'741'824‬ (0x40000000, 1Gb):
+#define PFN_TO_HUGE_PAGE(pfn)   ((pfn)  << 30)
+#define HUGE_PAGE_TO_PFN(page)  ((page) >> 30)
 
 // CR3 in PAE : PDP at 5:31
 #define PFN_TO_PDP_PAE(pfn) ((pfn) << 5)
@@ -156,7 +164,7 @@ union PML4E {
             unsigned long long Ignored0 : 1;
             unsigned long long Reserved1 : 2;
             unsigned long long AVL : 3; // Available to software
-            unsigned long long PDP : 40;
+            unsigned long long PDP : 40; // Page frame number
             unsigned long long Available : 11;
             unsigned long long NX : 1; // No Execute
         } Page4Kb, Page2Mb, Page1Gb, Generic; // Same for the 4Kb, 2Mb and 1Gb page size
@@ -174,7 +182,7 @@ union PDPE {
                 unsigned long long PCD : 1; // Page-Level Cache Disable
                 unsigned long long Reserved1 : 4;
                 unsigned long long AVL : 3; // Available to software
-                unsigned long long PD : 40;
+                unsigned long long PD : 40; // Page frame number
                 unsigned long long Reserved2 : 12;
             } Page4Kb, Page2Mb, Generic; // Same for the 4Kb and 2Mb page size
         } Pae;
@@ -207,7 +215,7 @@ union PDPE {
                 unsigned long long PS : 1; // PageSize == 0
                 unsigned long long Reserved0 : 1;
                 unsigned long long AVL : 3; // Available to software
-                unsigned long long PD : 40;
+                unsigned long long PD : 40; // Page frame number
                 unsigned long long Available : 11;
                 unsigned long long NX : 1; // No Execute
             } Page4Kb, Page2Mb, Generic;
@@ -226,7 +234,7 @@ union PDPE {
                 unsigned long long AVL : 3; // Available to software
                 unsigned long long PAT : 1; // Page-Attribute Table
                 unsigned long long Reserved0 : 17;
-                unsigned long long PhysicalPageBase : 22;
+                unsigned long long PhysicalPageFrameNumber : 22;
                 unsigned long long Available : 11;
                 unsigned long long NX : 1; // No Execute
             } Page1Gb;
@@ -262,7 +270,7 @@ union PDE {
                 unsigned int PS : 1; // PageSize == 0
                 unsigned int Ignored1 : 1;
                 unsigned int AVL : 3; // Available to software
-                unsigned int PT : 20;
+                unsigned int PT : 20; // Page frame number
             } Page4Kb;
             struct {
                 unsigned int P : 1; // Present
@@ -276,9 +284,9 @@ union PDE {
                 unsigned int G : 1; // Global Page
                 unsigned int AVL : 3; // Available to software
                 unsigned int PAT : 1; // Page-Attribute Table
-                unsigned int PhysicalPageBaseHigh : 8;
+                unsigned int PhysicalPageFrameNumberHigh : 8;
                 unsigned int Reserved0 : 1;
-                unsigned int PhysicalPageBaseLow : 10;
+                unsigned int PhysicalPageFrameNumberLow : 10;
             } Page4Mb;
         } NonPae;
         union {
@@ -325,7 +333,7 @@ union PDE {
                 unsigned long long AVL : 3; // Available to software
                 unsigned long long PAT : 1; // Page-Attribute Table
                 unsigned long long Reserved0 : 8;
-                unsigned long long PhysicalPageBase : 31;
+                unsigned long long PhysicalPageFrameNumber : 31;
                 unsigned long long Reserved1 : 11;
                 unsigned long long NX : 1; // No Execute
             } Page2Mb;
@@ -358,7 +366,7 @@ union PDE {
             unsigned long long PS : 1; // PageSize == 0
             unsigned long long Ignored1 : 1;
             unsigned long long AVL : 3; // Available to software
-            unsigned long long PT : 40;
+            unsigned long long PT : 40; // Page frame number
             unsigned long long Available : 11;
             unsigned long long NX : 1; // No Execute
         } Page4Kb;
@@ -375,7 +383,7 @@ union PDE {
             unsigned long long AVL : 3; // Available to software
             unsigned long long PAT : 1; // Page-Attribute Table
             unsigned long long Reserved0 : 8;
-            unsigned long long PhysicalPageBase : 31;
+            unsigned long long PhysicalPageFrameNumber : 31;
             unsigned long long Available : 11;
             unsigned long long NX : 1; // No Execute
         } Page2Mb;
@@ -397,7 +405,7 @@ union PTE {
                 unsigned int PAT : 1; // Page-Attribute Table
                 unsigned int G : 1; // Global Page
                 unsigned int AVL : 3; // Available to software
-                unsigned int PhysicalPageBase : 20;
+                unsigned int PhysicalPageFrameNumber : 20;
             } Page4Kb;
         } NonPae;
         union {
@@ -413,7 +421,7 @@ union PTE {
                 unsigned long long PAT : 1; // Page-Attribute Table
                 unsigned long long G : 1; // Global Page
                 unsigned long long AVL : 3; // Available to software
-                unsigned long long PhysicalPageBase : 40;
+                unsigned long long PhysicalPageFrameNumber : 40;
                 unsigned long long Reserved0 : 11;
                 unsigned long long NX : 1; // No Execute
             } Page4Kb;
@@ -432,7 +440,7 @@ union PTE {
             unsigned long long PAT : 1; // Page-Attribute Table
             unsigned long long G : 1; // Global Page
             unsigned long long AVL : 3; // Available to software
-            unsigned long long PhysicalPageBase : 40;
+            unsigned long long PhysicalPageFrameNumber : 40;
             unsigned long long Available : 11;
             unsigned long long NX : 1; // No Execute
         } Page4Kb;
