@@ -589,7 +589,7 @@ namespace VMX
         bool IsSupported;
     };
 
-    // E.g.: MaskLow<char>(5) -> 0b11111000:
+    // E.g.: MaskLow<char>(5) -> 0b00011111:
     template <typename T>
     constexpr T MaskLow(unsigned char SignificantBits)
     {
