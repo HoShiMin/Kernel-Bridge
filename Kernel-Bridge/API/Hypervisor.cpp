@@ -26,6 +26,8 @@
 // Defined in VMM.asm:
 extern "C" void _sldt(__out SEGMENT_SELECTOR* Selector);
 extern "C" void _str(__out SEGMENT_SELECTOR* TaskRegister);
+/* VMX-only */ extern "C" void __invept(VMX::INVEPT_TYPE Type, __in VMX::INVEPT_DESCRIPTOR* Descriptor);
+/* VMX-only */ extern "C" void __invvpid(VMX::INVVPID_TYPE Type, __in VMX::INVVPID_DESCRIPTOR* Descriptor);
 
 extern "C" NTSYSAPI VOID NTAPI RtlCaptureContext(OUT PCONTEXT Context);
 
@@ -1241,10 +1243,13 @@ namespace VMX
         __vmx_vmwrite(VMX::VMCS_FIELD_PIN_BASED_VM_EXECUTION_CONTROLS, PinControls.Value);
 
         PRIMARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS PrimaryControls = {};
-        PrimaryControls.Bitmap.UseMsrBitmaps = TRUE;
-        PrimaryControls.Bitmap.ActivateSecondaryControls = TRUE;
+        PrimaryControls.Bitmap.RdtscExiting = TRUE;
+        PrimaryControls.Bitmap.HltExiting = TRUE;
+        PrimaryControls.Bitmap.InvlpgExiting = TRUE;
         //PrimaryControls.Bitmap.Cr3LoadExiting = TRUE;
         //PrimaryControls.Bitmap.Cr3StoreExiting = TRUE;
+        PrimaryControls.Bitmap.UseMsrBitmaps = TRUE;
+        PrimaryControls.Bitmap.ActivateSecondaryControls = TRUE;
         PrimaryControls = ApplyMask(PrimaryControls, GetPrimaryControlsMask(VmxBasicInfo));
         __vmx_vmwrite(VMX::VMCS_FIELD_PRIMARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS, PrimaryControls.Value);
 
@@ -1264,6 +1269,7 @@ namespace VMX
         SecondaryControls.Bitmap.EnableEpt = TRUE;
         SecondaryControls.Bitmap.EnableRdtscp = TRUE;
         SecondaryControls.Bitmap.EnableVpid = TRUE;
+        SecondaryControls.Bitmap.WbinvdExiting = TRUE;
         SecondaryControls.Bitmap.EnableInvpcid = TRUE;
         //SecondaryControls.Bitmap.EnableVmFunctions = TRUE;
         SecondaryControls.Bitmap.EptViolation = TRUE;
@@ -1426,7 +1432,17 @@ namespace VMX
         }
         case VMX::EXIT_REASON_INVD:
         {
+            // Invalidate caches:
             __wbinvd();
+            break;
+        }
+        case VMX::EXIT_REASON_INVLPG:
+        {
+            // Invalidate TLB:
+            INVVPID_DESCRIPTOR Descriptor = {};
+            Descriptor.Vpid = static_cast<unsigned short>(KeGetCurrentProcessorNumber() + 1ull);
+            Descriptor.LinearAddress = vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION);
+            __invvpid(VMX::INVVPID_TYPE::IndividualAddressInvalidation, &Descriptor);
             break;
         }
         case VMX::EXIT_REASON_XSETBV:
@@ -1440,12 +1456,14 @@ namespace VMX
             unsigned long long AccessedPagePa = vmread(VMX::VMCS_FIELD_GUEST_PHYSICAL_ADDRESS_FULL);
             UNREFERENCED_PARAMETER(Info);
             UNREFERENCED_PARAMETER(AccessedPagePa);
+            __debugbreak();
             break;
         }
         case VMX::EXIT_REASON_EPT_MISCONFIGURATION:
         {
             unsigned long long FailedPagePa = vmread(VMX::VMCS_FIELD_GUEST_PHYSICAL_ADDRESS_FULL);
             UNREFERENCED_PARAMETER(FailedPagePa);
+            __debugbreak();
             break;
         }
         case VMX::EXIT_REASON_VMCALL:
@@ -1470,9 +1488,10 @@ namespace VMX
         }
         case VMX::EXIT_REASON_RDTSCP:
         {
-            unsigned int Rcx = static_cast<unsigned int>(Context->Rcx);
+            unsigned int Rcx = 0;
             unsigned long long TSC = __rdtscp(&Rcx);
             Context->Rax = TSC & 0xFFFFFFFF;
+            Context->Rcx = Rcx;
             Context->Rdx = TSC >> 32;
             break;
         }
@@ -1514,6 +1533,8 @@ namespace VMX
         case VMX::EXIT_REASON_VMWRITE:
         case VMX::EXIT_REASON_VMXOFF:
         case VMX::EXIT_REASON_VMXON:
+        case VMX::EXIT_REASON_INVVPID:
+        case VMX::EXIT_REASON_INVEPT:
         {
             RFLAGS Rflags = {};
             Rflags.Value = vmread(VMX::VMCS_FIELD_GUEST_RFLAGS);
@@ -1523,6 +1544,7 @@ namespace VMX
         }
         default:
         {
+            __debugbreak();
             break;
         }
         }

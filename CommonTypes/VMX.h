@@ -893,4 +893,29 @@ namespace VMX
         } Page4Kb;
     };
     static_assert(sizeof(EPT_PTE) == sizeof(unsigned long long), "Size of EPT_PTE != sizeof(unsigned long long)");
+
+    enum class INVEPT_TYPE : unsigned int {
+        SingleContextInvalidation = 1,
+        GlobalInvalidation = 2
+    };
+
+    struct INVEPT_DESCRIPTOR {
+        unsigned long long Eptp;
+        unsigned long long Reserved;
+    };
+    static_assert(sizeof(INVEPT_DESCRIPTOR) == 2 * sizeof(unsigned long long), "Size of INVEPT_DESCRIPTOR != 2 * sizeof(unsigned long long)");
+
+    enum class INVVPID_TYPE : unsigned int {
+        IndividualAddressInvalidation = 0,
+        SingleContextInvalidation = 1,
+        AllContextsInvalidation = 2,
+        SingleContextInvalidationExceptGlobal = 3
+    };
+
+    struct INVVPID_DESCRIPTOR {
+        unsigned long long Vpid : 16;
+        unsigned long long Reserved : 48;
+        unsigned long long LinearAddress : 64;
+    };
+    static_assert(sizeof(INVVPID_DESCRIPTOR) == 2 * sizeof(unsigned long long), "Size of INVVPID_DESCRIPTOR != 2 * sizeof(unsigned long long)");
 }
