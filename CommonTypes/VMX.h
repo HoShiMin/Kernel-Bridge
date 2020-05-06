@@ -659,7 +659,7 @@ namespace VMX
     };
     static_assert(sizeof(IDT_VECTORING_INFORMATION) == sizeof(unsigned int), "Size of IDT_VECTORING_INFORMATION != sizeof(unsigned int)");
 
-    union EXIT_QUALIFICATION_FOR_DEBUG_EXCEPTIONS {
+    union EXIT_QUALIFICATION {
         unsigned long long Value;
         struct {
             unsigned long long BreakpointConditions : 4; // B0..B3 conditions in DR7
@@ -669,23 +669,13 @@ namespace VMX
             unsigned long long Reserved1 : 1;
             unsigned long long RTM : 1; // #DB or #BP occured inside an RTM region
             unsigned long long Reserved2 : 47;
-        } Bitmap;
-    };
-    static_assert(sizeof(EXIT_QUALIFICATION_FOR_DEBUG_EXCEPTIONS) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_DEBUG_EXCEPTIONS != sizeof(unsigned long long)");
-
-    union EXIT_QUALIFICATION_FOR_TASK_SWITCH {
-        unsigned long long Value;
+        } DebugExceptions;
         struct {
             unsigned long long SelectorOfTss : 16; // To which the guest attempted to switch
             unsigned long long Reserved0 : 14;
             unsigned long long SourceOfTaskSwitchInitiation : 2; // 0 = CALL, 1 = IRET, 2 = JMP, 3 = Task gate in IDT
             unsigned long long Reserved1 : 32;
-        } Bitmap;
-    };
-    static_assert(sizeof(EXIT_QUALIFICATION_FOR_TASK_SWITCH) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_TASK_SWITCH != sizeof(unsigned long long)");
-
-    union EXIT_QUALIFICATION_FOR_CONTROL_REGISTERS_ACCESSES {
-        unsigned long long Value;
+        } TaskSwitch;
         struct {
             unsigned long long NumberOfControlRegister : 4; // 0 for CLTS and LMSW
             unsigned long long AccessType : 2; // 0 = MOV to CR, 1 = MOV from CR, 2 = CLTS, 3 = LMSW
@@ -695,12 +685,7 @@ namespace VMX
             unsigned long long Reserved1 : 4;
             unsigned long long LmswSourceData : 16; // For CLTS and MOV CR cleared to 0
             unsigned long long Reserved2 : 32;
-        } Bitmap;
-    };
-    static_assert(sizeof(EXIT_QUALIFICATION_FOR_CONTROL_REGISTERS_ACCESSES) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_CONTROL_REGISTERS_ACCESSES != sizeof(unsigned long long)");
-
-    union EXIT_QUALIFICATION_FOR_MOV_DR {
-        unsigned long long Value;
+        } ControlRegistersAccess;
         struct {
             unsigned long long NumberOfDebugRegister : 3;
             unsigned long long Reserved0 : 1;
@@ -708,12 +693,7 @@ namespace VMX
             unsigned long long Reserved1 : 3;
             unsigned long long Register : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
             unsigned long long Reserved2 : 52;
-        } Bitmap;
-    };
-    static_assert(sizeof(EXIT_QUALIFICATION_FOR_MOV_DR) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_MOV_DR != sizeof(unsigned long long)");
-
-    union EXIT_QUALIFICATION_FOR_IO_INSTRUCTIONS {
-        unsigned long long Value;
+        } MovDr;
         struct {
             unsigned long long SizeOfAccess : 3; // 0 = 1-byte, 1 = 2-byte, 3 = 4-byte
             unsigned long long Direction : 1; // 0 = OUT, 1 = IN
@@ -723,12 +703,7 @@ namespace VMX
             unsigned long long Reserved0 : 9;
             unsigned long long PortNumber : 16; // As specified in DX or in an immediate operand
             unsigned long long Reserved1 : 32;
-        } Bitmap;
-    };
-    static_assert(sizeof(EXIT_QUALIFICATION_FOR_IO_INSTRUCTIONS) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_IO_INSTRUCTIONS != sizeof(unsigned long long)");
-
-    union EXIT_QUALIFICATION_FOR_APIC_ACCESS {
-        unsigned long long Value;
+        } IoInstructions;
         struct {
             unsigned long long OffsetInApicPage : 12; // Undefined if the APIC-access VM exit is due a guest-physical access
             unsigned long long AccessType : 4; // 0 = linear access for a data read during instruction execution
@@ -739,12 +714,7 @@ namespace VMX
                                                // 15 = guest-physical access for an instruction fetch or during instruction execution
             unsigned long long AsynchronousAndNotEventDelivery : 1;
             unsigned long long Reserved0 : 47;
-        } Bitmap;
-    };
-    static_assert(sizeof(EXIT_QUALIFICATION_FOR_APIC_ACCESS) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_APIC_ACCESS != sizeof(unsigned long long)");
-
-    union EXIT_QUALIFICATION_FOR_EPT_VIOLATIONS {
-        unsigned long long Value;
+        } ApicAccess;
         struct {
             unsigned long long AccessedRead : 1;
             unsigned long long AccessedWrite : 1;
@@ -764,9 +734,9 @@ namespace VMX
             unsigned long long Reserved0 : 1;
             unsigned long long AsynchronousAndNotEventDelivery : 1;
             unsigned long long Reserved1 : 47;
-        } Bitmap;
+        } EptViolations;
     };
-    static_assert(sizeof(EXIT_QUALIFICATION_FOR_EPT_VIOLATIONS) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATION_FOR_EPT_VIOLATIONS != sizeof(unsigned long long)");
+    static_assert(sizeof(EXIT_QUALIFICATION) == sizeof(unsigned long long), "Size of EXIT_QUALIFICATIOn != sizeof(unsigned long long)");
 
     // Extended-Page-Table Pointer:
     union EPTP {
@@ -918,4 +888,93 @@ namespace VMX
         unsigned long long LinearAddress : 64;
     };
     static_assert(sizeof(INVVPID_DESCRIPTOR) == 2 * sizeof(unsigned long long), "Size of INVVPID_DESCRIPTOR != 2 * sizeof(unsigned long long)");
+
+    union INSTRUCTION_INFORMATION_FIELD {
+        unsigned int Value;
+        struct {
+            unsigned int Undefined0 : 7;
+            unsigned int AddressSize : 3; // 0 = 16-bit, 1 = 32-bit, 2 = 64-bit
+            unsigned int Undefined1 : 5;
+            unsigned int SegmentRegister : 3; // 0 = ES, 1 = CS, 2 = SS, 3 = DS, 4 = FS, 5 = GS
+            unsigned int Undefined2 : 14;
+        } Ins, Outs;
+        struct {
+            unsigned int Scaling : 2; // 0 = No scaling, 1 = Scale by 2, 2 = Scale by 4, 3 = Scale by 8
+            unsigned int Undefined0 : 5;
+            unsigned int AddressSize : 3; // 0 = 16-bit, 1 = 32-bit, 2 = 64-bit
+            unsigned int ClearedTo0 : 1;
+            unsigned int Undefined1 : 4;
+            unsigned int SegmentRegister : 3; // 0 = ES, 1 = CS, 2 = SS, 3 = DS, 4 = FS, 5 = GS
+            unsigned int IndexReg : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned int IndexRegInvalid : 1; // 0 = Valid, 1 = Invalid
+            unsigned int BaseReg : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned int BaseRegInvalid : 1; // 0 = Valid, 1 = Invalid
+            unsigned int Reg2 : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+        } Invept, Invpcid, Invvpid;
+        struct {
+            unsigned int Scaling : 2; // 0 = No scaling, 1 = Scale by 2, 2 = Scale by 4, 3 = Scale by 8
+            unsigned int Undefined0 : 5;
+            unsigned int AddressSize : 3; // 0 = 16-bit, 1 = 32-bit, 2 = 64-bit
+            unsigned int ClearedTo0 : 1;
+            unsigned int OperandSize : 1; // 0 = 16-bit, 1 = 32-bit
+            unsigned int Undefined1 : 3;
+            unsigned int SegmentRegister : 3; // 0 = ES, 1 = CS, 2 = SS, 3 = DS, 4 = FS, 5 = GS
+            unsigned int IndexReg : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned int IndexRegInvalid : 1; // 0 = Valid, 1 = Invalid
+            unsigned int BaseReg : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned int BaseRegInvalid : 1; // 0 = Valid, 1 = Invalid
+            unsigned int InstructionIdentity : 2; // 0 = SGDT, 1 = SIDT, 2 = LGDT, 3 = LIDT
+            unsigned int Undefined2 : 2;
+        } Lidt, Lgdt, Sidt, Sgdt;
+        struct {
+            unsigned int Scaling : 2; // 0 = No scaling, 1 = Scale by 2, 2 = Scale by 4, 3 = Scale by 8
+            unsigned int Undefined0 : 1;
+            unsigned int Reg1 : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned int AddressSize : 3; // 0 = 16-bit, 1 = 32-bit, 2 = 64-bit
+            unsigned int MemReg : 1; // 0 = Memory, 1 = Register
+            unsigned int Undefined1 : 4;
+            unsigned int SegmentRegister : 3; // 0 = ES, 1 = CS, 2 = SS, 3 = DS, 4 = FS, 5 = GS
+            unsigned int IndexReg : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned int IndexRegInvalid : 1; // 0 = Valid, 1 = Invalid
+            unsigned int BaseReg : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned int BaseRegInvalid : 1; // 0 = Valid, 1 = Invalid
+            unsigned int InstructionIdentity : 2; // 0 = SLDT, 1 = STR, 2 = LLDT, 3 = LTR
+            unsigned int Undefined2 : 2;
+        } Lldt, Ltr, Sldt, Str;
+        struct {
+            unsigned int Undefined0 : 3;
+            unsigned int OperandRegister : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned int Undefined1 : 4;
+            unsigned int OperandSize : 2; // 0 = 16-bit, 1 = 32-bit, 2 = 64-bit
+            unsigned int Undefined2 : 19;
+        } Rdrand, Rdseed, Tpause, Umwait;
+        struct {
+            unsigned int Scaling : 2; // 0 = No scaling, 1 = Scale by 2, 2 = Scale by 4, 3 = Scale by 8
+            unsigned int Undefined0 : 5;
+            unsigned int AddressSize : 3; // 0 = 16-bit, 1 = 32-bit, 2 = 64-bit
+            unsigned int ClearedTo0 : 1;
+            unsigned int Undefined1 : 4;
+            unsigned int SegmentRegister : 3; // 0 = ES, 1 = CS, 2 = SS, 3 = DS, 4 = FS, 5 = GS
+            unsigned int IndexReg : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned int IndexRegInvalid : 1; // 0 = Valid, 1 = Invalid
+            unsigned int BaseReg : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned int BaseRegInvalid : 1; // 0 = Valid, 1 = Invalid
+            unsigned int Undefined2 : 4;
+        } Vmclear, Vmptrld, Vmptrst, Vmxon, Xrstors, Xsaves;
+        struct {
+            unsigned int Scaling : 2; // 0 = No scaling, 1 = Scale by 2, 2 = Scale by 4, 3 = Scale by 8
+            unsigned int Undefined0 : 1;
+            unsigned int Reg1 : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned int AddressSize : 3; // 0 = 16-bit, 1 = 32-bit, 2 = 64-bit
+            unsigned int MemReg : 1; // 0 = Memory, 1 = Register
+            unsigned int Undefined1 : 4;
+            unsigned int SegmentRegister : 3; // 0 = ES, 1 = CS, 2 = SS, 3 = DS, 4 = FS, 5 = GS
+            unsigned int IndexReg : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned int IndexRegInvalid : 1; // 0 = Valid, 1 = Invalid
+            unsigned int BaseReg : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+            unsigned int BaseRegInvalid : 1; // 0 = Valid, 1 = Invalid
+            unsigned int Reg2 : 4; // 0 = RAX, 1 = RCX, 2 = RDX, 3 = RBX, 4 = RSP, 5 = RBP, 6 = RSI, 7 = RDI, 8..15 = R8..R15
+        } Vmread, Vmwrite;
+    };
+    static_assert(sizeof(INSTRUCTION_INFORMATION_FIELD) == sizeof(unsigned int), "Size of INSTRUCTION_INFORMATION_FIELD != sizeof(unsigned int)");
 }

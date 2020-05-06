@@ -9,6 +9,8 @@
 
 #include <intrin.h>
 
+#include <type_traits>
+
 #include <ntifs.h>
 #include "MemoryUtils.h"
 
@@ -26,6 +28,7 @@
 // Defined in VMM.asm:
 extern "C" void _sldt(__out SEGMENT_SELECTOR* Selector);
 extern "C" void _str(__out SEGMENT_SELECTOR* TaskRegister);
+extern "C" void __invd();
 /* VMX-only */ extern "C" void __invept(VMX::INVEPT_TYPE Type, __in VMX::INVEPT_DESCRIPTOR* Descriptor);
 /* VMX-only */ extern "C" void __invvpid(VMX::INVVPID_TYPE Type, __in VMX::INVVPID_DESCRIPTOR* Descriptor);
 
@@ -980,6 +983,22 @@ namespace VMX
         } Bitmap;
     };
 
+    CONTROLS_MASK GetCr0Mask()
+    {
+        CONTROLS_MASK Mask = {};
+        Mask.Bitmap.Allowed0Settings = __readmsr(static_cast<unsigned long>(INTEL_MSR::IA32_VMX_CR0_FIXED0));
+        Mask.Bitmap.Allowed1Settings = __readmsr(static_cast<unsigned long>(INTEL_MSR::IA32_VMX_CR0_FIXED1));
+        return Mask;
+    }
+
+    CONTROLS_MASK GetCr4Mask()
+    {
+        CONTROLS_MASK Mask = {};
+        Mask.Bitmap.Allowed0Settings = __readmsr(static_cast<unsigned long>(INTEL_MSR::IA32_VMX_CR4_FIXED0));
+        Mask.Bitmap.Allowed1Settings = __readmsr(static_cast<unsigned long>(INTEL_MSR::IA32_VMX_CR4_FIXED1));
+        return Mask;
+    }
+
     CONTROLS_MASK GetPinControlsMask(IA32_VMX_BASIC VmxBasic)
     {
         CONTROLS_MASK Mask = {};
@@ -1038,7 +1057,6 @@ namespace VMX
     template <typename T>
     static T ApplyMask(T VmxControlReg, CONTROLS_MASK Mask)
     {
-        static_assert(sizeof(T) == sizeof(unsigned int), "Mask can be applied for 32-bit values only");
         VmxControlReg.Value &= Mask.Bitmap.Allowed1Settings;
         VmxControlReg.Value |= Mask.Bitmap.Allowed0Settings;
         return VmxControlReg;
@@ -1055,7 +1073,8 @@ namespace VMX
     {
         using namespace PhysicalMemory;
 
-        static volatile bool IsVirtualized = false;
+        volatile KIRQL Irql = KeRaiseIrqlToDpcLevel();
+        volatile bool IsVirtualized = false;
         IsVirtualized = false;
         
         CONTEXT Context = {};
@@ -1064,6 +1083,7 @@ namespace VMX
 
         if (IsVirtualized)
         {
+            KeLowerIrql(Irql);
             return true;
         }
 
@@ -1086,15 +1106,14 @@ namespace VMX
         Private->VmmStack.Layout.InitialStack.Private = Private;
 
         CR0 Cr0 = { __readcr0() };
-        Cr0.Value &= __readmsr(static_cast<unsigned long>(INTEL_MSR::IA32_VMX_CR0_FIXED1));
-        Cr0.Value |= __readmsr(static_cast<unsigned long>(INTEL_MSR::IA32_VMX_CR0_FIXED0));
+        Cr0 = ApplyMask(Cr0, GetCr0Mask());
         __writecr0(Cr0.Value);
 
         // Enable the VMX instructions set:
         CR4 Cr4 = { __readcr4() };
         Cr4.x64.Bitmap.VMXE = TRUE;
-        Cr4.Value &= __readmsr(static_cast<unsigned long>(INTEL_MSR::IA32_VMX_CR4_FIXED1));
-        Cr4.Value |= __readmsr(static_cast<unsigned long>(INTEL_MSR::IA32_VMX_CR4_FIXED0));
+        Cr4.x64.Bitmap.PCIDE = TRUE;
+        Cr4 = ApplyMask(Cr4, GetCr4Mask());
         __writecr4(Cr4.Value);
 
         unsigned char VmxStatus = 0;
@@ -1103,6 +1122,7 @@ namespace VMX
         VmxStatus =  __vmx_on(reinterpret_cast<unsigned long long*>(&Private->VmmStack.Layout.InitialStack.VmxonPa));
         if (VmxStatus != 0) {
             FreePhys(Private);
+            KeLowerIrql(Irql);
             return false;
         }
 
@@ -1111,6 +1131,7 @@ namespace VMX
         if (VmxStatus != 0) {
             __vmx_off();
             FreePhys(Private);
+            KeLowerIrql(Irql);
             return false;
         }
 
@@ -1119,11 +1140,14 @@ namespace VMX
         if (VmxStatus != 0) {
             __vmx_off();
             FreePhys(Private);
+            KeLowerIrql(Irql);
             return false;
         }
 
+        unsigned int Vpid = KeGetCurrentProcessorNumber() + 1;
+        DbgPrint("Virtualizing processor: %u\n", Vpid);
         __vmx_vmwrite(VMX::VMCS_FIELD_VMCS_LINK_POINTER_FULL, 0xFFFFFFFFFFFFFFFFULL);
-        __vmx_vmwrite(VMX::VMCS_FIELD_VIRTUAL_PROCESSOR_IDENTIFIER, KeGetCurrentProcessorNumber() + 1);
+        __vmx_vmwrite(VMX::VMCS_FIELD_VIRTUAL_PROCESSOR_IDENTIFIER, KeGetCurrentProcessorNumber() + 1ull);
 
         /* CR0 was already read above */
         __vmx_vmwrite(VMX::VMCS_FIELD_CR0_READ_SHADOW, Cr0.x64.Value);
@@ -1135,6 +1159,8 @@ namespace VMX
         __vmx_vmwrite(VMX::VMCS_FIELD_HOST_CR3, Cr3.x64.Value);
 
         /* CR4 was already read above */
+        CR4 Cr4Mask = Cr4;
+        __vmx_vmwrite(VMX::VMCS_FIELD_CR4_GUEST_HOST_MASK, Cr4Mask.Value);
         __vmx_vmwrite(VMX::VMCS_FIELD_CR4_READ_SHADOW, Cr4.x64.Value);
         __vmx_vmwrite(VMX::VMCS_FIELD_GUEST_CR4, Cr4.x64.Value);
         __vmx_vmwrite(VMX::VMCS_FIELD_HOST_CR4, Cr4.x64.Value);
@@ -1246,7 +1272,7 @@ namespace VMX
         PrimaryControls.Bitmap.RdtscExiting = TRUE;
         PrimaryControls.Bitmap.HltExiting = TRUE;
         PrimaryControls.Bitmap.InvlpgExiting = TRUE;
-        //PrimaryControls.Bitmap.Cr3LoadExiting = TRUE;
+        PrimaryControls.Bitmap.Cr3LoadExiting = TRUE;
         //PrimaryControls.Bitmap.Cr3StoreExiting = TRUE;
         PrimaryControls.Bitmap.UseMsrBitmaps = TRUE;
         PrimaryControls.Bitmap.ActivateSecondaryControls = TRUE;
@@ -1271,7 +1297,7 @@ namespace VMX
         SecondaryControls.Bitmap.EnableVpid = TRUE;
         SecondaryControls.Bitmap.WbinvdExiting = TRUE;
         SecondaryControls.Bitmap.EnableInvpcid = TRUE;
-        //SecondaryControls.Bitmap.EnableVmFunctions = TRUE;
+        SecondaryControls.Bitmap.EnableVmFunctions = TRUE;
         SecondaryControls.Bitmap.EptViolation = TRUE;
         //SecondaryControls.Bitmap.ModBasedExecuteControlForEpt = TRUE;
         SecondaryControls.Bitmap.EnableXsavesXrstors = TRUE;
@@ -1303,7 +1329,10 @@ namespace VMX
         UNREFERENCED_PARAMETER(Error);
 
         __vmx_off();
+     
         FreePhys(Private);
+        
+        KeLowerIrql(Irql);
         return false;
     }
 
@@ -1341,8 +1370,59 @@ namespace VMX
         }
     }
 
+    // Returns NULL if RegNum is RSP:
+    unsigned long long* GetRegPtr(unsigned char RegNum, __in GUEST_CONTEXT* Context)
+    {
+        switch (RegNum)
+        {
+        case 0:
+            return &Context->Rax;
+        case 1:
+            return &Context->Rcx;
+        case 2:
+            return &Context->Rdx;
+        case 3:
+            return &Context->Rbx;
+        case 4:
+            // RSP (must be obtained by __vmx_vmread(VMCS_FIELD_GUEST_RSP)):
+            return nullptr;
+        case 5:
+            return &Context->Rbp;
+        case 6:
+            return &Context->Rsi;
+        case 7:
+            return &Context->Rdi;
+        case 8:
+            return &Context->R8;
+        case 9:
+            return &Context->R9;
+        case 10:
+            return &Context->R10;
+        case 11:
+            return &Context->R11;
+        case 12:
+            return &Context->R12;
+        case 13:
+            return &Context->R13;
+        case 14:
+            return &Context->R14;
+        case 15:
+            return &Context->R15;
+        default:
+            return nullptr;
+        }
+    }
+
     extern "C" VMM_STATUS VmxVmexitHandler(PRIVATE_VM_DATA* Private, GUEST_CONTEXT* Context)
     {
+        KIRQL Irql = KeGetCurrentIrql();
+        if (Irql < DISPATCH_LEVEL)
+        {
+            Irql = KeRaiseIrqlToDpcLevel();
+        }
+
+        size_t Rip = vmread(VMX::VMCS_FIELD_GUEST_RIP);
+
         EXIT_REASON ExitReason = {};
         ExitReason.Value = static_cast<unsigned int>(vmread(VMX::VMCS_FIELD_EXIT_REASON));
 
@@ -1356,7 +1436,6 @@ namespace VMX
             int Function = static_cast<int>(Context->Rax);
             if (Function == CPUID_VMM_SHUTDOWN)
             {
-                size_t Rip = vmread(VMX::VMCS_FIELD_GUEST_RIP);
                 Rip += vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_LENGTH);
 
                 size_t Rsp = vmread(VMX::VMCS_FIELD_GUEST_RSP);
@@ -1379,6 +1458,10 @@ namespace VMX
 
                 __vmx_off();
 
+                if (Irql < DISPATCH_LEVEL)
+                {
+                    KeLowerIrql(Irql);
+                }
                 return VMM_STATUS::VMM_SHUTDOWN;
             }
 
@@ -1433,16 +1516,26 @@ namespace VMX
         case VMX::EXIT_REASON_INVD:
         {
             // Invalidate caches:
+            __invd();
+            break;
+        }
+        case VMX::EXIT_REASON_WBINVD:
+        {
+            // Write-back & invalidate caches:
             __wbinvd();
             break;
         }
         case VMX::EXIT_REASON_INVLPG:
         {
+            unsigned long long LinearAddress = vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION);
+            unsigned short Vpid = static_cast<unsigned short>(KeGetCurrentProcessorNumber()) + 1;
+
             // Invalidate TLB:
             INVVPID_DESCRIPTOR Descriptor = {};
-            Descriptor.Vpid = static_cast<unsigned short>(KeGetCurrentProcessorNumber() + 1ull);
-            Descriptor.LinearAddress = vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION);
+            Descriptor.Vpid = Vpid;
+            Descriptor.LinearAddress = LinearAddress;
             __invvpid(VMX::INVVPID_TYPE::IndividualAddressInvalidation, &Descriptor);
+
             break;
         }
         case VMX::EXIT_REASON_XSETBV:
@@ -1452,7 +1545,7 @@ namespace VMX
         }
         case VMX::EXIT_REASON_EPT_VIOLATION:
         {
-            VMX::EXIT_QUALIFICATION_FOR_EPT_VIOLATIONS Info = { vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION) };
+            VMX::EXIT_QUALIFICATION Info = { vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION) };
             unsigned long long AccessedPagePa = vmread(VMX::VMCS_FIELD_GUEST_PHYSICAL_ADDRESS_FULL);
             UNREFERENCED_PARAMETER(Info);
             UNREFERENCED_PARAMETER(AccessedPagePa);
@@ -1525,6 +1618,100 @@ namespace VMX
             }
             break;
         }
+        case VMX::EXIT_REASON_CR_ACCESS:
+        {
+            VMX::EXIT_QUALIFICATION Qualification = {};
+            Qualification.Value = vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION);
+            
+            unsigned char AccessedCr = Qualification.ControlRegistersAccess.NumberOfControlRegister;
+            unsigned char DataReg = Qualification.ControlRegistersAccess.Register;
+            bool IsRsp = DataReg == 4;
+            unsigned long long RegValue = 0;
+            if (IsRsp)
+            {
+                RegValue = vmread(VMX::VMCS_FIELD_GUEST_RSP);
+            }
+            else
+            {
+                unsigned long long* Reg = GetRegPtr(DataReg, Context);
+                RegValue = *Reg;
+            }
+
+            switch (AccessedCr)
+            {
+            case 3:
+            {
+                unsigned long long MaskedCr3 = RegValue & ~(1ull << 63);
+                __vmx_vmwrite(VMX::VMCS_FIELD_GUEST_CR3, MaskedCr3);
+
+                VMX::INVVPID_DESCRIPTOR InvvpidDesc = {};
+                InvvpidDesc.Vpid = KeGetCurrentProcessorNumber() + 1ull;
+                __invvpid(VMX::INVVPID_TYPE::SingleContextInvalidation, &InvvpidDesc);
+
+                break;
+            }
+            case 4:
+            {
+                CR4 Cr4 = { RegValue };
+                Cr4 = ApplyMask(Cr4, GetCr4Mask());
+                __vmx_vmwrite(VMX::VMCS_FIELD_GUEST_CR4, Cr4.Value);
+                __vmx_vmwrite(VMX::VMCS_FIELD_CR4_READ_SHADOW, Cr4.Value);
+
+                VMX::INVVPID_DESCRIPTOR InvvpidDesc = {};
+                __invvpid(VMX::INVVPID_TYPE::AllContextsInvalidation, &InvvpidDesc);
+                break;
+            }
+            default:
+                __debugbreak();
+            }
+
+            break;
+        }
+        case VMX::EXIT_REASON_INVPCID:
+        {
+            VMX::INSTRUCTION_INFORMATION_FIELD Instr = { static_cast<unsigned int>(vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_INFORMATION)) };
+            unsigned long long Disp = vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION);
+            unsigned long long Rsp = vmread(VMX::VMCS_FIELD_GUEST_RSP);
+
+            // invpcid reg2, oword ptr [base + index * scale + disp]
+            // base  - GP register
+            // index - GP register (can't be ESP/RSP)
+            // scale - value of 2/4/8
+            // disp  - 8/16/32-bit value
+
+            unsigned long long InvType = 0;
+            unsigned long long DescAddr = 0;
+
+            unsigned long long* TypeReg = GetRegPtr(Instr.Invpcid.Reg2, Context);
+            InvType = TypeReg ? *TypeReg : Rsp;
+            
+            if (Instr.Invpcid.BaseRegInvalid == 0)
+            {
+                unsigned long long* BaseReg = GetRegPtr(Instr.Invpcid.BaseReg, Context);
+                DescAddr += BaseReg ? *BaseReg : Rsp;
+            }
+
+            if (Instr.Invpcid.IndexRegInvalid == 0)
+            {
+                unsigned long long* IndexReg = GetRegPtr(Instr.Invpcid.IndexReg, Context);
+                unsigned long long Scale = 1ull < Instr.Invpcid.Scaling;
+                DescAddr += *IndexReg * Scale;
+            }
+
+            DescAddr += Disp;
+
+            unsigned long long GuestCr3 = vmread(VMX::VMCS_FIELD_GUEST_CR3);
+            unsigned long long VmmCr3 = __readcr3();
+            __writecr3(GuestCr3);
+            _invpcid(static_cast<unsigned int>(InvType), reinterpret_cast<void*>(DescAddr));
+            __writecr3(VmmCr3);
+            break;
+        }
+        case VMX::EXIT_REASON_DR_ACCESS:
+        {
+            __debugbreak();
+            break;
+        }
         case VMX::EXIT_REASON_VMCLEAR:
         case VMX::EXIT_REASON_VMLAUNCH:
         case VMX::EXIT_REASON_VMPTRLD:
@@ -1550,10 +1737,14 @@ namespace VMX
         }
 
         // Go to the next instruction:
-        size_t Rip = vmread(VMX::VMCS_FIELD_GUEST_RIP);
+        
         Rip += vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_LENGTH);
         __vmx_vmwrite(VMX::VMCS_FIELD_GUEST_RIP, Rip);
 
+        if (Irql < DISPATCH_LEVEL)
+        {
+            KeLowerIrql(Irql);
+        }
         return VMM_STATUS::VMM_CONTINUE;
     }
 

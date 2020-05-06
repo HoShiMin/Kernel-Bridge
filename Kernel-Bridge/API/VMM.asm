@@ -15,6 +15,11 @@ _str PROC PUBLIC
     ret
 _str ENDP
 
+__invd PROC PUBLIC
+    invd
+    ret
+__invd ENDP
+
 HypercallHyperV PROC PUBLIC
     ; RCX - HYPERCALL_INPUT_VALUE
     ; RDX - Input parameters GPA when the Fast flag is 0, otherwise input parameter
@@ -196,7 +201,6 @@ __invvpid PROC PUBLIC
 __invvpid ENDP
 
 VmxVmmRun PROC PUBLIC
-    cli
     PUSHAQ
     mov rcx, [rsp + GPR_CONTEXT_SIZE + 16]
     mov rdx, rsp
@@ -211,7 +215,6 @@ VmxVmmRun PROC PUBLIC
     jz VmmExit
 
     POPAQ
-    sti
     vmresume
 
 VmmExit:
@@ -225,7 +228,6 @@ VmmExit:
 
     mov rsp, rcx
     mov ecx, CPUID_VMM_SHUTDOWN ; Signature that says about the VM shutdown
-    sti
     jmp rbx
 VmxVmmRun ENDP
 
