@@ -9,8 +9,6 @@
 
 #include <intrin.h>
 
-#include <type_traits>
-
 #include <ntifs.h>
 #include "MemoryUtils.h"
 
@@ -35,7 +33,8 @@ extern "C" void __invd();
 extern "C" NTSYSAPI VOID NTAPI RtlCaptureContext(OUT PCONTEXT Context);
 
 // Magic value, defined by hypervisor, triggers #VMEXIT and VMM shutdown:
-constexpr unsigned int CPUID_VMM_SHUTDOWN = 0x1EE7C0DE;
+constexpr unsigned int HYPER_BRIDGE_SIGNATURE = 0x1EE7C0DE;
+constexpr unsigned int CPUID_VMM_SHUTDOWN = HYPER_BRIDGE_SIGNATURE;
 
 // Exit action for the SvmVmexitHandler/VmxVmexitHandler:
 enum class VMM_STATUS : bool
@@ -1561,12 +1560,36 @@ namespace VMX
         }
         case VMX::EXIT_REASON_VMCALL:
         {
-            if (Context->R10 == 0x1EE7C0DE)
+            if (Context->R10 == HYPER_BRIDGE_SIGNATURE)
             {
                 Context->Rax = 0x1EE7C0DE;
             }
             else
             {
+                HyperV::HYPERCALL_INPUT_VALUE InputValue = { Context->Rcx };
+                switch (static_cast<HyperV::HYPERCALL_CODE>(InputValue.Bitmap.CallCode))
+                {
+                case HyperV::HYPERCALL_CODE::HvSwitchVirtualAddressSpace:
+                case HyperV::HYPERCALL_CODE::HvFlushVirtualAddressSpace:
+                case HyperV::HYPERCALL_CODE::HvFlushVirtualAddressList:
+                case HyperV::HYPERCALL_CODE::HvCallFlushVirtualAddressSpaceEx:
+                case HyperV::HYPERCALL_CODE::HvCallFlushVirtualAddressListEx:
+                {
+                    VMX::INVVPID_DESCRIPTOR InvvpidDesc = {};
+                    __invvpid(VMX::INVVPID_TYPE::AllContextsInvalidation, &InvvpidDesc);
+                    break;
+                }
+                case HyperV::HYPERCALL_CODE::HvCallFlushGuestPhysicalAddressSpace:
+                case HyperV::HYPERCALL_CODE::HvCallFlushGuestPhysicalAddressList:
+                {
+                    // Acts as __invept():
+                    INVEPT_DESCRIPTOR Desc = {};
+                    Desc.Eptp = vmread(VMCS_FIELD_EPT_POINTER_FULL);
+                    __invept(VMX::INVEPT_TYPE::GlobalInvalidation, &Desc);
+                    break;
+                }
+                }
+
                 // It is a Hyper-V hypercall - passing through:
                 Context->Rax = HypercallHyperV(Context->Rcx, Context->Rdx, Context->R8, Context->R9);
             }
