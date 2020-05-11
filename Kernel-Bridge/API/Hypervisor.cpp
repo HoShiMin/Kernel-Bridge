@@ -23,6 +23,8 @@
 #include "SVM.h"
 #include "VMX.h"
 
+extern "C" NTSYSAPI NTSTATUS NTAPI ZwYieldExecution();
+
 // Defined in VMM.asm:
 extern "C" void _sldt(__out SEGMENT_SELECTOR* Selector);
 extern "C" void _str(__out SEGMENT_SELECTOR* TaskRegister);
@@ -30,7 +32,7 @@ extern "C" void __invd();
 /* VMX-only */ extern "C" void __invept(VMX::INVEPT_TYPE Type, __in VMX::INVEPT_DESCRIPTOR* Descriptor);
 /* VMX-only */ extern "C" void __invvpid(VMX::INVVPID_TYPE Type, __in VMX::INVVPID_DESCRIPTOR* Descriptor);
 
-extern "C" NTSYSAPI VOID NTAPI RtlCaptureContext(OUT PCONTEXT Context);
+extern "C" NTSYSAPI VOID NTAPI RtlCaptureContext(__out PCONTEXT Context);
 
 // Magic value, defined by hypervisor, triggers #VMEXIT and VMM shutdown:
 constexpr unsigned int HYPER_BRIDGE_SIGNATURE = 0x1EE7C0DE;
@@ -140,6 +142,8 @@ namespace Supplementation
             Affinity.Mask = 1LL << ProcessorNumber.Number;
             KeSetSystemGroupAffinityThread(&Affinity, &PreviousAffinity);
 
+            ZwYieldExecution(); // Perform the context switch to apply the affinity
+
             bool Status = Callback(Arg, i);
 
             KeRevertToUserGroupAffinityThread(&PreviousAffinity);
@@ -152,8 +156,6 @@ namespace Supplementation
 
 namespace
 {
-    using namespace Supplementation;
-
     static void GetHvCpuName(
         __out unsigned long long& rbx,
         __out unsigned long long& rcx,
@@ -165,8 +167,10 @@ namespace
         rdx = 'rB-r';
     }
 
-    static bool DevirtualizeProcessor()
+    static bool DevirtualizeProcessor(__out void*& PrivateVmData)
     {
+        PrivateVmData = NULL;
+
         // Trigger the #VMEXIT with the predefined arguments:
         CPUID_REGS Regs = {};
         __cpuid(Regs.Raw, CPUID_VMM_SHUTDOWN);
@@ -178,32 +182,40 @@ namespace
         //  Info.Ecx -> VMEXIT_SIGNATURE
         //  Info.Edx -> PRIVATE_VM_DATA* Private HIGH
 
-        void* Private = reinterpret_cast<void*>(
+        PrivateVmData = reinterpret_cast<void*>(
             (static_cast<UINT64>(Regs.Regs.Edx) << 32u) |
             (static_cast<UINT64>(Regs.Regs.Eax))
         );
-
-        FreePhys(Private);
 
         return true;
     }
 
     static bool DevirtualizeAllProcessors()
     {
-        bool Status = ExecuteInSystemContext([](PVOID Shared) -> bool
+        ULONG ProcessorsCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
+        void** PrivateVmDataArray = VirtualMemory::AllocArray<void*>(ProcessorsCount);
+
+        KeIpiGenericCall([](ULONG_PTR Arg) -> ULONG_PTR
         {
-            return ExecuteOnEachProcessor([](PVOID Shared, ULONG ProcessorNumber) -> bool
+            void** PrivateVmDataArray = reinterpret_cast<void**>(Arg);
+            ULONG CurrentProcessor = KeGetCurrentProcessorNumber();
+            void* PrivateVmData = NULL;
+            bool Status = DevirtualizeProcessor(OUT PrivateVmData);
+            PrivateVmDataArray[CurrentProcessor] = PrivateVmData; // Data buffer to free
+            return static_cast<ULONG_PTR>(Status);
+        }, reinterpret_cast<ULONG_PTR>(PrivateVmDataArray));
+             
+        for (ULONG i = 0; i < ProcessorsCount; ++i)
+        {
+            if (PrivateVmDataArray[i])
             {
-                UNREFERENCED_PARAMETER(Shared);
-                UNREFERENCED_PARAMETER(ProcessorNumber);
-                DevirtualizeProcessor(); // We don't care about result of the CPU devirtualization
-                return true; // Show must go on!
-            }, Shared);
-        }, NULL);
+                Supplementation::FreePhys(PrivateVmDataArray[i]);
+            }
+        }
 
         g_IsVirtualized = false;
 
-        return Status;
+        return true;
     }
 }
 
@@ -523,7 +535,8 @@ namespace SVM
         return Status;
     }
 
-    static bool IsSvmSupported() {
+    static bool IsSvmSupported()
+    {
         CPUID_REGS Regs = {};
         
         // Check the 'AuthenticAMD' vendor name:
@@ -755,7 +768,7 @@ namespace VMX
         bool IsMemTypeInitialized = false;
 
         // Default type:
-        MTRR_MEMORY_TYPE MemType = static_cast<MTRR_MEMORY_TYPE>(MtrrInfo->MtrrDefType.Value);
+        MTRR_MEMORY_TYPE MemType = static_cast<MTRR_MEMORY_TYPE>(MtrrInfo->MtrrDefType.Bitmap.Type);
 
         if (PhysicalAddress < FIRST_MEGABYTE && MtrrInfo->MtrrCap.Bitmap.FIX && MtrrInfo->MtrrDefType.Bitmap.FE)
         {
@@ -783,11 +796,14 @@ namespace VMX
                     if (FixedMemType == MTRR_MEMORY_TYPE::Uncacheable) return MemType;
                     if (IsMemTypeInitialized)
                     {
-                        bool IsMixed = MixMtrrTypes(MemType, FixedMemType, MemType);
+                        bool IsMixed = MixMtrrTypes(MemType, FixedMemType, OUT MemType);
                         if (!IsMixed) return MTRR_MEMORY_TYPE::Uncacheable;
                     }
-                    IsMemTypeInitialized = true;
-                    MemType = FixedMemType;
+                    else
+                    {
+                        IsMemTypeInitialized = true;
+                        MemType = FixedMemType;
+                    }
                 }
             }
         }
@@ -815,12 +831,34 @@ namespace VMX
                     else
                     {
                         VarMemType = PageMemType;
+                        IsVarMemTypeInitialized = true;
+                    }
+
+                    if (VarMemType == MTRR_MEMORY_TYPE::Uncacheable)
+                    {
+                        return MTRR_MEMORY_TYPE::Uncacheable;
                     }
                 }
             }
 
-            bool IsMixed = MixMtrrTypes(MemType, VarMemType, OUT MemType);
-            if (!IsMixed) return MTRR_MEMORY_TYPE::Uncacheable;
+            if (IsVarMemTypeInitialized)
+            {
+                if (VarMemType == MTRR_MEMORY_TYPE::Uncacheable)
+                {
+                    return MTRR_MEMORY_TYPE::Uncacheable;
+                }
+
+                if (IsMemTypeInitialized)
+                {
+                    bool IsMixed = MixMtrrTypes(MemType, VarMemType, OUT MemType);
+                    if (!IsMixed) return MTRR_MEMORY_TYPE::Uncacheable;
+                }
+                else
+                {
+                    MemType = VarMemType;
+                    IsMemTypeInitialized = true;
+                }
+            }
         }
 
         return MemType;
@@ -855,6 +893,10 @@ namespace VMX
         DECLSPEC_ALIGN(PAGE_SIZE) EPT_TABLES Ept;
         DESCRIPTOR_TABLE_REGISTER_LONG Gdtr;
         DESCRIPTOR_TABLE_REGISTER_LONG Idtr;
+
+        struct {
+
+        } EptHandlers;
     };
 
     static void InitializeEptTables(__out EPT_TABLES* Ept, __out EPTP* Eptp)
@@ -910,6 +952,94 @@ namespace VMX
             }
         }
     }
+
+/*
+    struct EPT_ENTRIES
+    {
+        EPT_PML4E* Pml4e;
+        EPT_PDPTE* Pdpte;
+        EPT_PDE* Pde;
+        EPT_PTE* Pte;
+    };
+
+    bool GetEptEntries(unsigned long long PhysicalAddress, const EPT_TABLES& Ept, __out EPT_ENTRIES& Entries)
+    {
+        VIRTUAL_ADDRESS Addr;
+        Addr.x64.Value = PhysicalAddress;
+
+        // Our EPT supports only one PML4E (512 Gb of the physical address space):
+        if (Addr.x64.Generic.PageMapLevel4Offset > 0)
+        {
+            __stosq(reinterpret_cast<unsigned long long*>(&Entries), 0, sizeof(Entries) / sizeof(unsigned long long));
+            return false;
+        }
+
+        auto PdpteIndex = Addr.x64.NonPageSize.Generic.PageDirectoryPointerOffset;
+        auto PdeIndex = Addr.x64.NonPageSize.Generic.PageDirectoryOffset;
+
+        Entries.Pml4e = const_cast<EPT_PML4E*>(&Ept.Pml4e);
+        Entries.Pdpte = const_cast<EPT_PDPTE*>(&Ept.Pdpte[PdpteIndex]);
+        Entries.Pde = const_cast<EPT_PDE*>(&Ept.Pde[PdpteIndex][PdeIndex]);
+        if (Entries.Pde->Generic.LargePage)
+        {
+            Entries.Pte = reinterpret_cast<EPT_PTE*>(NULL);
+        }
+        else
+        {
+            PVOID64 PtPhys = reinterpret_cast<PVOID64>(PFN_TO_PAGE(Entries.Pde->Page4Kb.EptPtePhysicalPfn));
+            PVOID PtVa = PhysicalMemory::GetVirtualForPhysical(PtPhys);
+            Entries.Pte = reinterpret_cast<EPT_PTE*>(PtVa);
+        }
+
+        return true;
+    }
+
+    struct LARGE_PAGE_LAYOUT
+    {
+        EPT_PTE Pte[512];
+    };
+
+    [[nodiscard]]
+    LARGE_PAGE_LAYOUT* BuildLargePageLayout(__in const EPT_PDE& Pde)
+    {
+        auto* Pt = reinterpret_cast<LARGE_PAGE_LAYOUT*>(Supplementation::AllocPhys(sizeof(LARGE_PAGE_LAYOUT), MmCached));
+        for (unsigned int i = 0; i < ARRAYSIZE(Pt->Pte); ++i)
+        {
+            Pt->Pte[i].Page4Kb.ReadAccess = TRUE;
+            Pt->Pte[i].Page4Kb.WriteAccess = TRUE;
+            Pt->Pte[i].Page4Kb.ExecuteAccess = TRUE;
+            Pt->Pte[i].Page4Kb.Type = Pde.Page2Mb.Type;
+            Pt->Pte[i].Page4Kb.PagePhysicalPfn = PFN_TO_PAGE(PFN_TO_LARGE_PAGE(Pde.Page2Mb.PagePhysicalPfn)) + i;
+        }
+        return Pt;
+    }
+
+    struct PAGE_HANDLER
+    {
+        EPT_PTE OnRead;
+        EPT_PTE OnWrite;
+        EPT_PTE OnExecute;
+    };
+
+    void BuildPageHandler(MTRR_MEMORY_TYPE CacheType, uint64_t ReadPa, uint64_t WritePa, uint64_t ExecutePa, __out PAGE_HANDLER& Handler)
+    {
+        Handler.OnRead.Value = 0;
+        Handler.OnWrite.Value = 0;
+        Handler.OnExecute.Value = 0;
+
+        Handler.OnRead.Page4Kb.ReadAccess = TRUE;
+        Handler.OnRead.Page4Kb.Type = static_cast<unsigned long long>(CacheType);
+        Handler.OnRead.Page4Kb.PagePhysicalPfn = PAGE_TO_PFN(ReadPa);
+
+        Handler.OnWrite.Page4Kb.WriteAccess = TRUE;
+        Handler.OnWrite.Page4Kb.Type = static_cast<unsigned long long>(CacheType);
+        Handler.OnWrite.Page4Kb.PagePhysicalPfn = PAGE_TO_PFN(WritePa);
+
+        Handler.OnExecute.Page4Kb.ExecuteAccess = TRUE;
+        Handler.OnExecute.Page4Kb.Type = static_cast<unsigned long long>(CacheType);
+        Handler.OnExecute.Page4Kb.PagePhysicalPfn = PAGE_TO_PFN(ExecutePa);
+    }
+*/
 
     static unsigned long long ExtractSegmentBaseAddress(const SEGMENT_DESCRIPTOR_LONG* SegmentDescriptor)
     {
@@ -1068,11 +1198,24 @@ namespace VMX
         return value;
     }
 
-    static bool VirtualizeProcessor()
+    struct VCPU_INFO
+    {
+        PRIVATE_VM_DATA* VmData;
+        VMX::VM_INSTRUCTION_ERROR Error;
+        bool Status;
+    };
+
+    struct SHARED_VM_DATA
+    {
+        VCPU_INFO* Processors;
+        unsigned long long KernelCr3;
+    };
+
+    _IRQL_requires_(IPI_LEVEL)
+    static bool VirtualizeProcessor(__inout SHARED_VM_DATA* Shared)
     {
         using namespace PhysicalMemory;
 
-        volatile KIRQL Irql = KeRaiseIrqlToDpcLevel();
         volatile bool IsVirtualized = false;
         IsVirtualized = false;
         
@@ -1080,22 +1223,22 @@ namespace VMX
         Context.ContextFlags = CONTEXT_ALL;
         RtlCaptureContext(&Context);
 
+        unsigned int CurrentProcessor = KeGetCurrentProcessorNumber();
+        unsigned int Vpid = CurrentProcessor + 1;
+
         if (IsVirtualized)
         {
-            KeLowerIrql(Irql);
+            Shared->Processors[CurrentProcessor].Status = true;
             return true;
         }
 
         IA32_VMX_BASIC VmxBasicInfo = { __readmsr(static_cast<unsigned long>(INTEL_MSR::IA32_VMX_BASIC)) };
 
-        // Determining the max phys size:
-        CPUID::Intel::VIRTUAL_AND_PHYSICAL_ADDRESS_SIZES MaxAddrSizes = {};
-        __cpuid(MaxAddrSizes.Regs.Raw, CPUID::Intel::CPUID_VIRTUAL_AND_PHYSICAL_ADDRESS_SIZES);
-
-        // Both 'cacheable' and 'write-back' are MmCached:
-        MEMORY_CACHING_TYPE CachingType = VmxBasicInfo.Bitmap.MemoryType ? MmCached : MmNonCached;
-
-        PRIVATE_VM_DATA* Private = reinterpret_cast<PRIVATE_VM_DATA*>(AllocPhys(sizeof(PRIVATE_VM_DATA), CachingType, MaxAddrSizes.Bitmap.PhysicalAddressBits));
+        PRIVATE_VM_DATA* Private = Shared->Processors[CurrentProcessor].VmData;
+        if (!Private)
+        {
+            return false;
+        }
 
         Private->Vmxon.RevisionId.Bitmap.VmcsRevisionId = VmxBasicInfo.Bitmap.VmcsRevision;
         Private->Vmcs.RevisionId.Bitmap.VmcsRevisionId = VmxBasicInfo.Bitmap.VmcsRevision;
@@ -1119,34 +1262,29 @@ namespace VMX
 
         // Entering the VMX root-mode:
         VmxStatus =  __vmx_on(reinterpret_cast<unsigned long long*>(&Private->VmmStack.Layout.InitialStack.VmxonPa));
-        if (VmxStatus != 0) {
-            FreePhys(Private);
-            KeLowerIrql(Irql);
+        if (VmxStatus != 0)
+        {
             return false;
         }
 
         // Resetting the guest VMCS:
         VmxStatus = __vmx_vmclear(reinterpret_cast<unsigned long long*>(&Private->VmmStack.Layout.InitialStack.VmcsPa));
-        if (VmxStatus != 0) {
+        if (VmxStatus != 0)
+        {
             __vmx_off();
-            FreePhys(Private);
-            KeLowerIrql(Irql);
             return false;
         }
 
         // Loading the VMCS as current for the processor:
         VmxStatus = __vmx_vmptrld(reinterpret_cast<unsigned long long*>(&Private->VmmStack.Layout.InitialStack.VmcsPa));
-        if (VmxStatus != 0) {
+        if (VmxStatus != 0)
+        {
             __vmx_off();
-            FreePhys(Private);
-            KeLowerIrql(Irql);
             return false;
         }
 
-        unsigned int Vpid = KeGetCurrentProcessorNumber() + 1;
-        DbgPrint("Virtualizing processor: %u\n", Vpid);
         __vmx_vmwrite(VMX::VMCS_FIELD_VMCS_LINK_POINTER_FULL, 0xFFFFFFFFFFFFFFFFULL);
-        __vmx_vmwrite(VMX::VMCS_FIELD_VIRTUAL_PROCESSOR_IDENTIFIER, KeGetCurrentProcessorNumber() + 1ull);
+        __vmx_vmwrite(VMX::VMCS_FIELD_VIRTUAL_PROCESSOR_IDENTIFIER, Vpid);
 
         /* CR0 was already read above */
         __vmx_vmwrite(VMX::VMCS_FIELD_CR0_READ_SHADOW, Cr0.x64.Value);
@@ -1155,11 +1293,11 @@ namespace VMX
 
         CR3 Cr3 = { __readcr3() };
         __vmx_vmwrite(VMX::VMCS_FIELD_GUEST_CR3, Cr3.x64.Value);
-        __vmx_vmwrite(VMX::VMCS_FIELD_HOST_CR3, Cr3.x64.Value);
+        __vmx_vmwrite(VMX::VMCS_FIELD_HOST_CR3, Shared->KernelCr3);
 
         /* CR4 was already read above */
         CR4 Cr4Mask = Cr4;
-        __vmx_vmwrite(VMX::VMCS_FIELD_CR4_GUEST_HOST_MASK, Cr4Mask.Value);
+        //__vmx_vmwrite(VMX::VMCS_FIELD_CR4_GUEST_HOST_MASK, Cr4Mask.Value);
         __vmx_vmwrite(VMX::VMCS_FIELD_CR4_READ_SHADOW, Cr4.x64.Value);
         __vmx_vmwrite(VMX::VMCS_FIELD_GUEST_CR4, Cr4.x64.Value);
         __vmx_vmwrite(VMX::VMCS_FIELD_HOST_CR4, Cr4.x64.Value);
@@ -1181,7 +1319,7 @@ namespace VMX
         _str(&Tr);
 
         const auto* Gdt = reinterpret_cast<const SEGMENT_DESCRIPTOR_LONG*>(Gdtr.BaseAddress);
-        const auto* LdtDescriptorInGdt = reinterpret_cast<const SEGMENT_DESCRIPTOR_LONG*>(Gdt ? &Gdt[Ldtr.Bitmap.SelectorIndex] : NULL);
+        const auto* LdtDescriptorInGdt = reinterpret_cast<const SEGMENT_DESCRIPTOR_LONG*>(&Gdt[Ldtr.Bitmap.SelectorIndex]);
         const auto* Ldt = reinterpret_cast<const SEGMENT_DESCRIPTOR_LONG*>(ExtractSegmentBaseAddress(LdtDescriptorInGdt));
 
         // These fields must be zeroed in host state selector values:
@@ -1269,10 +1407,8 @@ namespace VMX
 
         PRIMARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS PrimaryControls = {};
         PrimaryControls.Bitmap.RdtscExiting = TRUE;
-        PrimaryControls.Bitmap.HltExiting = TRUE;
         PrimaryControls.Bitmap.InvlpgExiting = TRUE;
         PrimaryControls.Bitmap.Cr3LoadExiting = TRUE;
-        //PrimaryControls.Bitmap.Cr3StoreExiting = TRUE;
         PrimaryControls.Bitmap.UseMsrBitmaps = TRUE;
         PrimaryControls.Bitmap.ActivateSecondaryControls = TRUE;
         PrimaryControls = ApplyMask(PrimaryControls, GetPrimaryControlsMask(VmxBasicInfo));
@@ -1298,7 +1434,6 @@ namespace VMX
         SecondaryControls.Bitmap.EnableInvpcid = TRUE;
         SecondaryControls.Bitmap.EnableVmFunctions = TRUE;
         SecondaryControls.Bitmap.EptViolation = TRUE;
-        //SecondaryControls.Bitmap.ModBasedExecuteControlForEpt = TRUE;
         SecondaryControls.Bitmap.EnableXsavesXrstors = TRUE;
         SecondaryControls = ApplyMask(SecondaryControls, GetSecondaryControlsMask());
         __vmx_vmwrite(VMX::VMCS_FIELD_SECONDARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS, SecondaryControls.Value);
@@ -1324,14 +1459,10 @@ namespace VMX
         __vmx_vmlaunch();
 
         // If we're here - something went wrong:
-        VM_INSTRUCTION_ERROR Error = static_cast<VM_INSTRUCTION_ERROR>(vmread(VMX::VMCS_FIELD_VM_INSTRUCTION_ERROR));
-        UNREFERENCED_PARAMETER(Error);
-
-        __vmx_off();
-     
-        FreePhys(Private);
+        Shared->Processors[CurrentProcessor].Error = static_cast<VM_INSTRUCTION_ERROR>(vmread(VMX::VMCS_FIELD_VM_INSTRUCTION_ERROR));
         
-        KeLowerIrql(Irql);
+        __vmx_off();
+        
         return false;
     }
 
@@ -1461,6 +1592,7 @@ namespace VMX
                 {
                     KeLowerIrql(Irql);
                 }
+
                 return VMM_STATUS::VMM_SHUTDOWN;
             }
 
@@ -1506,12 +1638,6 @@ namespace VMX
             }
             break;
         }
-        case VMX::EXIT_REASON_HLT:
-        {
-            // For the Hyper-V support:
-            __nop(); // Do nothing
-            break;
-        }
         case VMX::EXIT_REASON_INVD:
         {
             // Invalidate caches:
@@ -1548,14 +1674,12 @@ namespace VMX
             unsigned long long AccessedPagePa = vmread(VMX::VMCS_FIELD_GUEST_PHYSICAL_ADDRESS_FULL);
             UNREFERENCED_PARAMETER(Info);
             UNREFERENCED_PARAMETER(AccessedPagePa);
-            __debugbreak();
             break;
         }
         case VMX::EXIT_REASON_EPT_MISCONFIGURATION:
         {
             unsigned long long FailedPagePa = vmread(VMX::VMCS_FIELD_GUEST_PHYSICAL_ADDRESS_FULL);
             UNREFERENCED_PARAMETER(FailedPagePa);
-            __debugbreak();
             break;
         }
         case VMX::EXIT_REASON_VMCALL:
@@ -1684,8 +1808,8 @@ namespace VMX
                 __invvpid(VMX::INVVPID_TYPE::AllContextsInvalidation, &InvvpidDesc);
                 break;
             }
-            default:
-                __debugbreak();
+            default: {}
+                
             }
 
             break;
@@ -1723,16 +1847,11 @@ namespace VMX
 
             DescAddr += Disp;
 
-            unsigned long long GuestCr3 = vmread(VMX::VMCS_FIELD_GUEST_CR3);
-            unsigned long long VmmCr3 = __readcr3();
-            __writecr3(GuestCr3);
             _invpcid(static_cast<unsigned int>(InvType), reinterpret_cast<void*>(DescAddr));
-            __writecr3(VmmCr3);
             break;
         }
         case VMX::EXIT_REASON_DR_ACCESS:
         {
-            __debugbreak();
             break;
         }
         case VMX::EXIT_REASON_VMCLEAR:
@@ -1754,13 +1873,11 @@ namespace VMX
         }
         default:
         {
-            __debugbreak();
             break;
         }
         }
 
         // Go to the next instruction:
-        
         Rip += vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_LENGTH);
         __vmx_vmwrite(VMX::VMCS_FIELD_GUEST_RIP, Rip);
 
@@ -1768,6 +1885,7 @@ namespace VMX
         {
             KeLowerIrql(Irql);
         }
+
         return VMM_STATUS::VMM_CONTINUE;
     }
 
@@ -1776,22 +1894,63 @@ namespace VMX
         if (g_IsVirtualized) return true;
 
         // Virtualizing each processor:
-        bool Status = ExecuteInSystemContext([](PVOID Shared) -> bool
+        bool Status = ExecuteInSystemContext([](PVOID Arg) -> bool
         {
-            return ExecuteOnEachProcessor([](PVOID Shared, ULONG ProcessorNumber) -> bool
+            UNREFERENCED_PARAMETER(Arg);
+
+            SHARED_VM_DATA Shared = {};
+            Shared.KernelCr3 = __readcr3();
+
+            // Determining the max phys size:
+            CPUID::Intel::VIRTUAL_AND_PHYSICAL_ADDRESS_SIZES MaxAddrSizes = {};
+            __cpuid(MaxAddrSizes.Regs.Raw, CPUID::Intel::CPUID_VIRTUAL_AND_PHYSICAL_ADDRESS_SIZES);
+
+            ULONG ProcessorsCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
+            Shared.Processors = VirtualMemory::AllocArray<VCPU_INFO>(ProcessorsCount);
+            for (ULONG i = 0; i < ProcessorsCount; ++i)
             {
-                UNREFERENCED_PARAMETER(Shared);
-                UNREFERENCED_PARAMETER(ProcessorNumber);
-                return VirtualizeProcessor();
-            }, Shared);
+                Shared.Processors[i].VmData = reinterpret_cast<PRIVATE_VM_DATA*>(AllocPhys(sizeof(PRIVATE_VM_DATA), MmCached, MaxAddrSizes.Bitmap.PhysicalAddressBits));
+                if (!Shared.Processors[i].VmData)
+                {
+                    for (ULONG j = 0; j < ProcessorsCount; ++j)
+                    {
+                        if (Shared.Processors[j].VmData)
+                        {
+                            FreePhys(Shared.Processors[j].VmData);
+                        }
+                    }
+                    return false;
+                }
+            }
+
+            KeIpiGenericCall([](ULONG_PTR Arg) -> ULONG_PTR
+            {
+                auto* Shared = reinterpret_cast<SHARED_VM_DATA*>(Arg);
+                VirtualizeProcessor(Shared);
+                return TRUE;
+            }, reinterpret_cast<ULONG_PTR>(&Shared));
+
+            bool Status = true;
+            for (ULONG i = 0; i < ProcessorsCount; ++i)
+            {
+                Status &= Shared.Processors[i].Status;
+                if (!Status)
+                {
+                    break;
+                }
+            }
+
+            if (!Status)
+            {
+                DevirtualizeAllProcessors();
+            }
+
+            VirtualMemory::FreePoolMemory(Shared.Processors);
+
+            return Status;
         }, NULL);
 
         g_IsVirtualized = Status;
-
-        if (!Status)
-        {
-            DevirtualizeAllProcessors();
-        }
 
         return Status;
     }

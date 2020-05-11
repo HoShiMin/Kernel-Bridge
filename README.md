@@ -38,13 +38,14 @@ kernel-mode API and wrappers.
 * Extensions for the RTL: hooks, injections, disassembling
 * Kernel loadable modules with SEH support
   
-Driver template has full support of C++ static and global initializers and all of C++17 features (without C++ exceptions). All of API modules are easy-to-use and have no external dependiencies, so you can include them to your own C++ drivers. All of API functions are grouped into a logical categories into namespaces, so you can quickly find all functions you want.
+Driver template has full support of C++ static and global initializers and all of C++20 features (without C++ exceptions). All of API modules are easy-to-use and have no external dependiencies, so you can include them to your own C++ drivers. All of API functions are grouped into a logical categories into namespaces, so you can quickly find all functions you want.
   
 ### 💦 Driver template has:
 * Support of METHOD_BUFFERED, METHOD_IN/OUT_DIRECT and METHOD_NEITHER
 * Minifilter loading and filtering routines templates
-* SAL-annotations and well-documented API
+* SAL-annotations and self-documented API
 * Ready-to-use IOCTLs handling routine
+* Out-of-box STL support
 * Static Driver Verifier tests passing
   
 ### 💨 Building and using:  

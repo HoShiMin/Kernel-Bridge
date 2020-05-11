@@ -58,9 +58,9 @@
 #define PFN_TO_PAGE(pfn)        ((pfn)  << 12)
 #define PAGE_TO_PFN(page)       ((page) >> 12)
 
-// 1 << 20 == 1048576 (0x200000, 2Mb):
-#define PFN_TO_LARGE_PAGE(pfn)  ((pfn)  << 20)
-#define LARGE_PAGE_TO_PFN(page) ((page) >> 20)
+// 1 << 21 == 2097152 (0x200000, 2Mb):
+#define PFN_TO_LARGE_PAGE(pfn)  ((pfn)  << 21)
+#define LARGE_PAGE_TO_PFN(page) ((page) >> 21)
 
 // 1 << 30 == 1'073'741'824‬ (0x40000000, 1Gb):
 #define PFN_TO_HUGE_PAGE(pfn)   ((pfn)  << 30)

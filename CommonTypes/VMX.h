@@ -776,6 +776,17 @@ namespace VMX
             unsigned long long ReadAccess : 1;
             unsigned long long WriteAccess : 1;
             unsigned long long ExecuteAccess : 1;
+            unsigned long long Reserved0 : 4;
+            unsigned long long LargePage : 1;
+            unsigned long long Accessed : 1; // Ignored if bit 6 of EPTP is 0
+            unsigned long long Reserved1 : 1;
+            unsigned long long UserModeExecuteAccess : 1; // Ignored if "mode-based execute control for EPT" VM-execution control is 0
+            unsigned long long Reserved2 : 53;
+        } Generic;
+        struct {
+            unsigned long long ReadAccess : 1;
+            unsigned long long WriteAccess : 1;
+            unsigned long long ExecuteAccess : 1;
             unsigned long long Type : 3;
             unsigned long long IgnorePat : 1;
             unsigned long long LargePage : 1; // Must be 1 (otherwise, this entry references an EPT page directory)
@@ -807,6 +818,17 @@ namespace VMX
 
     union EPT_PDE {
         unsigned long long Value;
+        struct {
+            unsigned long long ReadAccess : 1;
+            unsigned long long WriteAccess : 1;
+            unsigned long long ExecuteAccess : 1;
+            unsigned long long Reserved0 : 4; // Must be zero
+            unsigned long long LargePage : 1;
+            unsigned long long Accessed : 1; // Ignored if bit 6 of EPTP is 0
+            unsigned long long Reserved1 : 1;
+            unsigned long long UserModeExecuteAccess : 1; // Ignored if "mode-based execute control for EPT" VM-execution control is 0
+            unsigned long long Reserved2 : 53;
+        } Generic;
         struct {
             unsigned long long ReadAccess : 1;
             unsigned long long WriteAccess : 1;

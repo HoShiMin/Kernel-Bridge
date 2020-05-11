@@ -31,6 +31,18 @@ namespace VirtualMemory {
     _IRQL_requires_max_(DISPATCH_LEVEL)
     PVOID AllocArray(SIZE_T ElementSize, SIZE_T ElementsCount);
 
+    template <typename T>
+    inline T* AllocArray(SIZE_T ElementsCount)
+    {
+        return reinterpret_cast<T*>(AllocArray(sizeof(T), ElementsCount));
+    }
+
+    template <typename T>
+    inline T* Alloc()
+    {
+        return reinterpret_cast<T*>(AllocFromPool(sizeof(T)));
+    }
+
     // Free memory allocated by Alloc[FromPool[Executable]/AnsiString/WideString/Array]:
     _IRQL_requires_max_(DISPATCH_LEVEL)
     VOID FreePoolMemory(__drv_freesMem(Mem) PVOID Address);

@@ -307,6 +307,8 @@ int main()
 {
     printf("[Kernel-Tests]: PID: %i, TID: %i\r\n", GetCurrentProcessId(), GetCurrentThreadId());
 
+    ceilf(0.25f);
+
     if (KbLoader::KbLoadAsFilter(
         L"C:\\Temp\\Kernel-Bridge\\Kernel-Bridge.sys",
         L"260000" // Altitude of minifilter
@@ -314,7 +316,7 @@ int main()
         RunAllTests();
         KbLoader::KbUnload();
     } else {
-        std::wcout << L"Unable to load driver!" << std::endl;
+        std::wcout << L"Unable to load driver! LastError: 0x" << std::hex << GetLastError() << std::endl;
     }
 
     std::wcout << L"Press any key to exit..." << std::endl;
