@@ -142,23 +142,27 @@ void* __cdecl operator new[](size_t Size, POOL_TYPE PoolType)
  
 void __cdecl operator delete(void* Pointer)
 {
+    if (!Pointer) return;
     ExFreePoolWithTag(Pointer, CrtPoolTag);
 }
  
 void __cdecl operator delete(void* Pointer, size_t Size)
 {
     UNREFERENCED_PARAMETER(Size);
+    if (!Pointer) return;
     ExFreePoolWithTag(Pointer, CrtPoolTag);
 }
 
 void __cdecl operator delete[](void* Pointer)
 {
+    if (!Pointer) return;
     ExFreePoolWithTag(Pointer, CrtPoolTag);
 }
 
 void __cdecl operator delete[](void* Pointer, size_t Size)
 {
     UNREFERENCED_PARAMETER(Size);
+    if (!Pointer) return;
     ExFreePoolWithTag(Pointer, CrtPoolTag);
 }
 
@@ -173,7 +177,7 @@ static void RaiseException(ULONG BugCheckCode)
 [[noreturn]]
 void __cdecl _invalid_parameter_noinfo_noreturn()
 {
-    RaiseException(KMODE_EXCEPTION_NOT_HANDLED);
+    RaiseException(DRIVER_INVALID_CRUNTIME_PARAMETER);
 }
 
 namespace std
@@ -181,13 +185,13 @@ namespace std
     [[noreturn]]
     void __cdecl _Xbad_alloc()
     {
-        RaiseException(KMODE_EXCEPTION_NOT_HANDLED);
+        RaiseException(INSTALL_MORE_MEMORY);
     }
     
     [[noreturn]]
     void __cdecl _Xinvalid_argument(_In_z_ const char*)
     {
-        RaiseException(KMODE_EXCEPTION_NOT_HANDLED);
+        RaiseException(DRIVER_INVALID_CRUNTIME_PARAMETER);
     }
     
     [[noreturn]]
@@ -199,13 +203,13 @@ namespace std
     [[noreturn]]
     void __cdecl _Xout_of_range(_In_z_ const char*)
     {
-        RaiseException(KMODE_EXCEPTION_NOT_HANDLED);
+        RaiseException(DRIVER_OVERRAN_STACK_BUFFER);
     }
     
     [[noreturn]]
     void __cdecl _Xoverflow_error(_In_z_ const char*)
     {
-        RaiseException(KMODE_EXCEPTION_NOT_HANDLED);
+        RaiseException(DRIVER_OVERRAN_STACK_BUFFER);
     }
    
     [[noreturn]]
@@ -215,7 +219,7 @@ namespace std
     }
 
     [[noreturn]]
-    void __cdecl RaiseHandler(const stdext::exception&)
+    void __cdecl RaiseHandler(const std::exception&)
     {
         RaiseException(KMODE_EXCEPTION_NOT_HANDLED);
     }
@@ -241,19 +245,19 @@ void __cdecl _invoke_watson(
     RaiseException(KMODE_EXCEPTION_NOT_HANDLED);
 }
 
-#ifdef _AMD64_
 // For <unordered_set> and <unordered_map> support:
-#pragma function(ceilf)
-_Check_return_ float __cdecl ceilf(_In_ float _X)
-{
-    int v = static_cast<int>(_X);
-    return static_cast<float>(_X > static_cast<float>(v) ? v + 1 : v);
-}
+#ifdef _AMD64_
+    #pragma function(ceilf)
+    _Check_return_ float __cdecl ceilf(_In_ float _X)
+    {
+        int v = static_cast<int>(_X);
+        return static_cast<float>(_X > static_cast<float>(v) ? v + 1 : v);
+    }
 #else
-#pragma function(ceil)
-_Check_return_ double __cdecl ceil(_In_ double _X)
-{
-    int v = static_cast<int>(_X);
-    return static_cast<double>(_X > static_cast<double>(v) ? v + 1 : v);
-}
+    #pragma function(ceil)
+    _Check_return_ double __cdecl ceil(_In_ double _X)
+    {
+        int v = static_cast<int>(_X);
+        return static_cast<double>(_X > static_cast<double>(v) ? v + 1 : v);
+    }
 #endif

@@ -409,27 +409,16 @@ namespace LoadableModules {
     BOOL WINAPI KbCallModule(WdkTypes::HMODULE hModule, ULONG CtlCode, OPTIONAL WdkTypes::PVOID Argument = NULL);
 }
 
-namespace PCI {
-    BOOL WINAPI KbReadPciConfig(
-        ULONG PciAddress,
-        ULONG PciOffset,
-        OUT PVOID Buffer,
-        ULONG Size,
-        OPTIONAL OUT PULONG BytesRead
-    );
-
-    BOOL WINAPI KbWritePciConfig(
-        ULONG PciAddress,
-        ULONG PciOffset,
-        IN PVOID Buffer,
-        ULONG Size,
-        OPTIONAL OUT PULONG BytesWritten
-    );
-}
-
 namespace Hypervisor {
     BOOL WINAPI KbVmmEnable();
     BOOL WINAPI KbVmmDisable();
+    BOOL WINAPI KbVmmInterceptPage(
+        IN OPTIONAL WdkTypes::PVOID64 PhysicalAddress,
+        IN OPTIONAL WdkTypes::PVOID64 OnReadPhysicalAddress,
+        IN OPTIONAL WdkTypes::PVOID64 OnWritePhysicalAddress,
+        IN OPTIONAL WdkTypes::PVOID64 OnExecutePhysicalAddress
+    );
+    BOOL WINAPI KbVmmDeinterceptPage(IN OPTIONAL WdkTypes::PVOID64 PhysicalAddress);
 }
 
 namespace Stuff {

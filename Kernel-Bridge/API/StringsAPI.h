@@ -168,7 +168,7 @@ public:
 
         Data.Length = Str.Data.Length;
     }
-    String(String&& Str) : String() {
+    String(String&& Str) noexcept : String() {
         if (Str.Data.SsoUsing || Str.Data.Length < SSO_SIZE) {
             Copy(Data.Buffer, Str.Data.Buffer, Str.Data.Length);
         } else {

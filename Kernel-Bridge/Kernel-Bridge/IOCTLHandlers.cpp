@@ -19,7 +19,6 @@
 #include "../API/KernelShells.h"
 #include "../API/StringsAPI.h"
 #include "../API/Signatures.h"
-#include "../API/PCI.h"
 #include "../API/Hypervisor.h"
 
 #include "IOCTLs.h"
@@ -1910,52 +1909,6 @@ namespace
         );
     }
 
-    NTSTATUS FASTCALL KbReadPciConfig(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
-    {
-        if (
-            RequestInfo->InputBufferSize != sizeof(KB_READ_WRITE_PCI_CONFIG_IN) || 
-            RequestInfo->OutputBufferSize != sizeof(KB_READ_WRITE_PCI_CONFIG_OUT)
-        ) return STATUS_INFO_LENGTH_MISMATCH;
-
-        auto Input = static_cast<PKB_READ_WRITE_PCI_CONFIG_IN>(RequestInfo->InputBuffer);
-        auto Output = static_cast<PKB_READ_WRITE_PCI_CONFIG_OUT>(RequestInfo->OutputBuffer);
-
-        if (!Input || !Output || !Input->Buffer || !Input->Size) return STATUS_INVALID_PARAMETER;
-
-        Output->ReadOrWritten = PCI::ReadPciConfig(
-            Input->PciAddress,
-            Input->PciOffset,
-            reinterpret_cast<PVOID>(Input->Buffer),
-            Input->Size
-        );
-
-        *ResponseLength = sizeof(*Output);
-        return STATUS_SUCCESS;
-    }
-
-    NTSTATUS FASTCALL KbWritePciConfig(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
-    {
-        if (
-            RequestInfo->InputBufferSize != sizeof(KB_READ_WRITE_PCI_CONFIG_IN) || 
-            RequestInfo->OutputBufferSize != sizeof(KB_READ_WRITE_PCI_CONFIG_OUT)
-        ) return STATUS_INFO_LENGTH_MISMATCH;
-
-        auto Input = static_cast<PKB_READ_WRITE_PCI_CONFIG_IN>(RequestInfo->InputBuffer);
-        auto Output = static_cast<PKB_READ_WRITE_PCI_CONFIG_OUT>(RequestInfo->OutputBuffer);
-
-        if (!Input || !Output || !Input->Buffer || !Input->Size) return STATUS_INVALID_PARAMETER;
-
-        Output->ReadOrWritten = PCI::WritePciConfig(
-            Input->PciAddress,
-            Input->PciOffset,
-            reinterpret_cast<PVOID>(Input->Buffer),
-            Input->Size
-        );
-
-        *ResponseLength = sizeof(*Output);
-        return STATUS_SUCCESS;
-    }
-
     NTSTATUS FASTCALL KbVmmEnable(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
     {
         UNREFERENCED_PARAMETER(RequestInfo);
@@ -1968,6 +1921,37 @@ namespace
         UNREFERENCED_PARAMETER(RequestInfo);
         UNREFERENCED_PARAMETER(ResponseLength);
         return Hypervisor::Devirtualize() ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
+    }
+
+    NTSTATUS FASTCALL KbVmmInterceptPage(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_VMM_INTERCEPT_PAGE_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_VMM_INTERCEPT_PAGE_IN>(RequestInfo->InputBuffer);
+        bool Status = Hypervisor::InterceptPage(
+            Input->PhysicalAddress,
+            Input->OnReadPhysicalAddress,
+            Input->OnWritePhysicalAddress,
+            Input->OnExecutePhysicalAddress
+        );
+
+        return Status ? STATUS_SUCCESS : STATUS_NOT_SUPPORTED;
+    }
+
+    NTSTATUS FASTCALL KbVmmDeinterceptPage(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_VMM_DEINTERCEPT_PAGE_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_VMM_DEINTERCEPT_PAGE_IN>(RequestInfo->InputBuffer);
+        bool Status = Hypervisor::DeinterceptPage(Input->PhysicalAddress);
+
+        return Status ? STATUS_SUCCESS : STATUS_NOT_SUPPORTED;
     }
 
     NTSTATUS FASTCALL KbExecuteShellCode(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
@@ -2466,13 +2450,11 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 83 */ KbCallModule,
         /* 84 */ KbUnloadModule,
 
-        // PCI:
-        /* 85 */ KbReadPciConfig,
-        /* 86 */ KbWritePciConfig,
-
         // Hypervisor:
-        /* 87 */ KbVmmEnable,
-        /* 88 */ KbVmmDisable,
+        /* 85 */ KbVmmEnable,
+        /* 86 */ KbVmmDisable,
+        /* 87 */ KbVmmInterceptPage,
+        /* 88 */ KbVmmDeinterceptPage,
 
         // Stuff u kn0w:
         /* 89 */ KbExecuteShellCode,

@@ -114,14 +114,12 @@ namespace Ctls {
         /* 82 */ KbGetModuleHandle,
         /* 83 */ KbCallModule,
         /* 84 */ KbUnloadModule,
-        
-        // PCI:
-        /* 85 */ KbReadPciConfig,
-        /* 86 */ KbWritePciConfig,
 
         // Hypervisor:
-        /* 87 */ KbVmmEnable,
-        /* 88 */ KbVmmDisable,
+        /* 85 */ KbVmmEnable,
+        /* 86 */ KbVmmDisable,
+        /* 87 */ KbVmmInterceptPage,
+        /* 88 */ KbVmmDeinterceptPage,
 
         // Stuff u kn0w:
         /* 89 */ KbExecuteShellCode,
@@ -629,20 +627,20 @@ DECLARE_STRUCT(KB_UNMAP_VIEW_OF_SECTION_IN, {
     WdkTypes::PVOID BaseAddress;
 });
 
+DECLARE_STRUCT(KB_VMM_INTERCEPT_PAGE_IN, {
+    IN WdkTypes::PVOID64 PhysicalAddress;
+    IN OPTIONAL WdkTypes::PVOID64 OnReadPhysicalAddress;
+    IN OPTIONAL WdkTypes::PVOID64 OnWritePhysicalAddress;
+    IN OPTIONAL WdkTypes::PVOID64 OnExecutePhysicalAddress;
+});
+
+DECLARE_STRUCT(KB_VMM_DEINTERCEPT_PAGE_IN, {
+    IN WdkTypes::PVOID64 PhysicalAddress;
+});
+
 DECLARE_STRUCT(KB_EXECUTE_SHELL_CODE_IN, {
     WdkTypes::PVOID Address;
     WdkTypes::PVOID Argument;
-});
-
-DECLARE_STRUCT(KB_READ_WRITE_PCI_CONFIG_IN, {
-    ULONG PciAddress;
-    ULONG PciOffset;
-    WdkTypes::PVOID Buffer;
-    ULONG Size;
-});
-
-DECLARE_STRUCT(KB_READ_WRITE_PCI_CONFIG_OUT, {
-    ULONG ReadOrWritten;
 });
 
 DECLARE_STRUCT(KB_EXECUTE_SHELL_CODE_OUT, {

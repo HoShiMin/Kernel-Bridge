@@ -98,13 +98,13 @@
     <ClCompile Include="API\SectionsUtils.cpp">
       <Filter>API</Filter>
     </ClCompile>
-    <ClCompile Include="API\PCI.cpp">
-      <Filter>API</Filter>
-    </ClCompile>
     <ClCompile Include="API\Hypervisor.cpp">
       <Filter>API</Filter>
     </ClCompile>
     <ClCompile Include="API\PteUtils.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\Callable.cpp">
       <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>
@@ -184,9 +184,6 @@
     <ClInclude Include="API\SectionsUtils.h">
       <Filter>API</Filter>
     </ClInclude>
-    <ClInclude Include="API\PCI.h">
-      <Filter>API</Filter>
-    </ClInclude>
     <ClInclude Include="API\Hypervisor.h">
       <Filter>API</Filter>
     </ClInclude>
@@ -219,6 +216,9 @@
     </ClInclude>
     <ClInclude Include="..\CommonTypes\Hyper-V.h">
       <Filter>CommonTypes</Filter>
+    </ClInclude>
+    <ClInclude Include="API\Callable.h">
+      <Filter>API</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

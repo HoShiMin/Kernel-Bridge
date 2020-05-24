@@ -20,7 +20,8 @@ __invd PROC PUBLIC
     ret
 __invd ENDP
 
-HypercallHyperV PROC PUBLIC
+; VMX-only:
+__hyperv_vmcall PROC PUBLIC
     ; RCX - HYPERCALL_INPUT_VALUE
     ; RDX - Input parameters GPA when the Fast flag is 0, otherwise input parameter
     ; R8  - Output parameters GPA when the Fast flag is 0, otherwise output parameter
@@ -29,9 +30,10 @@ HypercallHyperV PROC PUBLIC
 
     ; RAX - HYPERCALL_RESULT_VALUE
     ret
-HypercallHyperV ENDP
+__hyperv_vmcall ENDP
 
-KbVmcall PROC PUBLIC
+; VMX-only:
+__kb_vmcall PROC PUBLIC
     ; RCX, RDX, R8, R9 - args
     ; RAX - result
     push r10
@@ -39,7 +41,7 @@ KbVmcall PROC PUBLIC
     vmcall
     pop r10
     ret
-KbVmcall ENDP
+__kb_vmcall ENDP
 
 GPR_CONTEXT_ENTRIES equ 15 ; rax, rbx, rcx, rdx, rsi, rdi, rbp, r8..r15
 GPR_CONTEXT_SIZE    equ GPR_CONTEXT_ENTRIES * sizeof(QWORD)

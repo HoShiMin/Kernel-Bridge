@@ -5,6 +5,7 @@ ClassGuid   = {b86dff51-a31e-4bac-b3cf-e8cfe75c9fc2} ; This value is determined 
 Provider    = %ManufacturerName%
 DriverVer   = 08/12/2018,1.0.0.1
 CatalogFile = Kernel-Bridge.cat
+PnpLockdown = 1
 
 [DestinationDirs]
 DefaultDestDir          = 12

@@ -11,6 +11,7 @@
 
 #include <ntifs.h>
 #include "MemoryUtils.h"
+#include "Callable.h"
 
 #include "Hypervisor.h"
 #include "PTE.h"
@@ -23,7 +24,9 @@
 #include "SVM.h"
 #include "VMX.h"
 
-extern "C" NTSYSAPI NTSTATUS NTAPI ZwYieldExecution();
+#include <vector>
+#include <unordered_set>
+#include <unordered_map>
 
 // Defined in VMM.asm:
 extern "C" void _sldt(__out SEGMENT_SELECTOR* Selector);
@@ -89,73 +92,43 @@ namespace Supplementation
     {
         PhysicalMemory::FreePhysicalMemory(Memory);
     }
+}
 
-    static bool ExecuteInSystemContext(bool(*Callback)(PVOID Arg), PVOID Arg = NULL)
-    {
-        HANDLE hThread = NULL;
-        
-        struct PARAMS {
-            bool(*Callback)(PVOID Arg);
-            PVOID Arg;
-            bool Result;
-        } Params = {};
-        Params.Callback = Callback;
-        Params.Arg = Arg;
-
-        OBJECT_ATTRIBUTES ObjectAttributes;
-        InitializeObjectAttributes(&ObjectAttributes, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
-        NTSTATUS Status = PsCreateSystemThread(
-            &hThread, 
-            GENERIC_ALL, 
-            &ObjectAttributes, 
-            NULL, 
-            NULL, 
-            [](PVOID Arg)
-            {
-                PARAMS* Params = reinterpret_cast<PARAMS*>(Arg);
-                Params->Result = Params->Callback(Params->Arg);
-                PsTerminateSystemThread(STATUS_SUCCESS);
-            },
-            &Params
-        );
-
-        if (NT_SUCCESS(Status))
-        {
-            ZwWaitForSingleObject(hThread, FALSE, NULL);
-            ZwClose(hThread);
-            return Params.Result;
-        }
-
-        return false;
-    }
-
-    static bool ExecuteOnEachProcessor(bool(*Callback)(PVOID Arg, ULONG ProcessorNumber), PVOID Arg = NULL)
-    {
-        ULONG ProcessorsCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
-        for (ULONG i = 0; i < ProcessorsCount; i++)
-        {
-            PROCESSOR_NUMBER ProcessorNumber = {};
-            KeGetProcessorNumberFromIndex(i, &ProcessorNumber);
-
-            GROUP_AFFINITY Affinity = {}, PreviousAffinity = {};
-            Affinity.Group = ProcessorNumber.Group;
-            Affinity.Mask = 1LL << ProcessorNumber.Number;
-            KeSetSystemGroupAffinityThread(&Affinity, &PreviousAffinity);
-
-            ZwYieldExecution(); // Perform the context switch to apply the affinity
-
-            bool Status = Callback(Arg, i);
-
-            KeRevertToUserGroupAffinityThread(&PreviousAffinity);
-
-            if (!Status) return false;
-        }
-        return true;
-    }
+namespace VMX
+{
+    static void FreePrivateVmData(void* Private);
 }
 
 namespace
 {
+    enum class CPU_VENDOR {
+        cpuIntel,
+        cpuAmd,
+        cpuUnknown
+    };
+
+    CPU_VENDOR GetCpuVendor()
+    {
+        static CPU_VENDOR CpuVendor = CPU_VENDOR::cpuUnknown;
+        if (CpuVendor != CPU_VENDOR::cpuUnknown)
+        {
+            return CpuVendor;
+        }
+
+        CPUID_REGS Regs;
+        __cpuid(Regs.Raw, CPUID::Generic::CPUID_MAXIMUM_FUNCTION_NUMBER_AND_VENDOR_ID);
+        if (Regs.Regs.Ebx == 'uneG' && Regs.Regs.Edx == 'Ieni' && Regs.Regs.Ecx == 'letn')
+        {
+            CpuVendor = CPU_VENDOR::cpuIntel;
+        }
+        else if (Regs.Regs.Ebx == 'htuA' && Regs.Regs.Edx == 'itne' && Regs.Regs.Ecx == 'DMAc')
+        {
+            CpuVendor = CPU_VENDOR::cpuAmd;
+        }
+        
+        return CpuVendor;
+    }
+
     static void GetHvCpuName(
         __out unsigned long long& rbx,
         __out unsigned long long& rcx,
@@ -205,11 +178,20 @@ namespace
             return static_cast<ULONG_PTR>(Status);
         }, reinterpret_cast<ULONG_PTR>(PrivateVmDataArray));
              
+        CPU_VENDOR vendor = GetCpuVendor();
+
         for (ULONG i = 0; i < ProcessorsCount; ++i)
         {
             if (PrivateVmDataArray[i])
             {
-                Supplementation::FreePhys(PrivateVmDataArray[i]);
+                if (vendor == CPU_VENDOR::cpuIntel)
+                {
+                    VMX::FreePrivateVmData(PrivateVmDataArray[i]);
+                }
+                else
+                {
+                    Supplementation::FreePhys(PrivateVmDataArray[i]);
+                }
             }
         }
 
@@ -224,7 +206,8 @@ namespace SVM
     using namespace Supplementation;
     using namespace AMD;
 
-    struct NESTED_PAGING_TABLES {
+    struct NESTED_PAGING_TABLES
+    {
         DECLSPEC_ALIGN(PAGE_SIZE) PML4E Pml4e;
         DECLSPEC_ALIGN(PAGE_SIZE) PDPE Pdpe[512];
         DECLSPEC_ALIGN(PAGE_SIZE) PDE Pde[512][512];
@@ -263,15 +246,19 @@ namespace SVM
     extern "C" void SvmVmmRun(void* InitialVmmStackPointer);
 
     // Unique for each processor:
-    struct PRIVATE_VM_DATA {
-        union {
-            struct INITIAL_VMM_STACK_LAYOUT {
+    struct PRIVATE_VM_DATA
+    {
+        union
+        {
+            struct INITIAL_VMM_STACK_LAYOUT
+            {
                 PVOID GuestVmcbPa;
                 PVOID HostVmcbPa;
                 PRIVATE_VM_DATA* Private;
             };
             DECLSPEC_ALIGN(PAGE_SIZE) unsigned char VmmStack[KERNEL_STACK_SIZE];
-            struct {
+            struct
+            {
                 unsigned char FreeSpace[KERNEL_STACK_SIZE - sizeof(INITIAL_VMM_STACK_LAYOUT)];
                 INITIAL_VMM_STACK_LAYOUT InitialStack;
             } Layout;
@@ -521,8 +508,10 @@ namespace SVM
         using namespace Supplementation;
 
         // Virtualizing each processor:
-        bool Status = ExecuteInSystemContext([](PVOID Arg) -> bool {
-            return ExecuteOnEachProcessor([](PVOID Arg, ULONG ProcessorNumber) -> bool {
+        bool Status = Callable::CallInSystemContext([](void* Arg) -> bool
+        {
+            return Callable::ForEachCpu([](void* Arg, auto ProcessorNumber) -> bool
+            {
                 UNREFERENCED_PARAMETER(Arg);
                 UNREFERENCED_PARAMETER(ProcessorNumber);
                 return VirtualizeProcessor();
@@ -567,7 +556,26 @@ namespace VMX
     using namespace Supplementation;
     using namespace Intel;
 
-    struct MTRR_INFO {
+    namespace VMCALLS
+    {
+        enum class VMCALL_INDEX
+        {
+            VmmCall
+        };
+
+        unsigned long long VmmCall(unsigned long long(*Fn)(void* Arg), void* Arg, bool SwitchToCallerAddressSpace = false)
+        {
+            return __kb_vmcall(
+                static_cast<unsigned long long>(VMCALL_INDEX::VmmCall),
+                reinterpret_cast<unsigned long long>(Fn),
+                reinterpret_cast<unsigned long long>(Arg),
+                static_cast<unsigned long long>(SwitchToCallerAddressSpace)
+            );
+        }
+    }
+
+    struct MTRR_INFO
+    {
         UINT64 MaxPhysAddrBits;
         UINT64 PhysAddrMask;
         IA32_VMX_EPT_VPID_CAP EptVpidCap;
@@ -575,7 +583,8 @@ namespace VMX
         IA32_MTRR_DEF_TYPE MtrrDefType;
 
         // For the first 1 megabyte of the physical address space:
-        union {
+        union
+        {
             MTRR_FIXED_GENERIC Generic[10];
             struct {
                 // 512-Kbyte range:
@@ -598,7 +607,8 @@ namespace VMX
         } Fixed;
 
         // For the memory above the first megabyte of the physical address space:
-        struct {
+        struct
+        {
             IA32_MTRR_PHYSBASE PhysBase;
             IA32_MTRR_PHYSMASK PhysMask;
         } Variable[10];
@@ -667,7 +677,8 @@ namespace VMX
         }
     }
 
-    struct MEMORY_RANGE {
+    struct MEMORY_RANGE
+    {
         unsigned long long First;
         unsigned long long Last;
     };
@@ -867,36 +878,44 @@ namespace VMX
     // Defined in the VMM.asm:
     extern "C" void VmxVmmRun(void* InitialVmmStackLayout);
 
-    struct EPT_TABLES {
+    struct EPT_TABLES
+    {
         DECLSPEC_ALIGN(PAGE_SIZE) EPT_PML4E Pml4e;
         DECLSPEC_ALIGN(PAGE_SIZE) EPT_PDPTE Pdpte[512];
         DECLSPEC_ALIGN(PAGE_SIZE) EPT_PDE Pde[512][512];
     };
 
-    // Unique for each processor:
-    struct PRIVATE_VM_DATA {
-        union {
-            DECLSPEC_ALIGN(PAGE_SIZE) unsigned char VmmStack[KERNEL_STACK_SIZE];
-            struct {
-                struct INITIAL_VMM_STACK_LAYOUT {
-                    PVOID VmxonPa;
-                    PVOID VmcsPa;
-                    PRIVATE_VM_DATA* Private;
-                };
-                unsigned char FreeSpace[KERNEL_STACK_SIZE - sizeof(INITIAL_VMM_STACK_LAYOUT)];
-                INITIAL_VMM_STACK_LAYOUT InitialStack;
-            } Layout;
-        } VmmStack;
-        DECLSPEC_ALIGN(PAGE_SIZE) VMCS Vmxon; // VMXON structure is the same as VMCS with the same size
-        DECLSPEC_ALIGN(PAGE_SIZE) VMCS Vmcs;
-        DECLSPEC_ALIGN(PAGE_SIZE) MSR_BITMAP MsrBitmap;
-        DECLSPEC_ALIGN(PAGE_SIZE) EPT_TABLES Ept;
-        DESCRIPTOR_TABLE_REGISTER_LONG Gdtr;
-        DESCRIPTOR_TABLE_REGISTER_LONG Idtr;
+    struct EPT_ENTRIES
+    {
+        EPT_PML4E* Pml4e;
+        EPT_PDPTE* Pdpte;
+        EPT_PDE* Pde;
+        EPT_PTE* Pte;
+    };
 
-        struct {
+    struct LARGE_PAGE_LAYOUT
+    {
+        EPT_PTE Pte[512];
+    };
 
-        } EptHandlers;
+    struct LARGE_PAGE_DESCRIPTOR
+    {
+        EPT_PDE* Pde;
+        EPT_PDE OriginalPde;
+        LARGE_PAGE_LAYOUT* Layout;
+    };
+
+    struct PAGE_HANDLER
+    {
+        EPT_PTE OnRead;
+        EPT_PTE OnWrite;
+        EPT_PTE OnExecute;
+    };
+
+    struct EPT_PTE_HANDLER
+    {
+        EPT_PTE* Pte;
+        PAGE_HANDLER Handlers;
     };
 
     static void InitializeEptTables(__out EPT_TABLES* Ept, __out EPTP* Eptp)
@@ -919,7 +938,6 @@ namespace VMX
         Ept->Pml4e.Page2Mb.ReadAccess = TRUE;
         Ept->Pml4e.Page2Mb.WriteAccess = TRUE;
         Ept->Pml4e.Page2Mb.ExecuteAccess = TRUE;
-        //Ept->Pml4e.Page2Mb.UserModeExecuteAccess = TRUE;
         Ept->Pml4e.Page2Mb.EptPdptePhysicalPfn = PAGE_TO_PFN(reinterpret_cast<UINT64>(PdptePhys));
 
         for (unsigned int i = 0; i < _ARRAYSIZE(Ept->Pdpte); ++i)
@@ -928,7 +946,6 @@ namespace VMX
             Ept->Pdpte[i].Page2Mb.ReadAccess = TRUE;
             Ept->Pdpte[i].Page2Mb.WriteAccess = TRUE;
             Ept->Pdpte[i].Page2Mb.ExecuteAccess = TRUE;
-            //Ept->Pdpte[i].Page2Mb.UserModeExecuteAccess = TRUE;
             Ept->Pdpte[i].Page2Mb.EptPdePhysicalPfn = PAGE_TO_PFN(reinterpret_cast<UINT64>(PdePhys));
 
             for (unsigned int j = 0; j < _ARRAYSIZE(Ept->Pde[i]); ++j)
@@ -945,22 +962,12 @@ namespace VMX
                 Ept->Pde[i][j].Page2Mb.ReadAccess = TRUE;
                 Ept->Pde[i][j].Page2Mb.WriteAccess = TRUE;
                 Ept->Pde[i][j].Page2Mb.ExecuteAccess = TRUE;
-                //Ept->Pde[i][j].Page2Mb.UserModeExecuteAccess = TRUE;
                 Ept->Pde[i][j].Page2Mb.Type = static_cast<unsigned char>(MemType);
                 Ept->Pde[i][j].Page2Mb.LargePage = TRUE;
                 Ept->Pde[i][j].Page2Mb.PagePhysicalPfn = PagePfn;
             }
         }
     }
-
-/*
-    struct EPT_ENTRIES
-    {
-        EPT_PML4E* Pml4e;
-        EPT_PDPTE* Pdpte;
-        EPT_PDE* Pde;
-        EPT_PTE* Pte;
-    };
 
     bool GetEptEntries(unsigned long long PhysicalAddress, const EPT_TABLES& Ept, __out EPT_ENTRIES& Entries)
     {
@@ -988,58 +995,365 @@ namespace VMX
         {
             PVOID64 PtPhys = reinterpret_cast<PVOID64>(PFN_TO_PAGE(Entries.Pde->Page4Kb.EptPtePhysicalPfn));
             PVOID PtVa = PhysicalMemory::GetVirtualForPhysical(PtPhys);
-            Entries.Pte = reinterpret_cast<EPT_PTE*>(PtVa);
+            Entries.Pte = &((reinterpret_cast<EPT_PTE*>(PtVa))[Addr.x64.NonPageSize.Page4Kb.PageTableOffset]);
         }
 
         return true;
     }
 
-    struct LARGE_PAGE_LAYOUT
+    void BuildPtesForPde(__in const EPT_PDE& Pde, __out LARGE_PAGE_LAYOUT& Ptes)
     {
-        EPT_PTE Pte[512];
-    };
-
-    [[nodiscard]]
-    LARGE_PAGE_LAYOUT* BuildLargePageLayout(__in const EPT_PDE& Pde)
-    {
-        auto* Pt = reinterpret_cast<LARGE_PAGE_LAYOUT*>(Supplementation::AllocPhys(sizeof(LARGE_PAGE_LAYOUT), MmCached));
-        for (unsigned int i = 0; i < ARRAYSIZE(Pt->Pte); ++i)
+        for (unsigned int i = 0; i < ARRAYSIZE(Ptes.Pte); ++i)
         {
-            Pt->Pte[i].Page4Kb.ReadAccess = TRUE;
-            Pt->Pte[i].Page4Kb.WriteAccess = TRUE;
-            Pt->Pte[i].Page4Kb.ExecuteAccess = TRUE;
-            Pt->Pte[i].Page4Kb.Type = Pde.Page2Mb.Type;
-            Pt->Pte[i].Page4Kb.PagePhysicalPfn = PFN_TO_PAGE(PFN_TO_LARGE_PAGE(Pde.Page2Mb.PagePhysicalPfn)) + i;
+            Ptes.Pte[i].Page4Kb.ReadAccess = TRUE;
+            Ptes.Pte[i].Page4Kb.WriteAccess = TRUE;
+            Ptes.Pte[i].Page4Kb.ExecuteAccess = TRUE;
+            Ptes.Pte[i].Page4Kb.Type = Pde.Page2Mb.Type;
+            Ptes.Pte[i].Page4Kb.PagePhysicalPfn = PAGE_TO_PFN(PFN_TO_LARGE_PAGE(Pde.Page2Mb.PagePhysicalPfn)) + i;
         }
-        return Pt;
     }
 
-    struct PAGE_HANDLER
-    {
-        EPT_PTE OnRead;
-        EPT_PTE OnWrite;
-        EPT_PTE OnExecute;
-    };
-
-    void BuildPageHandler(MTRR_MEMORY_TYPE CacheType, uint64_t ReadPa, uint64_t WritePa, uint64_t ExecutePa, __out PAGE_HANDLER& Handler)
+    void BuildPageHandler(MTRR_MEMORY_TYPE CacheType, UINT64 ReadPa, UINT64 WritePa, UINT64 ExecutePa, __out PAGE_HANDLER& Handler)
     {
         Handler.OnRead.Value = 0;
         Handler.OnWrite.Value = 0;
         Handler.OnExecute.Value = 0;
 
-        Handler.OnRead.Page4Kb.ReadAccess = TRUE;
-        Handler.OnRead.Page4Kb.Type = static_cast<unsigned long long>(CacheType);
-        Handler.OnRead.Page4Kb.PagePhysicalPfn = PAGE_TO_PFN(ReadPa);
+        if (ReadPa)
+        {
+            Handler.OnRead.Page4Kb.ReadAccess = TRUE;
+            Handler.OnRead.Page4Kb.Type = static_cast<unsigned long long>(CacheType);
+            Handler.OnRead.Page4Kb.PagePhysicalPfn = PAGE_TO_PFN(ReadPa);
+        }
 
-        Handler.OnWrite.Page4Kb.WriteAccess = TRUE;
-        Handler.OnWrite.Page4Kb.Type = static_cast<unsigned long long>(CacheType);
-        Handler.OnWrite.Page4Kb.PagePhysicalPfn = PAGE_TO_PFN(WritePa);
+        if (WritePa)
+        {
+            // We're unable to make a write-only page:
+            Handler.OnWrite.Page4Kb.ReadAccess = TRUE; // Without it we will get the EPT_MISCONFIGURATION error
+            Handler.OnWrite.Page4Kb.WriteAccess = TRUE;
+            Handler.OnWrite.Page4Kb.Type = static_cast<unsigned long long>(CacheType);
+            Handler.OnWrite.Page4Kb.PagePhysicalPfn = PAGE_TO_PFN(WritePa);
+        }
 
-        Handler.OnExecute.Page4Kb.ExecuteAccess = TRUE;
-        Handler.OnExecute.Page4Kb.Type = static_cast<unsigned long long>(CacheType);
-        Handler.OnExecute.Page4Kb.PagePhysicalPfn = PAGE_TO_PFN(ExecutePa);
+        if (ExecutePa)
+        {
+            Handler.OnExecute.Page4Kb.ExecuteAccess = TRUE;
+            Handler.OnExecute.Page4Kb.Type = static_cast<unsigned long long>(CacheType);
+            Handler.OnExecute.Page4Kb.PagePhysicalPfn = PAGE_TO_PFN(ExecutePa);
+        }
+
+        if (ReadPa && (ReadPa == WritePa))
+        {
+            Handler.OnRead.Page4Kb.WriteAccess = TRUE;
+            Handler.OnWrite.Page4Kb.ReadAccess = TRUE;
+        }
+
+        if (WritePa && (WritePa == ExecutePa))
+        {
+            Handler.OnWrite.Page4Kb.ExecuteAccess = TRUE;
+            Handler.OnExecute.Page4Kb.WriteAccess = TRUE;
+        }
+
+        if (ExecutePa && (ReadPa == ExecutePa))
+        {
+            Handler.OnRead.Page4Kb.ExecuteAccess = TRUE;
+            Handler.OnExecute.Page4Kb.ReadAccess = TRUE;
+        }
     }
-*/
+
+    static size_t vmread(size_t field);
+
+    class EptHandler final
+    {
+    private:
+        EPT_TABLES* m_Ept;
+        std::unordered_map<uint64_t, LARGE_PAGE_DESCRIPTOR> m_PageDescriptors; // Guest PA (aligned by 2Mb) -> 4Kb PTEs describing a 2Mb page
+        std::unordered_map<uint64_t, EPT_PTE_HANDLER> m_Handlers; // Guest PA (aligned by 4Kb) -> Page handlers (EPT entries for RWX)
+        uint32_t m_Vpid;
+
+        struct
+        {
+            const void* Rip;
+            EPT_PTE* Pte;
+            EPT_PTE PendingPrevEntry;
+        } m_PendingWriteHandler;
+
+        constexpr static unsigned int PageSize = 4096;
+        constexpr static unsigned int LargePageSize = 2 * 1048576;
+
+        void invept(unsigned long long Pa)
+        {
+            VMX::INVVPID_DESCRIPTOR Desc;
+            Desc.LinearAddress = Pa;
+            Desc.Vpid = m_Vpid;
+            __invvpid(VMX::INVVPID_TYPE::IndividualAddressInvalidation, &Desc);
+        }
+
+    public:
+        EptHandler(__in EPT_TABLES* Ept, uint32_t Vpid)
+            : m_Ept(Ept)
+            , m_Vpid(Vpid)
+            , m_PendingWriteHandler({})
+        {}
+
+        ~EptHandler()
+        {
+            for (auto& [_, Desc] : m_PageDescriptors)
+            {
+                *Desc.Pde = Desc.OriginalPde;
+                Supplementation::FreePhys(Desc.Layout);
+            }
+        }
+
+        void InterceptPage(
+            unsigned long long Pa,
+            unsigned long long ReadPa,
+            unsigned long long WritePa,
+            unsigned long long ExecutePa
+        ) {
+            unsigned long long Pa4Kb = ALIGN_DOWN_BY(Pa, PageSize);
+            auto HandlerEntry = m_Handlers.find(Pa4Kb);
+            if (HandlerEntry != m_Handlers.end())
+            {
+                PAGE_HANDLER Handler = {};
+                BuildPageHandler(static_cast<MTRR_MEMORY_TYPE>(HandlerEntry->second.Handlers.OnRead.Page4Kb.Type), ReadPa, WritePa, ExecutePa, OUT Handler);
+                HandlerEntry->second.Handlers = Handler;
+                invept(Pa);
+                return;
+            }
+
+            unsigned long long Pa2Mb = ALIGN_DOWN_BY(Pa, LargePageSize);
+            auto DescriptorEntry = m_PageDescriptors.find(Pa2Mb);
+            if (DescriptorEntry == m_PageDescriptors.end())
+            {
+                EPT_ENTRIES EptEntries;
+                GetEptEntries(Pa2Mb, *m_Ept, OUT EptEntries);
+
+                LARGE_PAGE_DESCRIPTOR Desc = {
+                    .Pde = EptEntries.Pde,
+                    .OriginalPde = *EptEntries.Pde,
+                    .Layout = reinterpret_cast<LARGE_PAGE_LAYOUT*>(Supplementation::AllocPhys(sizeof(LARGE_PAGE_LAYOUT)))
+                };
+
+                BuildPtesForPde(Desc.OriginalPde, OUT *Desc.Layout);
+
+                DescriptorEntry = m_PageDescriptors.emplace(Pa2Mb, Desc).first;
+            }
+
+            auto& Descriptor = DescriptorEntry->second;
+            auto* Pde = &Descriptor.Pde->Page4Kb;
+            Pde->LargePage = FALSE;
+            Pde->Reserved0 = 0;
+            Pde->EptPtePhysicalPfn = PAGE_TO_PFN(reinterpret_cast<uint64_t>(PhysicalMemory::GetPhysicalAddress(Descriptor.Layout)));
+
+            unsigned long long PteIndex = (Pa - Pa2Mb) / PageSize;
+            auto* Pte = &Descriptor.Layout->Pte[PteIndex];
+
+            EPT_PTE_HANDLER Handler = {};
+            BuildPageHandler(static_cast<MTRR_MEMORY_TYPE>(DescriptorEntry->second.OriginalPde.Page2Mb.Type), ReadPa, WritePa, ExecutePa, OUT Handler.Handlers);
+            Handler.Pte = Pte;
+            m_Handlers.emplace(Pa4Kb, Handler);
+
+            *Pte = Handler.Handlers.OnRead;
+            invept(Pa);
+        }
+
+        void DeinterceptPage(unsigned long long Pa)
+        {
+            unsigned long long Pa4Kb = ALIGN_DOWN_BY(Pa, PageSize);
+            auto HandlerEntry = m_Handlers.find(Pa4Kb);
+            if (HandlerEntry != m_Handlers.end())
+            {
+                m_Handlers.erase(HandlerEntry);
+            }
+
+            if (m_Handlers.empty())
+            {
+                unsigned long long Pa2Mb = ALIGN_DOWN_BY(Pa, LargePageSize);
+                auto DescriptorEntry = m_PageDescriptors.find(Pa2Mb);
+                if (DescriptorEntry != m_PageDescriptors.end())
+                {
+                    auto& Desc = DescriptorEntry->second;
+                    *Desc.Pde = Desc.OriginalPde;
+                    Supplementation::FreePhys(Desc.Layout);
+                    m_PageDescriptors.erase(DescriptorEntry);
+                }
+            }
+
+            invept(Pa);
+        }
+
+        bool HandleRead(unsigned long long Pa)
+        {
+            unsigned long long Pa4Kb = ALIGN_DOWN_BY(Pa, PageSize);
+            auto Handler = m_Handlers.find(Pa4Kb);
+            if (Handler == m_Handlers.end())
+            {
+                return false;
+            }
+
+            auto& Entry = Handler->second;
+            auto PteEntry = Entry.Handlers.OnRead;
+            if (!PteEntry.Value)
+            {
+                return false;
+            }
+
+            *Entry.Pte = PteEntry;
+            invept(Pa);
+
+            return true;
+        }
+
+        bool HandleWrite(unsigned long long Pa, const void* NextInstruction)
+        {
+            unsigned long long Pa4Kb = ALIGN_DOWN_BY(Pa, PageSize);
+            auto Handler = m_Handlers.find(Pa4Kb);
+            if (Handler == m_Handlers.end())
+            {
+                return false;
+            }
+
+            auto& HandlerEntry = Handler->second;
+            if (!HandlerEntry.Handlers.OnWrite.Value)
+            {
+                return false;
+            }
+
+            auto* Pte = HandlerEntry.Pte;
+            
+            m_PendingWriteHandler.Rip = NextInstruction;
+            m_PendingWriteHandler.Pte = Pte;
+            m_PendingWriteHandler.PendingPrevEntry = *Pte;
+
+            *Pte = HandlerEntry.Handlers.OnWrite;
+
+            invept(Pa);
+
+            return true;
+        }
+
+        bool HandleExecute(unsigned long long Pa)
+        {
+            unsigned long long Pa4Kb = ALIGN_DOWN_BY(Pa, PageSize);
+            auto Handler = m_Handlers.find(Pa4Kb);
+            if (Handler == m_Handlers.end())
+            {
+                return false;
+            }
+
+            auto& Entry = Handler->second;
+            auto PteEntry = Entry.Handlers.OnExecute;
+            if (!PteEntry.Value)
+            {
+                return false;
+            }
+
+            *Entry.Pte = PteEntry;
+            invept(Pa);
+
+            return true;
+        }
+
+        bool CompletePendingWrite(const void* Rip)
+        {
+            if (m_PendingWriteHandler.Rip != Rip)
+            {
+                return false;
+            }
+
+            *m_PendingWriteHandler.Pte = m_PendingWriteHandler.PendingPrevEntry;
+            m_PendingWriteHandler.Rip = NULL;
+
+            return true;
+        }
+    };
+
+    struct SHARED_VM_DATA;
+
+    // Unique for each processor:
+    struct PRIVATE_VM_DATA
+    {
+        union
+        {
+            DECLSPEC_ALIGN(PAGE_SIZE) unsigned char VmmStack[KERNEL_STACK_SIZE];
+            struct
+            {
+                struct INITIAL_VMM_STACK_LAYOUT
+                {
+                    PVOID VmcsPa;
+                    SHARED_VM_DATA* Shared;
+                    PRIVATE_VM_DATA* Private;
+                };
+                unsigned char FreeSpace[KERNEL_STACK_SIZE - sizeof(INITIAL_VMM_STACK_LAYOUT)];
+                INITIAL_VMM_STACK_LAYOUT InitialStack;
+            } Layout;
+        } VmmStack;
+
+        DECLSPEC_ALIGN(PAGE_SIZE) VMCS Vmxon; // VMXON structure is the same as VMCS with the same size
+        DECLSPEC_ALIGN(PAGE_SIZE) VMCS Vmcs;
+        DECLSPEC_ALIGN(PAGE_SIZE) MSR_BITMAP MsrBitmap;
+        DECLSPEC_ALIGN(PAGE_SIZE) EPT_TABLES Ept;
+        DESCRIPTOR_TABLE_REGISTER_LONG Gdtr;
+        DESCRIPTOR_TABLE_REGISTER_LONG Idtr;
+        EptHandler* EptInterceptor;
+    };
+
+    struct VCPU_INFO
+    {
+        PRIVATE_VM_DATA* VmData;
+        VMX::VM_INSTRUCTION_ERROR Error;
+        bool Status;
+    };
+
+    struct SHARED_VM_DATA
+    {
+        VCPU_INFO* Processors; // Array: VCPU_INFO Processors[ProcessorsCount]
+        unsigned long long KernelCr3;
+        unsigned int ProcessorsCount;
+    };
+
+    static SHARED_VM_DATA g_Shared = {};
+
+
+    bool InterceptPage(
+        unsigned long long PagePa,
+        __in_opt unsigned long long OnReadPa,
+        __in_opt unsigned long long OnWritePa,
+        __in_opt unsigned long long OnExecutePa
+    ) {
+        struct INTERCEPT_INFO
+        {
+            unsigned long long Pa;
+            unsigned long long R, W, X;
+        };
+
+        INTERCEPT_INFO Info = { PagePa, OnReadPa, OnWritePa, OnExecutePa };
+        Callable::DpcOnEachCpu([](void* Arg)
+        {
+            VMCALLS::VmmCall([](void* Arg) -> unsigned long long
+            {
+                auto* Info = reinterpret_cast<INTERCEPT_INFO*>(Arg);
+                g_Shared.Processors[KeGetCurrentProcessorNumber()].VmData->EptInterceptor->InterceptPage(Info->Pa, Info->R, Info->W, Info->X);
+                return 0;
+            }, Arg);
+        }, &Info);
+
+        return true;
+    }
+
+    void DeinterceptPage(unsigned long long PagePa)
+    {
+        Callable::DpcOnEachCpu([](void* Arg)
+        {
+            VMCALLS::VmmCall([](void* Arg) -> unsigned long long
+            {
+                auto Page = reinterpret_cast<unsigned long long>(Arg);
+                g_Shared.Processors[KeGetCurrentProcessorNumber()].VmData->EptInterceptor->DeinterceptPage(Page);
+                return 0;
+            }, Arg);
+        }, reinterpret_cast<void*>(PagePa));
+    }
 
     static unsigned long long ExtractSegmentBaseAddress(const SEGMENT_DESCRIPTOR_LONG* SegmentDescriptor)
     {
@@ -1062,7 +1376,8 @@ namespace VMX
         }
     }
 
-    struct SEGMENT_INFO {
+    struct SEGMENT_INFO
+    {
         unsigned long long BaseAddress;
         unsigned int Limit;
         SEGMENT_ACCESS_RIGHTS AccessRights;
@@ -1198,19 +1513,6 @@ namespace VMX
         return value;
     }
 
-    struct VCPU_INFO
-    {
-        PRIVATE_VM_DATA* VmData;
-        VMX::VM_INSTRUCTION_ERROR Error;
-        bool Status;
-    };
-
-    struct SHARED_VM_DATA
-    {
-        VCPU_INFO* Processors;
-        unsigned long long KernelCr3;
-    };
-
     _IRQL_requires_(IPI_LEVEL)
     static bool VirtualizeProcessor(__inout SHARED_VM_DATA* Shared)
     {
@@ -1243,7 +1545,8 @@ namespace VMX
         Private->Vmxon.RevisionId.Bitmap.VmcsRevisionId = VmxBasicInfo.Bitmap.VmcsRevision;
         Private->Vmcs.RevisionId.Bitmap.VmcsRevisionId = VmxBasicInfo.Bitmap.VmcsRevision;
 
-        Private->VmmStack.Layout.InitialStack.VmxonPa = GetPhysicalAddress(&Private->Vmxon);
+        void* VmxonPa = GetPhysicalAddress(&Private->Vmxon);
+        Private->VmmStack.Layout.InitialStack.Shared = Shared;
         Private->VmmStack.Layout.InitialStack.VmcsPa = GetPhysicalAddress(&Private->Vmcs);
         Private->VmmStack.Layout.InitialStack.Private = Private;
 
@@ -1261,7 +1564,7 @@ namespace VMX
         unsigned char VmxStatus = 0;
 
         // Entering the VMX root-mode:
-        VmxStatus =  __vmx_on(reinterpret_cast<unsigned long long*>(&Private->VmmStack.Layout.InitialStack.VmxonPa));
+        VmxStatus =  __vmx_on(reinterpret_cast<unsigned long long*>(&VmxonPa));
         if (VmxStatus != 0)
         {
             return false;
@@ -1319,6 +1622,7 @@ namespace VMX
         _str(&Tr);
 
         const auto* Gdt = reinterpret_cast<const SEGMENT_DESCRIPTOR_LONG*>(Gdtr.BaseAddress);
+        __assume(Gdt != nullptr);
         const auto* LdtDescriptorInGdt = reinterpret_cast<const SEGMENT_DESCRIPTOR_LONG*>(&Gdt[Ldtr.Bitmap.SelectorIndex]);
         const auto* Ldt = reinterpret_cast<const SEGMENT_DESCRIPTOR_LONG*>(ExtractSegmentBaseAddress(LdtDescriptorInGdt));
 
@@ -1414,6 +1718,9 @@ namespace VMX
         PrimaryControls = ApplyMask(PrimaryControls, GetPrimaryControlsMask(VmxBasicInfo));
         __vmx_vmwrite(VMX::VMCS_FIELD_PRIMARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS, PrimaryControls.Value);
 
+        unsigned int ExceptionBitmap = 1u << static_cast<unsigned int>(INTERRUPT_VECTOR::Debug);
+        __vmx_vmwrite(VMX::VMCS_FIELD_EXCEPTION_BITMAP, ExceptionBitmap);
+
         VMEXIT_CONTROLS VmexitControls = {};
         VmexitControls.Bitmap.SaveDebugControls = TRUE;
         VmexitControls.Bitmap.HostAddressSpaceSize = TRUE;
@@ -1433,7 +1740,7 @@ namespace VMX
         SecondaryControls.Bitmap.WbinvdExiting = TRUE;
         SecondaryControls.Bitmap.EnableInvpcid = TRUE;
         SecondaryControls.Bitmap.EnableVmFunctions = TRUE;
-        SecondaryControls.Bitmap.EptViolation = TRUE;
+        SecondaryControls.Bitmap.EptViolation = FALSE;
         SecondaryControls.Bitmap.EnableXsavesXrstors = TRUE;
         SecondaryControls = ApplyMask(SecondaryControls, GetSecondaryControlsMask());
         __vmx_vmwrite(VMX::VMCS_FIELD_SECONDARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS, SecondaryControls.Value);
@@ -1556,11 +1863,13 @@ namespace VMX
         EXIT_REASON ExitReason = {};
         ExitReason.Value = static_cast<unsigned int>(vmread(VMX::VMCS_FIELD_EXIT_REASON));
 
-        VMX_EXIT_REASON Reason = static_cast<VMX_EXIT_REASON>(ExitReason.Bitmap.BasicExitReason);
+        auto Reason = static_cast<VMX::VMX_EXIT_REASON>(ExitReason.Bitmap.BasicExitReason);
+
+        bool RepeatInstruction = false;
 
         switch (Reason)
         {
-        case VMX::EXIT_REASON_CPUID:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_CPUID:
         {
             CPUID_REGS Regs = {};
             int Function = static_cast<int>(Context->Rax);
@@ -1599,7 +1908,8 @@ namespace VMX
             int SubLeaf = static_cast<int>(Context->Rcx);
             __cpuidex(Regs.Raw, Function, SubLeaf);
 
-            switch (Function) {
+            switch (Function)
+            {
             case CPUID::Generic::CPUID_MAXIMUM_FUNCTION_NUMBER_AND_VENDOR_ID:
             {
                 // Vendor = 'Hyper-Bridge' as RBX + RDX + RCX:
@@ -1613,13 +1923,13 @@ namespace VMX
                 InjectEvent(INTERRUPTION_TYPE::HardwareException, INTERRUPT_VECTOR::GeneralProtection, true, 0);
                 break;
             }
-            case static_cast<int>(HyperV::CPUID::MAX_LEAF_NUMBER_AND_VENDOR_ID):
+            case static_cast<int>(HyperV::CPUID::MAX_LEAF_NUMBER_AND_VENDOR_ID) :
             {
                 Context->Rax = static_cast<int>(HyperV::CPUID::INTERFACE_SIGNATURE);
                 GetHvCpuName(Context->Rbx, Context->Rcx, Context->Rdx);
                 break;
             }
-            case static_cast<int>(HyperV::CPUID::INTERFACE_SIGNATURE):
+            case static_cast<int>(HyperV::CPUID::INTERFACE_SIGNATURE) :
             {
                 Context->Rax = '0#vH';
                 Context->Rbx = 0;
@@ -1638,19 +1948,19 @@ namespace VMX
             }
             break;
         }
-        case VMX::EXIT_REASON_INVD:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_INVD:
         {
             // Invalidate caches:
             __invd();
             break;
         }
-        case VMX::EXIT_REASON_WBINVD:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_WBINVD:
         {
             // Write-back & invalidate caches:
             __wbinvd();
             break;
         }
-        case VMX::EXIT_REASON_INVLPG:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_INVLPG:
         {
             unsigned long long LinearAddress = vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION);
             unsigned short Vpid = static_cast<unsigned short>(KeGetCurrentProcessorNumber()) + 1;
@@ -1663,30 +1973,139 @@ namespace VMX
 
             break;
         }
-        case VMX::EXIT_REASON_XSETBV:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_XSETBV:
         {
             _xsetbv(static_cast<unsigned int>(Context->Rcx), (Context->Rdx << 32u) | Context->Rax);
             break;
         }
-        case VMX::EXIT_REASON_EPT_VIOLATION:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_EPT_VIOLATION:
         {
             VMX::EXIT_QUALIFICATION Info = { vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION) };
-            unsigned long long AccessedPagePa = vmread(VMX::VMCS_FIELD_GUEST_PHYSICAL_ADDRESS_FULL);
-            UNREFERENCED_PARAMETER(Info);
-            UNREFERENCED_PARAMETER(AccessedPagePa);
+            unsigned long long AccessedPa = vmread(VMX::VMCS_FIELD_GUEST_PHYSICAL_ADDRESS_FULL);
+
+            if (!Info.EptViolations.GuestPhysicalReadable && !Info.EptViolations.GuestPhysicalExecutable)
+            {
+                InjectEvent(VMX::INTERRUPTION_TYPE::HardwareException, INTERRUPT_VECTOR::GeneralProtection, true, 0);
+                break;
+            }
+
+            bool NeedToInjectException = false;
+
+            if (Info.EptViolations.AccessedRead)
+            {
+                NeedToInjectException = !Private->EptInterceptor->HandleRead(AccessedPa);
+            }
+            else if (Info.EptViolations.AccessedWrite)
+            {
+                unsigned long long InstructionLength = vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_LENGTH);
+
+                if (Private->EptInterceptor->HandleWrite(AccessedPa, reinterpret_cast<void*>(Rip + InstructionLength)))
+                {
+                    // Perform a single step:
+                    RFLAGS Rflags = {};
+                    Rflags.Value = vmread(VMX::VMCS_FIELD_GUEST_RFLAGS);
+                    Rflags.Bitmap.Eflags.Bitmap.TF = TRUE;
+                    __vmx_vmwrite(VMX::VMCS_FIELD_GUEST_RFLAGS, Rflags.Value);
+                    __vmx_vmwrite(VMX::VMCS_FIELD_VMENTRY_INSTRUCTION_LENGTH, InstructionLength);
+                }
+                else
+                {
+                    NeedToInjectException = true;
+                }
+            }
+            else if (Info.EptViolations.AccessedExecute)
+            {
+                NeedToInjectException = !Private->EptInterceptor->HandleExecute(AccessedPa);
+            }
+
+            if (NeedToInjectException)
+            {
+                InjectEvent(VMX::INTERRUPTION_TYPE::HardwareException, INTERRUPT_VECTOR::GeneralProtection, true, 0);
+            }
+            else
+            {
+                RepeatInstruction = true;
+            }
             break;
         }
-        case VMX::EXIT_REASON_EPT_MISCONFIGURATION:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_EPT_MISCONFIGURATION:
         {
             unsigned long long FailedPagePa = vmread(VMX::VMCS_FIELD_GUEST_PHYSICAL_ADDRESS_FULL);
-            UNREFERENCED_PARAMETER(FailedPagePa);
+
+            EPT_ENTRIES EptEntries = {};
+            GetEptEntries(FailedPagePa, Private->Ept, EptEntries);
+
+            UNREFERENCED_PARAMETER(EptEntries);
+
+            __debugbreak();
             break;
         }
-        case VMX::EXIT_REASON_VMCALL:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_EXCEPTION_OR_NMI:
+        {
+            VMX::VMEXIT_INTERRUPTION_INFORMATION Info = { static_cast<unsigned int>(vmread(VMX::VMCS_FIELD_VMEXIT_INTERRUPTION_INFORMATION)) };
+            switch (static_cast<VMX::INTERRUPTION_TYPE>(Info.Bitmap.InterruptionType))
+            {
+            case VMX::INTERRUPTION_TYPE::HardwareException:
+            {
+                if (Info.Bitmap.VectorOfInterruptOrException == static_cast<unsigned int>(INTERRUPT_VECTOR::Debug))
+                {
+                    if (Private->EptInterceptor->CompletePendingWrite(reinterpret_cast<void*>(Rip)))
+                    {
+                        RFLAGS Rflags = { vmread(VMX::VMCS_FIELD_GUEST_RFLAGS) };
+                        Rflags.Bitmap.Eflags.Bitmap.TF = FALSE;
+                        __vmx_vmwrite(VMX::VMCS_FIELD_GUEST_RFLAGS, Rflags.Value);
+                    }
+                    else
+                    {
+                        InjectEvent(VMX::INTERRUPTION_TYPE::HardwareException, INTERRUPT_VECTOR::Debug, false, 0);
+                    }
+                    __vmx_vmwrite(VMX::VMCS_FIELD_VMENTRY_INSTRUCTION_LENGTH, vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_LENGTH));
+                }
+                else
+                {
+                    __debugbreak();
+                }
+                break;
+            }
+            default:
+            {
+                __debugbreak();
+            }
+            }
+            break;
+        }
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_VMCALL:
         {
             if (Context->R10 == HYPER_BRIDGE_SIGNATURE)
             {
-                Context->Rax = 0x1EE7C0DE;
+                switch (static_cast<VMCALLS::VMCALL_INDEX>(Context->Rcx))
+                {
+                case VMCALLS::VMCALL_INDEX::VmmCall:
+                {
+                    unsigned long long(*Fn)(void* Arg) = reinterpret_cast<decltype(Fn)>(Context->Rdx);
+                    void* Arg = reinterpret_cast<void*>(Context->R8);
+                    bool SwitchToCallerAddressSpace = Context->R9 != 0;
+
+                    unsigned long long Cr3 = 0;
+                    if (SwitchToCallerAddressSpace)
+                    {
+                        Cr3 = __readcr3();
+                        __writecr3(vmread(VMX::VMCS_FIELD_GUEST_CR3));
+                    }
+
+                    Context->Rax = Fn(Arg);
+
+                    if (SwitchToCallerAddressSpace)
+                    {
+                        __writecr3(Cr3);
+                    }
+                    break;
+                }
+                default:
+                {
+                    Context->Rax = HYPER_BRIDGE_SIGNATURE;
+                }
+                }
             }
             else
             {
@@ -1715,18 +2134,18 @@ namespace VMX
                 }
 
                 // It is a Hyper-V hypercall - passing through:
-                Context->Rax = HypercallHyperV(Context->Rcx, Context->Rdx, Context->R8, Context->R9);
+                Context->Rax = __hyperv_vmcall(Context->Rcx, Context->Rdx, Context->R8, Context->R9);
             }
             break;
         }
-        case VMX::EXIT_REASON_RDTSC:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_RDTSC:
         {
             unsigned long long TSC = __rdtsc();
             Context->Rax = TSC & 0xFFFFFFFF;
             Context->Rdx = TSC >> 32;
             break;
         }
-        case VMX::EXIT_REASON_RDTSCP:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_RDTSCP:
         {
             unsigned int Rcx = 0;
             unsigned long long TSC = __rdtscp(&Rcx);
@@ -1735,7 +2154,7 @@ namespace VMX
             Context->Rdx = TSC >> 32;
             break;
         }
-        case VMX::EXIT_REASON_RDMSR:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_RDMSR:
         {
             unsigned long Msr = static_cast<unsigned long>(Context->Rcx);
             if (IsMsrAllowed(Msr))
@@ -1754,7 +2173,7 @@ namespace VMX
             }
             break;
         }
-        case VMX::EXIT_REASON_WRMSR:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_WRMSR:
         {
             unsigned int Msr = static_cast<int>(Context->Rcx);
             if (IsMsrAllowed(Msr))
@@ -1765,7 +2184,7 @@ namespace VMX
             }
             break;
         }
-        case VMX::EXIT_REASON_CR_ACCESS:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_CR_ACCESS:
         {
             VMX::EXIT_QUALIFICATION Qualification = {};
             Qualification.Value = vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION);
@@ -1808,13 +2227,15 @@ namespace VMX
                 __invvpid(VMX::INVVPID_TYPE::AllContextsInvalidation, &InvvpidDesc);
                 break;
             }
-            default: {}
-                
+            default:
+            {
+                __debugbreak();
+            }    
             }
 
             break;
         }
-        case VMX::EXIT_REASON_INVPCID:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_INVPCID:
         {
             VMX::INSTRUCTION_INFORMATION_FIELD Instr = { static_cast<unsigned int>(vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_INFORMATION)) };
             unsigned long long Disp = vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION);
@@ -1850,20 +2271,20 @@ namespace VMX
             _invpcid(static_cast<unsigned int>(InvType), reinterpret_cast<void*>(DescAddr));
             break;
         }
-        case VMX::EXIT_REASON_DR_ACCESS:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_DR_ACCESS:
         {
             break;
         }
-        case VMX::EXIT_REASON_VMCLEAR:
-        case VMX::EXIT_REASON_VMLAUNCH:
-        case VMX::EXIT_REASON_VMPTRLD:
-        case VMX::EXIT_REASON_VMPTRST:
-        case VMX::EXIT_REASON_VMREAD:
-        case VMX::EXIT_REASON_VMWRITE:
-        case VMX::EXIT_REASON_VMXOFF:
-        case VMX::EXIT_REASON_VMXON:
-        case VMX::EXIT_REASON_INVVPID:
-        case VMX::EXIT_REASON_INVEPT:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_VMCLEAR:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_VMLAUNCH:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_VMPTRLD:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_VMPTRST:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_VMREAD:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_VMWRITE:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_VMXOFF:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_VMXON:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_INVVPID:
+        case VMX::VMX_EXIT_REASON::EXIT_REASON_INVEPT:
         {
             RFLAGS Rflags = {};
             Rflags.Value = vmread(VMX::VMCS_FIELD_GUEST_RFLAGS);
@@ -1873,13 +2294,17 @@ namespace VMX
         }
         default:
         {
+            __debugbreak();
             break;
         }
         }
 
-        // Go to the next instruction:
-        Rip += vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_LENGTH);
-        __vmx_vmwrite(VMX::VMCS_FIELD_GUEST_RIP, Rip);
+        if (!RepeatInstruction)
+        {
+            // Go to the next instruction:
+            Rip += vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_LENGTH);
+            __vmx_vmwrite(VMX::VMCS_FIELD_GUEST_RIP, Rip);
+        }
 
         if (Irql < DISPATCH_LEVEL)
         {
@@ -1894,33 +2319,35 @@ namespace VMX
         if (g_IsVirtualized) return true;
 
         // Virtualizing each processor:
-        bool Status = ExecuteInSystemContext([](PVOID Arg) -> bool
+        bool Status = Callable::CallInSystemContext([](PVOID Arg) -> bool
         {
             UNREFERENCED_PARAMETER(Arg);
+            auto* Shared = reinterpret_cast<SHARED_VM_DATA*>(Arg);
 
-            SHARED_VM_DATA Shared = {};
-            Shared.KernelCr3 = __readcr3();
+            Shared->KernelCr3 = __readcr3();
 
             // Determining the max phys size:
             CPUID::Intel::VIRTUAL_AND_PHYSICAL_ADDRESS_SIZES MaxAddrSizes = {};
             __cpuid(MaxAddrSizes.Regs.Raw, CPUID::Intel::CPUID_VIRTUAL_AND_PHYSICAL_ADDRESS_SIZES);
 
             ULONG ProcessorsCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
-            Shared.Processors = VirtualMemory::AllocArray<VCPU_INFO>(ProcessorsCount);
+            Shared->Processors = VirtualMemory::AllocArray<VCPU_INFO>(ProcessorsCount);
             for (ULONG i = 0; i < ProcessorsCount; ++i)
             {
-                Shared.Processors[i].VmData = reinterpret_cast<PRIVATE_VM_DATA*>(AllocPhys(sizeof(PRIVATE_VM_DATA), MmCached, MaxAddrSizes.Bitmap.PhysicalAddressBits));
-                if (!Shared.Processors[i].VmData)
+                auto Proc = &Shared->Processors[i];
+                Proc->VmData = reinterpret_cast<PRIVATE_VM_DATA*>(AllocPhys(sizeof(PRIVATE_VM_DATA), MmCached, MaxAddrSizes.Bitmap.PhysicalAddressBits));
+                if (!Shared->Processors[i].VmData)
                 {
                     for (ULONG j = 0; j < ProcessorsCount; ++j)
                     {
-                        if (Shared.Processors[j].VmData)
+                        if (Shared->Processors[j].VmData)
                         {
-                            FreePhys(Shared.Processors[j].VmData);
+                            FreePhys(Shared->Processors[j].VmData);
                         }
                     }
                     return false;
                 }
+                Proc->VmData->EptInterceptor = new EptHandler(&Proc->VmData->Ept, i + 1);
             }
 
             KeIpiGenericCall([](ULONG_PTR Arg) -> ULONG_PTR
@@ -1928,12 +2355,12 @@ namespace VMX
                 auto* Shared = reinterpret_cast<SHARED_VM_DATA*>(Arg);
                 VirtualizeProcessor(Shared);
                 return TRUE;
-            }, reinterpret_cast<ULONG_PTR>(&Shared));
+            }, reinterpret_cast<ULONG_PTR>(Shared));
 
             bool Status = true;
             for (ULONG i = 0; i < ProcessorsCount; ++i)
             {
-                Status &= Shared.Processors[i].Status;
+                Status &= Shared->Processors[i].Status;
                 if (!Status)
                 {
                     break;
@@ -1943,16 +2370,23 @@ namespace VMX
             if (!Status)
             {
                 DevirtualizeAllProcessors();
+                VirtualMemory::FreePoolMemory(Shared->Processors);
+                Shared->Processors = NULL;
             }
 
-            VirtualMemory::FreePoolMemory(Shared.Processors);
-
             return Status;
-        }, NULL);
+        }, &g_Shared);
 
         g_IsVirtualized = Status;
 
         return Status;
+    }
+
+    static void FreePrivateVmData(void* Private)
+    {
+        auto* Data = reinterpret_cast<VMX::PRIVATE_VM_DATA*>(Private);
+        delete Data->EptInterceptor;
+        Supplementation::FreePhys(Private);
     }
 
     static bool IsVmxSupported()
@@ -1979,25 +2413,8 @@ namespace VMX
 #endif
 
 
-namespace Hypervisor {
-
-#ifdef _AMD64_
-    enum class CPU_VENDOR {
-        cpuIntel,
-        cpuAmd,
-        cpuUnknown
-    };
-
-    CPU_VENDOR GetCpuVendor()
-    {
-        CPUID_REGS Regs;
-        __cpuid(Regs.Raw, CPUID::Generic::CPUID_MAXIMUM_FUNCTION_NUMBER_AND_VENDOR_ID);
-        if (Regs.Regs.Ebx == 'uneG' && Regs.Regs.Edx == 'Ieni' && Regs.Regs.Ecx == 'letn') return CPU_VENDOR::cpuIntel;
-        if (Regs.Regs.Ebx == 'htuA' && Regs.Regs.Edx == 'itne' && Regs.Regs.Ecx == 'DMAc') return CPU_VENDOR::cpuAmd;
-        return CPU_VENDOR::cpuUnknown;
-    }
-#endif
-
+namespace Hypervisor
+{
     bool IsVirtualized()
     {
 #ifdef _AMD64_
@@ -2046,5 +2463,40 @@ namespace Hypervisor {
 #else
         return false;
 #endif
+    }
+
+    bool InterceptPage(unsigned long long Pa, unsigned long long ReadPa, unsigned long long WritePa, unsigned long long ExecutePa)
+    {
+        CPU_VENDOR CpuVendor = GetCpuVendor();
+        switch (CpuVendor)
+        {
+        case CPU_VENDOR::cpuIntel:
+        {
+            return VMX::InterceptPage(Pa, ReadPa, WritePa, ExecutePa);
+        }
+        default:
+        {
+            // Not supported:
+            return false;
+        }
+        }
+    }
+
+    bool DeinterceptPage(unsigned long long Pa)
+    {
+        CPU_VENDOR CpuVendor = GetCpuVendor();
+        switch (CpuVendor)
+        {
+        case CPU_VENDOR::cpuIntel:
+        {
+            VMX::DeinterceptPage(Pa);
+            return true;
+        }
+        default:
+        {
+            // Not supported:
+            return false;
+        }
+        }
     }
 }

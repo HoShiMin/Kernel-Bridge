@@ -264,7 +264,7 @@ namespace VMX
         VMCS_FIELD_HOST_IA32_INTERRUPT_SSP_TABLE_ADDR = 0x00006C1C,
     };
 
-    enum VMX_EXIT_REASON : unsigned int {
+    enum class VMX_EXIT_REASON : unsigned int {
         EXIT_REASON_EXCEPTION_OR_NMI = 0,
         EXIT_REASON_EXTERNAL_INTERRUPT = 1,
         EXIT_REASON_TRIPLE_FAULT = 2,

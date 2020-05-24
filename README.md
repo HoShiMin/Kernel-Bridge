@@ -29,7 +29,6 @@ kernel-mode API and wrappers.
 * PDB parsing
 * Signatures and patterns scanning
 * Sections management (to map `\\Device\PhysicalMemory` and more)
-* PCI configuration
 * Python binding
   
 ### ➰ In development and plans:

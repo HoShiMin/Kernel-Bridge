@@ -1210,44 +1210,6 @@ namespace LoadableModules {
     }
 }
 
-namespace PCI {
-    BOOL WINAPI KbReadPciConfig(
-        ULONG PciAddress,
-        ULONG PciOffset,
-        OUT PVOID Buffer,
-        ULONG Size,
-        OPTIONAL OUT PULONG BytesRead
-    ) {
-        KB_READ_WRITE_PCI_CONFIG_IN Input = {};
-        KB_READ_WRITE_PCI_CONFIG_OUT Output = {};
-        Input.PciAddress = PciAddress;
-        Input.PciOffset = PciOffset;
-        Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
-        Input.Size = Size;
-        BOOL Status = KbSendRequest(Ctls::KbReadPciConfig, &Input, sizeof(Input), &Output, sizeof(Output));
-        if (BytesRead) *BytesRead = Output.ReadOrWritten;
-        return Status;
-    }
-
-    BOOL WINAPI KbWritePciConfig(
-        ULONG PciAddress,
-        ULONG PciOffset,
-        IN PVOID Buffer,
-        ULONG Size,
-        OPTIONAL OUT PULONG BytesWritten
-    ) {
-        KB_READ_WRITE_PCI_CONFIG_IN Input = {};
-        KB_READ_WRITE_PCI_CONFIG_OUT Output = {};
-        Input.PciAddress = PciAddress;
-        Input.PciOffset = PciOffset;
-        Input.Buffer = reinterpret_cast<WdkTypes::PVOID>(Buffer);
-        Input.Size = Size;
-        BOOL Status = KbSendRequest(Ctls::KbWritePciConfig, &Input, sizeof(Input), &Output, sizeof(Output));
-        if (BytesWritten) *BytesWritten = Output.ReadOrWritten;
-        return Status;
-    }
-}
-
 namespace Hypervisor {
     BOOL WINAPI KbVmmEnable()
     {
@@ -1257,6 +1219,27 @@ namespace Hypervisor {
     BOOL WINAPI KbVmmDisable()
     {
         return KbSendRequest(Ctls::KbVmmDisable);
+    }
+
+    BOOL WINAPI KbVmmInterceptPage(
+        IN OPTIONAL WdkTypes::PVOID64 PhysicalAddress,
+        IN OPTIONAL WdkTypes::PVOID64 OnReadPhysicalAddress,
+        IN OPTIONAL WdkTypes::PVOID64 OnWritePhysicalAddress,
+        IN OPTIONAL WdkTypes::PVOID64 OnExecutePhysicalAddress
+    ) {
+        KB_VMM_INTERCEPT_PAGE_IN Input = {};
+        Input.PhysicalAddress = PhysicalAddress;
+        Input.OnReadPhysicalAddress = OnReadPhysicalAddress;
+        Input.OnWritePhysicalAddress = OnWritePhysicalAddress;
+        Input.OnExecutePhysicalAddress = OnExecutePhysicalAddress;
+        return KbSendRequest(Ctls::KbVmmInterceptPage, &Input, sizeof(Input));
+    }
+
+    BOOL WINAPI KbVmmDeinterceptPage(IN OPTIONAL WdkTypes::PVOID64 PhysicalAddress)
+    {
+        KB_VMM_DEINTERCEPT_PAGE_IN Input = {};
+        Input.PhysicalAddress = PhysicalAddress;
+        return KbSendRequest(Ctls::KbVmmDeinterceptPage, &Input, sizeof(Input));
     }
 }
 

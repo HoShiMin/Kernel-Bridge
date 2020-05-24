@@ -260,6 +260,68 @@ VOID ThreadingTests()
     }
 }
 
+VOID TestHvPageInterception()
+{
+    using namespace Hypervisor;
+    using namespace PhysicalMemory;
+
+    constexpr unsigned int PageSize = 4096;
+
+    PBYTE Page = reinterpret_cast<PBYTE>(VirtualAlloc(NULL, PageSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
+    PBYTE Read = reinterpret_cast<PBYTE>(VirtualAlloc(NULL, PageSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
+    PBYTE Write = reinterpret_cast<PBYTE>(VirtualAlloc(NULL, PageSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
+    PBYTE Execute = reinterpret_cast<PBYTE>(VirtualAlloc(NULL, PageSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
+
+    VirtualLock(Page, PageSize);
+    VirtualLock(Read, PageSize);
+    VirtualLock(Write, PageSize);
+    VirtualLock(Execute, PageSize);
+
+    WdkTypes::PVOID64 PagePa = 0, ReadPa = 0, WritePa = 0, ExecutePa = 0;
+    KbGetPhysicalAddress(NULL, reinterpret_cast<WdkTypes::PVOID>(Page), &PagePa);
+    KbGetPhysicalAddress(NULL, reinterpret_cast<WdkTypes::PVOID>(Read), &ReadPa);
+    KbGetPhysicalAddress(NULL, reinterpret_cast<WdkTypes::PVOID>(Write), &WritePa);
+    KbGetPhysicalAddress(NULL, reinterpret_cast<WdkTypes::PVOID>(Execute), &ExecutePa);
+
+    *Page = 0xCC;
+    *Read = 0x11;
+    *Write = 0x22;
+    *Execute = 0xC3; // ret
+    printf("[Clean] Page: 0x%X, Read: 0x%X, Write: 0x%X, Execute: 0x%X\n", *Page, *Read, *Write, *Execute);
+
+    Sleep(1000);
+
+    KbVmmInterceptPage(PagePa, ReadPa, 0, ExecutePa);
+    printf("[Intercepted] Page: 0x%X, Read: 0x%X, Write: 0x%X, Execute: 0x%X\n", *Page, *Read, *Write, *Execute);
+
+    Sleep(1000);
+
+    __try
+    {
+        *Page = 0x99;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        printf("Page is unwriteable! Accesses violations are working properly!\n");
+    }
+    printf("[Written 0x99] Page: 0x%X, Read: 0x%X, Write: 0x%X, Execute: 0x%X\n", *Page, *Read, *Write, *Execute);
+
+    Sleep(1000);
+
+    void(__stdcall *FnCallee)() = reinterpret_cast<decltype(FnCallee)>(Page);
+    FnCallee();
+
+    KbVmmDeinterceptPage(PagePa);
+    printf("[Deintercepted] Page: 0x%X, Read: 0x%X, Write: 0x%X, Execute: 0x%X\n", *Page, *Read, *Write, *Execute);
+
+    Sleep(1000);
+
+    VirtualFree(Execute, 0, MEM_RELEASE);
+    VirtualFree(Write, 0, MEM_RELEASE);
+    VirtualFree(Read, 0, MEM_RELEASE);
+    VirtualFree(Page, 0, MEM_RELEASE);
+}
+
 VOID RunAllTests()
 {
     //ThreadingTests();
@@ -292,6 +354,7 @@ VOID RunAllTests()
             {
                 printf("Exception was raised! Events injections are working properly!\n");
             }
+            TestHvPageInterception();
         }
         Hypervisor::KbVmmDisable();
         printf("VMM disabled!\r\n");
