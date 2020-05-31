@@ -120,6 +120,8 @@ EXPORTS
 
     KbVmmEnable
     KbVmmDisable
+	KbVmmInterceptPage
+	KbVmmDeinterceptPage
 
 	KbGetKernelProcAddress
 	KbStallExecutionProcessor

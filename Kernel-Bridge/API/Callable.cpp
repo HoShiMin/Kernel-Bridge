@@ -270,7 +270,7 @@ namespace Callable
                 UNREFERENCED_PARAMETER(SystemArgument2);
                 STOP_PROCESSORS_DATA* StopData = reinterpret_cast<STOP_PROCESSORS_DATA*>(Arg);
                 InterlockedIncrement(&StopData->ProcessorsStopped);
-                while (InterlockedCompareExchange(&StopData->NeedToResume, TRUE, TRUE) != TRUE)
+                while (InterlockedCompareExchange(&StopData->NeedToResume, TRUE, TRUE) == FALSE)
                 {
                     _mm_pause();
                 }
