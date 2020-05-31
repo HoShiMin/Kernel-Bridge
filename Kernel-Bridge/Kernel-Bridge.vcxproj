@@ -105,6 +105,10 @@
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -141,9 +145,10 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Link>
-      <AdditionalDependencies>fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>fltmgr.lib;HookLib.lib;Zydis.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalLibraryDirectories>..\HookLib\HookLib\Zydis\bin\DebugX86Kernel\</AdditionalLibraryDirectories>
     </Link>
     <ClCompile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
@@ -153,7 +158,7 @@
       <ExceptionHandling>false</ExceptionHandling>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories);$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\HookLib\HookLib\HookLib\;..\HookLib\HookLib\Zydis\include\;$(IntDir);%(AdditionalIncludeDirectories);$(ProjectDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
       <Command>makecab /f ../x32-debug.ddf</Command>
@@ -164,10 +169,11 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Link>
-      <AdditionalDependencies>fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>fltmgr.lib;HookLib.lib;Zydis.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <AdditionalLibraryDirectories>..\HookLib\HookLib\Zydis\bin\ReleaseX86Kernel\</AdditionalLibraryDirectories>
     </Link>
     <ClCompile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
@@ -182,7 +188,7 @@
       <ExceptionHandling>false</ExceptionHandling>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories);$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\HookLib\HookLib\HookLib\;..\HookLib\HookLib\Zydis\include\;$(IntDir);%(AdditionalIncludeDirectories);$(ProjectDir)</AdditionalIncludeDirectories>
       <ControlFlowGuard>false</ControlFlowGuard>
     </ClCompile>
     <PostBuildEvent>
@@ -194,9 +200,10 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
-      <AdditionalDependencies>fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>fltmgr.lib;HookLib.lib;Zydis.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalLibraryDirectories>..\HookLib\HookLib\Zydis\bin\DebugX64Kernel\</AdditionalLibraryDirectories>
     </Link>
     <ClCompile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
@@ -206,7 +213,7 @@
       <ExceptionHandling>false</ExceptionHandling>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories);$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\HookLib\HookLib\HookLib\;..\HookLib\HookLib\Zydis\include\;$(IntDir);%(AdditionalIncludeDirectories);$(ProjectDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
       <Command>makecab /f ../x64-debug.ddf</Command>
@@ -214,10 +221,11 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Link>
-      <AdditionalDependencies>fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>fltmgr.lib;HookLib.lib;Zydis.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <AdditionalLibraryDirectories>..\HookLib\HookLib\Zydis\bin\ReleaseX64Kernel\</AdditionalLibraryDirectories>
     </Link>
     <ClCompile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
@@ -231,7 +239,7 @@
       <ExceptionHandling>false</ExceptionHandling>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories);$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\HookLib\HookLib\HookLib\;..\HookLib\HookLib\Zydis\include\;$(IntDir);%(AdditionalIncludeDirectories);$(ProjectDir)</AdditionalIncludeDirectories>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <ControlFlowGuard>false</ControlFlowGuard>
     </ClCompile>
