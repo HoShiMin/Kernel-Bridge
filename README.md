@@ -6,6 +6,8 @@ kernel-mode API and wrappers.
   
 ### ✔ Capabilites:
 * Hypervisor (both Intel VT-x/EPT and AMD-V/RVI) with the Hyper-V support
+* Extremely fast hypervisor-based memory interceptions and hiding (+ support of Write-only pages), VT-x only
+* Support of [HookLib](https://github.com/HoShiMin/HookLib) and [Zydis](https://github.com/zyantific/zydis)
 * IO-ports (+ 'in/out/cli/sti' usermode forwarding by IOPL)
 * System beeper
 * MSRs, CPUID, TSC and performance counters (RDPMC)
