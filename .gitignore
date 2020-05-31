@@ -15,7 +15,9 @@
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
+[Dd]ebugKernel/
 [Rr]elease/
+[Rr]eleaseKernel/
 [Rr]eleases/
 x64/
 x86/

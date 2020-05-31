@@ -148,7 +148,7 @@
       <AdditionalDependencies>fltmgr.lib;HookLib.lib;Zydis.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>..\HookLib\HookLib\Zydis\bin\DebugX86Kernel\</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)DebugKernel\;$(SolutionDir)HookLib\HookLib\Zydis\msvc\bin\DebugX86Kernel\</AdditionalLibraryDirectories>
     </Link>
     <ClCompile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
@@ -173,7 +173,7 @@
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <AdditionalLibraryDirectories>..\HookLib\HookLib\Zydis\bin\ReleaseX86Kernel\</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)ReleaseKernel\;$(SolutionDir)HookLib\HookLib\Zydis\msvc\bin\ReleaseX86Kernel\</AdditionalLibraryDirectories>
     </Link>
     <ClCompile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
@@ -203,7 +203,7 @@
       <AdditionalDependencies>fltmgr.lib;HookLib.lib;Zydis.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>..\HookLib\HookLib\Zydis\bin\DebugX64Kernel\</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\DebugKernel\;$(SolutionDir)HookLib\HookLib\Zydis\msvc\bin\DebugX64Kernel\</AdditionalLibraryDirectories>
     </Link>
     <ClCompile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
@@ -225,7 +225,7 @@
       <ModuleDefinitionFile>Exports.def</ModuleDefinitionFile>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <AdditionalLibraryDirectories>..\HookLib\HookLib\Zydis\bin\ReleaseX64Kernel\</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\ReleaseKernel;$(SolutionDir)HookLib\HookLib\Zydis\msvc\bin\ReleaseX64Kernel\</AdditionalLibraryDirectories>
     </Link>
     <ClCompile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
@@ -260,6 +260,7 @@
     <ClInclude Include="..\CommonTypes\Registers.h" />
     <ClInclude Include="..\CommonTypes\SVM.h" />
     <ClInclude Include="..\CommonTypes\VMX.h" />
+    <ClInclude Include="..\HookLib\HookLib\HookLib\HookLib.h" />
     <ClInclude Include="..\SharedTypes\CtlTypes.h" />
     <ClInclude Include="..\SharedTypes\FltTypes.h" />
     <ClInclude Include="..\SharedTypes\WdkTypes.h" />

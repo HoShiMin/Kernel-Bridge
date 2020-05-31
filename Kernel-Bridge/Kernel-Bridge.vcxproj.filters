@@ -32,6 +32,9 @@
     <Filter Include="CommonTypes">
       <UniqueIdentifier>{1540d3f3-c5f5-44c0-a3bb-2246da568195}</UniqueIdentifier>
     </Filter>
+    <Filter Include="HookLib">
+      <UniqueIdentifier>{1d6d5ce4-f4f5-467c-ab9f-d21fbbac9bcd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Inf Include="Kernel-Bridge.inf">
@@ -219,6 +222,9 @@
     </ClInclude>
     <ClInclude Include="API\Callable.h">
       <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="..\HookLib\HookLib\HookLib\HookLib.h">
+      <Filter>HookLib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

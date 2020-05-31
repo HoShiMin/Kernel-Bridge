@@ -1,4 +1,4 @@
-NAME KbLoadableModule
+NAME LoadableModule
 EXPORTS
 	OnLoad
 	OnUnload
