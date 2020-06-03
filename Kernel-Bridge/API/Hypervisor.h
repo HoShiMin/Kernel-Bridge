@@ -25,7 +25,9 @@ namespace Hypervisor
         unsigned long long Pa,
         unsigned long long ReadPa,
         unsigned long long WritePa,
-        unsigned long long ExecutePa
+        unsigned long long ExecutePa,
+        unsigned long long ExecuteReadPa,
+        unsigned long long ExecuteWritePa
     );
 
     bool DeinterceptPage(unsigned long long Pa);

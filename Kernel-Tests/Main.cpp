@@ -276,36 +276,13 @@ void* GetFuncPtr(const void* Func)
 }
 
 #pragma section(".hidden", read, execute, nopage)
-__declspec(code_seg(".hidden")) unsigned int HiddenFunc(DWORD ThreadId)
+__declspec(code_seg(".hidden")) unsigned int HiddenFunc()
 {
-    volatile unsigned char* volatile Self = reinterpret_cast<PBYTE>(GetFuncPtr(HiddenFunc));
-    
-    for (unsigned int i = 0; i < 10000000; ++i)
-    {
-        auto Value = *Self;
-        if (Value != 0x11)
-        {
-            printf("[ERROR:%u] Iteration %u, value: 0x%X\n", ThreadId, i, static_cast<unsigned int>(Value));
-        }
-    }
-
+    printf("Called from hidden func!\n");
+    auto* Self = reinterpret_cast<PBYTE>(GetFuncPtr(HiddenFunc));
+    *Self = 0x55;
+    printf("Self memory: 0x%X\n", static_cast<unsigned int>(*Self));
     return 0x1EE7C0DE;
-}
-
-volatile LONG NeedToExit = FALSE;
-
-DWORD WINAPI TestingThread(PVOID Arg)
-{
-    DWORD ThreadId = GetCurrentThreadId();
-    while (InterlockedCompareExchange(&NeedToExit, TRUE, TRUE) == FALSE)
-    {
-        if (HiddenFunc(ThreadId) != 0x1EE7C0DE)
-        {
-            printf("[ERROR:%u] The HiddenFunc result != 0x1EE7C0DE\n", ThreadId);
-        }
-    }
-    printf("[TID:%u] The thread has been finished!\n", ThreadId);
-    return 0;
 }
 
 VOID TestHvPageInterception()
@@ -317,77 +294,43 @@ VOID TestHvPageInterception()
 
     volatile PBYTE Read = reinterpret_cast<PBYTE>(VirtualAlloc(NULL, PageSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
     volatile PBYTE Write = reinterpret_cast<PBYTE>(VirtualAlloc(NULL, PageSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
+    volatile PBYTE WriteExecute = reinterpret_cast<PBYTE>(VirtualAlloc(NULL, PageSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE));
     volatile PBYTE Execute = reinterpret_cast<PBYTE>(GetFuncPtr(HiddenFunc));
 
-    DWORD OldProtect = 0;
-    VirtualProtect(Execute, PageSize, PAGE_EXECUTE_READWRITE, &OldProtect);
+    __assume(Read != 0);
+    __assume(Write != 0);
+    __assume(WriteExecute != 0);
 
     VirtualLock(Read, PageSize);
     VirtualLock(Write, PageSize);
     VirtualLock(Execute, PageSize);
+    VirtualLock(WriteExecute, PageSize);
 
-    const auto ValidData = *Execute;
+    memset(Read, 0xFF, PageSize);
+    memset(Write, 0xEE, PageSize);
+    memcpy(WriteExecute, Execute, PageSize);
 
-    *Read = 0x11;
-    *Write = 0x22;
-    *Execute = ValidData;
+    DWORD OldProtect = 0;
+    VirtualProtect(Execute, PageSize, PAGE_EXECUTE_READWRITE, &OldProtect);
+    *Execute = *Execute;
 
-    WdkTypes::PVOID64 ReadPa = 0, WritePa = 0, ExecutePa = 0;
+    WdkTypes::PVOID64 ReadPa = 0, WritePa = 0, WriteExecutePa = 0, ExecutePa = 0;
     KbGetPhysicalAddress(NULL, reinterpret_cast<WdkTypes::PVOID>(Read), &ReadPa);
     KbGetPhysicalAddress(NULL, reinterpret_cast<WdkTypes::PVOID>(Write), &WritePa);
+    KbGetPhysicalAddress(NULL, reinterpret_cast<WdkTypes::PVOID>(WriteExecute), &WriteExecutePa);
     KbGetPhysicalAddress(NULL, reinterpret_cast<WdkTypes::PVOID>(Execute), &ExecutePa);
     
-    printf("OnRead    : VA:%p, PA:0x%I64X (Value: 0x%X)\n", Read, ReadPa, static_cast<unsigned int>(*Read));
-    printf("OnWrite   : VA:%p, PA:0x%I64X (Value: 0x%X)\n", Write, WritePa, static_cast<unsigned int>(*Write));
-    printf("OnExecute : VA:%p, PA:0x%I64X (Value: 0x%X)\n", Execute, ExecutePa, static_cast<unsigned int>(*Execute));
+    printf("Original bytes: 0x%X\n", static_cast<unsigned int>(*Execute));
 
-    KbVmmInterceptPage(ExecutePa, ReadPa, WritePa, ExecutePa);
-    
-    __nop();
-    __nop();
-    __nop();
-    *Execute = 0x33;
-    __nop();
-    __nop();
-    __nop();
-
-    HiddenFunc(GetCurrentThreadId());
-
-    InterlockedExchange(&NeedToExit, FALSE);
-
-#if FALSE
-    constexpr unsigned int ThreadsCount = 12;
-    std::vector<HANDLE> Threads(ThreadsCount);
-    for (unsigned int i = 0; i < ThreadsCount; ++i)
-    {
-        Threads[i] = CreateThread(NULL, 0, TestingThread, NULL, 0, NULL);
-    }
-
-    while (true)
-    {
-        std::wstring Command;
-        std::wcin >> Command;
-        if (Command == L"exit")
-        {
-            printf("Exiting...\n");
-            InterlockedExchange(&NeedToExit, TRUE);
-            break;
-        }
-        else
-        {
-            printf("Unknown command! Please, write 'exit' to exit!\n");
-        }
-    }
-
-    WaitForMultipleObjects(ThreadsCount, &Threads[0], TRUE, INFINITE);
-
-    for (const auto& hThread : Threads)
-    {
-        CloseHandle(hThread);
-    }
-#endif
-
+    KbVmmInterceptPage(ExecutePa, ReadPa, WritePa, ExecutePa, ExecutePa, WriteExecutePa);    
+    printf("Bytes after intercept: 0x%X\n", static_cast<unsigned int>(*Execute));
+    *Execute = 0x40;
+    HiddenFunc();
+    printf("Bytes after call: 0x%X\n", static_cast<unsigned int>(*Execute));
+    printf("Write-interceptor: W:0x%X WX:0x%X\n", static_cast<unsigned int>(*Write), static_cast<unsigned int>(*WriteExecute));
     KbVmmDeinterceptPage(ExecutePa);
+
+    printf("Bytes after deintercept: 0x%X\n", static_cast<unsigned int>(*Execute));
 
     VirtualUnlock(Execute, PageSize);
     VirtualUnlock(Write, PageSize);
@@ -415,6 +358,9 @@ VOID RunAllTests()
     if (Hypervisor::KbVmmEnable())
     {
         printf("VMM enabled!\r\n");
+
+        TestHvPageInterception();
+
         printf(
             "Commands:\n"
             "  exit: disable the hypervisor and exit\n"

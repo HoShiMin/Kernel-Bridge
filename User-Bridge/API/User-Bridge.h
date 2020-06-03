@@ -1,6 +1,7 @@
 #pragma once
 
-namespace KbLoader {
+namespace KbLoader
+{
     BOOL WINAPI KbLoadAsDriver(LPCWSTR DriverPath);
     BOOL WINAPI KbLoadAsFilter(LPCWSTR DriverPath, LPCWSTR Altitude);
     BOOL WINAPI KbUnload();
@@ -9,34 +10,43 @@ namespace KbLoader {
     BOOL WINAPI KbGetHandlesCount(OUT PULONG Count);
 }
 
-namespace AddressRange {
-    inline BOOLEAN IsUserAddress(PVOID Address) {
+namespace AddressRange
+{
+    inline BOOLEAN IsUserAddress(PVOID Address)
+    {
         return reinterpret_cast<SIZE_T>(Address) < (static_cast<SIZE_T>(1) << (8 * sizeof(SIZE_T) - 1));
     }
 
-    inline BOOLEAN IsKernelAddress(PVOID Address) {
+    inline BOOLEAN IsKernelAddress(PVOID Address)
+    {
         return reinterpret_cast<SIZE_T>(Address) >= (static_cast<SIZE_T>(1) << (8 * sizeof(SIZE_T) - 1));
     }
 
-    inline BOOLEAN IsUserAddressIa32(UINT64 Address) {
+    inline BOOLEAN IsUserAddressIa32(UINT64 Address)
+    {
         return Address < 0x80000000;
     }
 
-    inline BOOLEAN IsUserAddressAmd64(UINT64 Address) {
+    inline BOOLEAN IsUserAddressAmd64(UINT64 Address)
+    {
         return Address < 0x8000000000000000;
     }
 
-    inline BOOLEAN IsKernelAddressIa32(UINT64 Address) {
+    inline BOOLEAN IsKernelAddressIa32(UINT64 Address)
+    {
         return Address > 0x7FFFFFFF;
     }
 
-    inline BOOLEAN IsKernelAddressAmd64(UINT64 Address) {
+    inline BOOLEAN IsKernelAddressAmd64(UINT64 Address)
+    {
         return Address > 0x7FFFFFFFFFFFFFFF;
     }
 }
 
-namespace IO {
-    namespace Beeper {
+namespace IO
+{
+    namespace Beeper
+    {
         BOOL WINAPI KbSetBeeperRegime();
         BOOL WINAPI KbStartBeeper();
         BOOL WINAPI KbStopBeeper();
@@ -46,7 +56,8 @@ namespace IO {
         BOOL WINAPI KbSetBeeperFrequency(USHORT Frequency);
     }
 
-    namespace RW {
+    namespace RW
+    {
         BOOL WINAPI KbReadPortByte(USHORT PortNumber, OUT PUCHAR Value);
         BOOL WINAPI KbReadPortWord(USHORT PortNumber, OUT PUSHORT Value);
         BOOL WINAPI KbReadPortDword(USHORT PortNumber, OUT PULONG Value);
@@ -64,14 +75,16 @@ namespace IO {
         BOOL WINAPI KbWritePortDwordString(USHORT PortNumber, ULONG Count, IN PULONG DwordString, ULONG DwordStringSizeInBytes);
     }
 
-    namespace Iopl {
+    namespace Iopl
+    {
         // Allows to use 'in/out/cli/sti' in usermode:
         BOOL WINAPI KbRaiseIopl();
         BOOL WINAPI KbResetIopl();
     }
 }
 
-namespace CPU {
+namespace CPU
+{
     BOOL WINAPI KbCli();
     BOOL WINAPI KbSti();
     BOOL WINAPI KbHlt();
@@ -79,7 +92,8 @@ namespace CPU {
     BOOL WINAPI KbReadMsr(ULONG Index, OUT PUINT64 MsrValue);
     BOOL WINAPI KbWriteMsr(ULONG Index, IN UINT64 MsrValue);
 
-    using CPUID_INFO = struct {
+    using CPUID_INFO = struct
+    {
         ULONG Eax;
         ULONG Ebx;
         ULONG Ecx;
@@ -95,7 +109,8 @@ namespace CPU {
     BOOL WINAPI KbReadTscp(OUT PUINT64 TscValue, OUT OPTIONAL PULONG TscAux);
 }
 
-namespace VirtualMemory {
+namespace VirtualMemory
+{
     // Supports both user- and kernel-memory in context of current process:
     BOOL WINAPI KbAllocKernelMemory(ULONG Size, BOOLEAN Executable, OUT WdkTypes::PVOID* KernelAddress);
     BOOL WINAPI KbFreeKernelMemory(IN WdkTypes::PVOID KernelAddress);
@@ -106,7 +121,8 @@ namespace VirtualMemory {
     BOOL WINAPI KbEqualMemory(IN WdkTypes::PVOID Src, IN WdkTypes::PVOID Dest, ULONG Size, OUT PBOOLEAN Equals);
 }
 
-namespace Mdl {
+namespace Mdl
+{
     BOOL WINAPI KbAllocateMdl(
         WdkTypes::PVOID VirtualAddress,
         ULONG Size,
@@ -137,7 +153,8 @@ namespace Mdl {
     BOOL WINAPI KbUnlockPages(WdkTypes::PMDL Mdl);
     BOOL WINAPI KbFreeMdl(WdkTypes::PMDL Mdl);
 
-    using MAPPING_INFO = struct {
+    using MAPPING_INFO = struct
+    {
         WdkTypes::PVOID MappedAddress;
         WdkTypes::PVOID Mdl;
     };
@@ -157,7 +174,8 @@ namespace Mdl {
     BOOL WINAPI KbUnmapMemory(IN PMAPPING_INFO MappingInfo);
 }
 
-namespace PhysicalMemory {
+namespace PhysicalMemory
+{
     // Allocates contiguous physical memory in the specified range:
     BOOL WINAPI KbAllocPhysicalMemory(
         WdkTypes::PVOID LowestAcceptableAddress,
@@ -211,8 +229,10 @@ namespace PhysicalMemory {
     BOOL WINAPI KbReadDmiMemory(OUT UCHAR DmiMemory[DmiSize], ULONG BufferSize);
 }
 
-namespace Processes {
-    namespace Descriptors {
+namespace Processes
+{
+    namespace Descriptors
+    {
         // EPROCESS/ETHREAD must be dereferenced by KbDereferenceObject,
         // HANDLE must be closed by KbCloseHandle:
         BOOL WINAPI KbGetEprocess(ULONG ProcessId, OUT WdkTypes::PEPROCESS* Process);
@@ -248,7 +268,8 @@ namespace Processes {
 
     }
 
-    namespace Information {
+    namespace Information
+    {
         BOOL WINAPI KbQueryInformationProcess(
             WdkTypes::HANDLE hProcess,
             NtTypes::PROCESSINFOCLASS ProcessInfoClass,
@@ -277,7 +298,8 @@ namespace Processes {
         );
     }
 
-    namespace Threads {
+    namespace Threads
+    {
         using NTSTATUS = ULONG;
         using _ThreadRoutine = NTSTATUS (NTAPI*)(PVOID Argument);
 
@@ -305,7 +327,8 @@ namespace Processes {
         BOOL WINAPI KbSetThreadContext(ULONG ThreadId, IN PCONTEXT Context, ULONG ContextSize, OPTIONAL WdkTypes::KPROCESSOR_MODE ProcessorMode = WdkTypes::UserMode);
     }
 
-    namespace MemoryManagement {
+    namespace MemoryManagement
+    {
         BOOL WINAPI KbAllocUserMemory(ULONG ProcessId, ULONG Protect, ULONG Size, OUT WdkTypes::PVOID* BaseAddress);
         BOOL WINAPI KbFreeUserMemory(ULONG ProcessId, WdkTypes::PVOID BaseAddress);
         
@@ -340,13 +363,15 @@ namespace Processes {
         BOOL WINAPI KbGetProcessCr3Cr4(ULONG ProcessId, OUT OPTIONAL PUINT64 Cr3, OUT OPTIONAL PUINT64 Cr4);
     }
 
-    namespace Apc {
+    namespace Apc
+    {
         using _ApcProc = VOID(WINAPI*)(PVOID Argument);
         BOOL WINAPI KbQueueUserApc(ULONG ThreadId, WdkTypes::PVOID ApcProc, WdkTypes::PVOID Argument);
     }
 }
 
-namespace Sections {
+namespace Sections
+{
     BOOL WINAPI KbCreateSection(
         OUT WdkTypes::HANDLE* hSection,
         OPTIONAL LPCWSTR Name,
@@ -383,7 +408,8 @@ namespace Sections {
     );
 }
 
-namespace KernelShells {
+namespace KernelShells
+{
     using _GetKernelProcAddress = PVOID(WINAPI*)(LPCWSTR RoutineName);
     using _ShellCode = ULONG(WINAPI*)(
         _GetKernelProcAddress GetKernelProcAddress, // You can obtain any function address from ntoskrnl.exe/hal.dll
@@ -395,7 +421,8 @@ namespace KernelShells {
     BOOL WINAPI KbExecuteShellCode(_ShellCode ShellCode, PVOID Argument = NULL, OUT OPTIONAL PULONG Result = NULL);
 }
 
-namespace LoadableModules {
+namespace LoadableModules
+{
     BOOL WINAPI KbCreateDriver(LPCWSTR DriverName, WdkTypes::PVOID DriverEntry);
     BOOL WINAPI KbLoadModule(
         WdkTypes::HMODULE hModule,
@@ -409,19 +436,23 @@ namespace LoadableModules {
     BOOL WINAPI KbCallModule(WdkTypes::HMODULE hModule, ULONG CtlCode, OPTIONAL WdkTypes::PVOID Argument = NULL);
 }
 
-namespace Hypervisor {
+namespace Hypervisor
+{
     BOOL WINAPI KbVmmEnable();
     BOOL WINAPI KbVmmDisable();
     BOOL WINAPI KbVmmInterceptPage(
         IN OPTIONAL WdkTypes::PVOID64 PhysicalAddress,
         IN OPTIONAL WdkTypes::PVOID64 OnReadPhysicalAddress,
         IN OPTIONAL WdkTypes::PVOID64 OnWritePhysicalAddress,
-        IN OPTIONAL WdkTypes::PVOID64 OnExecutePhysicalAddress
+        IN OPTIONAL WdkTypes::PVOID64 OnExecutePhysicalAddress,
+        IN OPTIONAL WdkTypes::PVOID64 OnExecuteReadPhysicalAddress,
+        IN OPTIONAL WdkTypes::PVOID64 OnExecuteWritePhysicalAddress
     );
     BOOL WINAPI KbVmmDeinterceptPage(IN OPTIONAL WdkTypes::PVOID64 PhysicalAddress);
 }
 
-namespace Stuff {
+namespace Stuff
+{
     BOOL WINAPI KbGetKernelProcAddress(LPCWSTR RoutineName, WdkTypes::PVOID* KernelAddress);
     BOOL WINAPI KbStallExecutionProcessor(ULONG Microseconds);
     BOOL WINAPI KbBugCheck(ULONG Status);

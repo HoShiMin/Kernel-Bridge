@@ -14,9 +14,8 @@
 #pragma comment(lib, "ntdll.lib")
 #endif
 
-extern "C" {
-    NTSYSAPI NTSTATUS NTAPI RtlDowncaseUnicodeString(PUNICODE_STRING Dest, PCUNICODE_STRING Src, BOOLEAN AllocateDest);
-    NTSYSAPI NTSTATUS NTAPI RtlUpcaseUnicodeString(PUNICODE_STRING Dest, PCUNICODE_STRING Src, BOOLEAN AllocateDest);
+extern "C"
+{
     int __cdecl _vsnprintf_s(char* dest, size_t size, size_t max_count, const char* format, va_list args);
     int __cdecl _vsnwprintf_s(wchar_t* dest, size_t size, size_t max_count, const wchar_t* format, va_list args);
 }

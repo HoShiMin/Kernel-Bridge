@@ -1935,7 +1935,9 @@ namespace
             Input->PhysicalAddress,
             Input->OnReadPhysicalAddress,
             Input->OnWritePhysicalAddress,
-            Input->OnExecutePhysicalAddress
+            Input->OnExecutePhysicalAddress,
+            Input->OnExecuteReadPhysicalAddress,
+            Input->OnExecuteWritePhysicalAddress
         );
 
         return Status ? STATUS_SUCCESS : STATUS_NOT_SUPPORTED;

@@ -917,6 +917,8 @@ namespace VMX
         EPT_PTE OnRead;
         EPT_PTE OnWrite;
         EPT_PTE OnExecute;
+        EPT_PTE OnExecuteRead;
+        EPT_PTE OnExecuteWrite;
     };
 
     struct EPT_PTE_HANDLER
@@ -1020,11 +1022,13 @@ namespace VMX
         }
     }
 
-    void BuildPageHandler(MTRR_MEMORY_TYPE CacheType, UINT64 ReadPa, UINT64 WritePa, UINT64 ExecutePa, __out PAGE_HANDLER& Handler)
+    void BuildPageHandler(MTRR_MEMORY_TYPE CacheType, UINT64 ReadPa, UINT64 WritePa, UINT64 ExecutePa, UINT64 ExecuteReadPa, UINT64 ExecuteWritePa, __out PAGE_HANDLER& Handler)
     {
         Handler.OnRead.Value = 0;
         Handler.OnWrite.Value = 0;
         Handler.OnExecute.Value = 0;
+        Handler.OnExecuteRead.Value = 0;
+        Handler.OnExecuteWrite.Value = 0;
 
         if (ReadPa)
         {
@@ -1049,6 +1053,23 @@ namespace VMX
             Handler.OnExecute.Page4Kb.PagePhysicalPfn = PAGE_TO_PFN(ExecutePa);
         }
 
+        if (ExecuteReadPa)
+        {
+            Handler.OnExecuteRead.Page4Kb.ReadAccess = TRUE;
+            Handler.OnExecuteRead.Page4Kb.ExecuteAccess = TRUE;
+            Handler.OnExecuteRead.Page4Kb.Type = static_cast<unsigned long long>(CacheType);
+            Handler.OnExecuteRead.Page4Kb.PagePhysicalPfn = PAGE_TO_PFN(ExecuteReadPa);
+        }
+
+        if (ExecuteWritePa)
+        {
+            Handler.OnExecuteWrite.Page4Kb.ReadAccess = TRUE;
+            Handler.OnExecuteWrite.Page4Kb.WriteAccess = TRUE;
+            Handler.OnExecuteWrite.Page4Kb.ExecuteAccess = TRUE;
+            Handler.OnExecuteWrite.Page4Kb.Type = static_cast<unsigned long long>(CacheType);
+            Handler.OnExecuteWrite.Page4Kb.PagePhysicalPfn = PAGE_TO_PFN(ExecuteWritePa);
+        }
+
         if (ReadPa && (ReadPa == WritePa))
         {
             Handler.OnRead.Page4Kb.WriteAccess = TRUE;
@@ -1065,6 +1086,11 @@ namespace VMX
         {
             Handler.OnRead.Page4Kb.ExecuteAccess = TRUE;
             Handler.OnExecute.Page4Kb.ReadAccess = TRUE;
+        }
+
+        if (ExecuteReadPa && (ExecuteReadPa == ExecuteWritePa))
+        {
+            Handler.OnExecuteRead.Page4Kb.WriteAccess = TRUE;
         }
     }
 
@@ -1083,7 +1109,7 @@ namespace VMX
             const void* Rip;
             EPT_PTE* Pte;
             EPT_PTE PendingPrevEntry;
-        } m_PendingWriteHandler;
+        } m_PendingHandler;
 
         constexpr static unsigned int PageSize = 4096;
         constexpr static unsigned int LargePageSize = 2 * 1048576;
@@ -1096,7 +1122,7 @@ namespace VMX
     public:
         EptHandler(__in EPT_TABLES* Ept)
             : m_Ept(Ept)
-            , m_PendingWriteHandler({})
+            , m_PendingHandler({})
             , m_InveptDescriptor({})
         {}
 
@@ -1118,14 +1144,16 @@ namespace VMX
             unsigned long long Pa,
             unsigned long long ReadPa,
             unsigned long long WritePa,
-            unsigned long long ExecutePa
+            unsigned long long ExecutePa,
+            unsigned long long ExecuteReadPa,
+            unsigned long long ExecuteWritePa
         ) {
             unsigned long long Pa4Kb = ALIGN_DOWN_BY(Pa, PageSize);
             auto HandlerEntry = m_Handlers.find(Pa4Kb);
             if (HandlerEntry != m_Handlers.end())
             {
                 PAGE_HANDLER Handler = {};
-                BuildPageHandler(static_cast<MTRR_MEMORY_TYPE>(HandlerEntry->second.Handlers.OnRead.Page4Kb.Type), ReadPa, WritePa, ExecutePa, OUT Handler);
+                BuildPageHandler(static_cast<MTRR_MEMORY_TYPE>(HandlerEntry->second.Handlers.OnRead.Page4Kb.Type), ReadPa, WritePa, ExecutePa, ExecuteReadPa, ExecuteWritePa, OUT Handler);
                 HandlerEntry->second.Handlers = Handler;
                 *HandlerEntry->second.Pte = Handler.OnRead;
                 invept();
@@ -1160,7 +1188,7 @@ namespace VMX
             auto* Pte = &Descriptor.Layout->Pte[PteIndex];
 
             EPT_PTE_HANDLER Handler = {};
-            BuildPageHandler(static_cast<MTRR_MEMORY_TYPE>(DescriptorEntry->second.OriginalPde.Page2Mb.Type), ReadPa, WritePa, ExecutePa, OUT Handler.Handlers);
+            BuildPageHandler(static_cast<MTRR_MEMORY_TYPE>(DescriptorEntry->second.OriginalPde.Page2Mb.Type), ReadPa, WritePa, ExecutePa, ExecuteReadPa, ExecuteWritePa, OUT Handler.Handlers);
             Handler.Pte = Pte;
             m_Handlers.emplace(Pa4Kb, Handler);
 
@@ -1231,9 +1259,9 @@ namespace VMX
 
             auto* Pte = HandlerEntry.Pte;
             
-            m_PendingWriteHandler.Rip = NextInstruction;
-            m_PendingWriteHandler.Pte = Pte;
-            m_PendingWriteHandler.PendingPrevEntry = *Pte;
+            m_PendingHandler.Rip = NextInstruction;
+            m_PendingHandler.Pte = Pte;
+            m_PendingHandler.PendingPrevEntry = *Pte;
 
             *Pte = HandlerEntry.Handlers.OnWrite;
             invept();
@@ -1263,15 +1291,69 @@ namespace VMX
             return true;
         }
 
-        bool CompletePendingWrite(const void* Rip)
+        bool HandleExecuteRead(unsigned long long Pa, const void* NextInstruction)
         {
-            if (m_PendingWriteHandler.Rip != Rip)
+            unsigned long long Pa4Kb = ALIGN_DOWN_BY(Pa, PageSize);
+            auto Handler = m_Handlers.find(Pa4Kb);
+            if (Handler == m_Handlers.end())
             {
                 return false;
             }
 
-            *m_PendingWriteHandler.Pte = m_PendingWriteHandler.PendingPrevEntry;
-            m_PendingWriteHandler.Rip = NULL;
+            auto& HandlerEntry = Handler->second;
+            if (!HandlerEntry.Handlers.OnExecuteRead.Value)
+            {
+                return false;
+            }
+
+            auto* Pte = HandlerEntry.Pte;
+
+            m_PendingHandler.Rip = NextInstruction;
+            m_PendingHandler.Pte = Pte;
+            m_PendingHandler.PendingPrevEntry = *Pte;
+
+            *Pte = HandlerEntry.Handlers.OnExecuteRead;
+            invept();
+
+            return true;
+        }
+
+        bool HandleExecuteWrite(unsigned long long Pa, const void* NextInstruction)
+        {
+            unsigned long long Pa4Kb = ALIGN_DOWN_BY(Pa, PageSize);
+            auto Handler = m_Handlers.find(Pa4Kb);
+            if (Handler == m_Handlers.end())
+            {
+                return false;
+            }
+
+            auto& HandlerEntry = Handler->second;
+            if (!HandlerEntry.Handlers.OnExecuteWrite.Value)
+            {
+                return false;
+            }
+
+            auto* Pte = HandlerEntry.Pte;
+
+            m_PendingHandler.Rip = NextInstruction;
+            m_PendingHandler.Pte = Pte;
+            m_PendingHandler.PendingPrevEntry = *Pte;
+
+            *Pte = HandlerEntry.Handlers.OnExecuteWrite;
+            invept();
+
+            return true;
+        }
+
+        bool CompletePendingHandler(const void* Rip)
+        {
+            if (m_PendingHandler.Rip != Rip)
+            {
+                return false;
+            }
+
+            *m_PendingHandler.Pte = m_PendingHandler.PendingPrevEntry;
+            m_PendingHandler.Rip = NULL;
 
             invept();
 
@@ -1330,21 +1412,23 @@ namespace VMX
         unsigned long long PagePa,
         __in_opt unsigned long long OnReadPa,
         __in_opt unsigned long long OnWritePa,
-        __in_opt unsigned long long OnExecutePa
+        __in_opt unsigned long long OnExecutePa,
+        __in_opt unsigned long long OnExecuteReadPa,
+        __in_opt unsigned long long OnExecuteWritePa
     ) {
         struct INTERCEPT_INFO
         {
             unsigned long long Pa;
-            unsigned long long R, W, X;
+            unsigned long long R, W, X, RX, WX;
         };
 
-        INTERCEPT_INFO Info = { PagePa, OnReadPa, OnWritePa, OnExecutePa };
+        INTERCEPT_INFO Info = { PagePa, OnReadPa, OnWritePa, OnExecutePa, OnExecuteReadPa, OnExecuteWritePa };
         Callable::DpcOnEachCpu([](void* Arg)
         {
             VMCALLS::VmmCall([](void* Arg) -> unsigned long long
             {
                 auto* Info = reinterpret_cast<INTERCEPT_INFO*>(Arg);
-                g_Shared.Processors[KeGetCurrentProcessorNumber()].VmData->EptInterceptor->InterceptPage(Info->Pa, Info->R, Info->W, Info->X);
+                g_Shared.Processors[KeGetCurrentProcessorNumber()].VmData->EptInterceptor->InterceptPage(Info->Pa, Info->R, Info->W, Info->X, Info->RX, Info->WX);
                 return 0;
             }, Arg);
         }, &Info);
@@ -1906,11 +1990,11 @@ namespace VMX
 
     namespace VmexitHandlers
     {
-        using FnVmexitHandler = VMM_STATUS(*)(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction);
+        using FnVmexitHandler = VMM_STATUS(*)(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction);
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS EmptyHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS EmptyHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
             UNREFERENCED_PARAMETER(Context);
@@ -1924,7 +2008,7 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS CpuidHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS CpuidHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(RepeatInstruction);
 
@@ -2005,7 +2089,7 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS InvdHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS InvdHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
             UNREFERENCED_PARAMETER(Context);
@@ -2019,7 +2103,7 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS WbinvdHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS WbinvdHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
             UNREFERENCED_PARAMETER(Context);
@@ -2033,7 +2117,7 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS XsetbvHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out bool& RepeatInstruction)
+        static VMM_STATUS XsetbvHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
             UNREFERENCED_PARAMETER(Rip);
@@ -2045,12 +2129,14 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS EptViolationHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS EptViolationHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Context);
+            UNREFERENCED_PARAMETER(RepeatInstruction);
 
             VMX::EXIT_QUALIFICATION Info = { vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION) };
             unsigned long long AccessedPa = vmread(VMX::VMCS_FIELD_GUEST_PHYSICAL_ADDRESS_FULL);
+            unsigned long long AccessedVa = vmread(VMX::VMCS_FIELD_GUEST_LINEAR_ADDRESS);
 
             if (!(Info.EptViolations.GuestPhysicalReadable || Info.EptViolations.GuestPhysicalExecutable))
             {
@@ -2060,16 +2146,39 @@ namespace VMX
             }
 
             bool Handled = false;
+            bool InterceptedPageSelfAccess = ALIGN_DOWN_BY(AccessedVa, PAGE_SIZE) == ALIGN_DOWN_BY(Rip, PAGE_SIZE);
 
             if (Info.EptViolations.AccessedRead)
             {
-                Handled = Private->EptInterceptor->HandleRead(AccessedPa);
+                if (InterceptedPageSelfAccess)
+                {
+                    unsigned long long InstructionLength = vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_LENGTH);
+                    Handled = Private->EptInterceptor->HandleExecuteRead(AccessedPa, reinterpret_cast<void*>(Rip + InstructionLength));
+                    if (Handled)
+                    {
+                        // Perform a single step:
+                        EnableMonitorTrapFlag();
+                        DisableGuestInterrupts();
+                    }
+                }
+                else
+                {
+                    Handled = Private->EptInterceptor->HandleRead(AccessedPa);
+                }
             }
             else if (Info.EptViolations.AccessedWrite)
             {
                 unsigned long long InstructionLength = vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_LENGTH);
 
-                Handled = Private->EptInterceptor->HandleWrite(AccessedPa, reinterpret_cast<void*>(Rip + InstructionLength));
+                if (InterceptedPageSelfAccess)
+                {
+                    Handled = Private->EptInterceptor->HandleExecuteWrite(AccessedPa, reinterpret_cast<void*>(Rip + InstructionLength));
+                }
+                else
+                {
+                    Handled = Private->EptInterceptor->HandleWrite(AccessedPa, reinterpret_cast<void*>(Rip + InstructionLength));
+                }
+
                 if (Handled)
                 {
                     // Perform a single step:
@@ -2096,7 +2205,7 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS EptMisconfigurationHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS EptMisconfigurationHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Context);
             UNREFERENCED_PARAMETER(Rip);
@@ -2116,11 +2225,11 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS MonitorTrapFlagHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS MonitorTrapFlagHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Context);
-            
-            Private->EptInterceptor->CompletePendingWrite(reinterpret_cast<void*>(Rip));
+
+            Private->EptInterceptor->CompletePendingHandler(reinterpret_cast<void*>(Rip));
             DisableMonitorTrapFlag();
             EnableGuestInterrupts();
             RepeatInstruction = true;
@@ -2129,7 +2238,7 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS ExceptionOrNmiHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS ExceptionOrNmiHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
             UNREFERENCED_PARAMETER(Context);
@@ -2141,7 +2250,7 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS VmcallHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS VmcallHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
             UNREFERENCED_PARAMETER(Rip);
@@ -2213,7 +2322,7 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS RdtscHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS RdtscHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
             UNREFERENCED_PARAMETER(Rip);
@@ -2227,7 +2336,7 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS RdtscpHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS RdtscpHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
             UNREFERENCED_PARAMETER(Rip);
@@ -2243,7 +2352,7 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS RdmsrHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS RdmsrHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
             UNREFERENCED_PARAMETER(Rip);
@@ -2269,7 +2378,7 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS WrmsrHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS WrmsrHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
             UNREFERENCED_PARAMETER(Rip);
@@ -2287,7 +2396,7 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS InvpcidHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS InvpcidHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
             UNREFERENCED_PARAMETER(Rip);
@@ -2331,7 +2440,7 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS VmxRelatedHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __out_opt bool& RepeatInstruction)
+        static VMM_STATUS VmxRelatedHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
             UNREFERENCED_PARAMETER(Context);
@@ -2392,7 +2501,7 @@ namespace VMX
     }
 
     _IRQL_requires_same_
-    extern "C" VMM_STATUS VmxVmexitHandler(PRIVATE_VM_DATA* Private, GUEST_CONTEXT* Context)
+    extern "C" VMM_STATUS VmxVmexitHandler(PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context)
     {
         KIRQL Irql = KeGetCurrentIrql();
         if (Irql < DISPATCH_LEVEL)
@@ -2577,15 +2686,21 @@ namespace Hypervisor
 #endif
     }
 
-    bool InterceptPage(unsigned long long Pa, unsigned long long ReadPa, unsigned long long WritePa, unsigned long long ExecutePa)
-    {
+    bool InterceptPage(
+        unsigned long long Pa,
+        unsigned long long ReadPa,
+        unsigned long long WritePa,
+        unsigned long long ExecutePa,
+        unsigned long long ExecuteReadPa,
+        unsigned long long ExecuteWritePa
+    ) {
 #ifdef _AMD64_
         CPU_VENDOR CpuVendor = GetCpuVendor();
         switch (CpuVendor)
         {
         case CPU_VENDOR::cpuIntel:
         {
-            return VMX::InterceptPage(Pa, ReadPa, WritePa, ExecutePa);
+            return VMX::InterceptPage(Pa, ReadPa, WritePa, ExecutePa, ExecuteReadPa, ExecuteWritePa);
         }
         default:
         {
@@ -2594,7 +2709,8 @@ namespace Hypervisor
         }
         }
 #else
-        Pa; ReadPa; WritePa; ExecutePa;
+        // Unreferenced parameters:
+        Pa; ReadPa; WritePa; ExecutePa; ExecuteReadPa; ExecuteWritePa;
         return false;
 #endif
     }

@@ -2,7 +2,8 @@
 
 constexpr int KB_API_VERSION = 8;
 
-namespace Ctls {
+namespace Ctls
+{
     enum KbCtlIndices {
         // Driver management:
         /* 00 */ KbGetDriverApiVersion,
@@ -632,6 +633,8 @@ DECLARE_STRUCT(KB_VMM_INTERCEPT_PAGE_IN, {
     IN OPTIONAL WdkTypes::PVOID64 OnReadPhysicalAddress;
     IN OPTIONAL WdkTypes::PVOID64 OnWritePhysicalAddress;
     IN OPTIONAL WdkTypes::PVOID64 OnExecutePhysicalAddress;
+    IN OPTIONAL WdkTypes::PVOID64 OnExecuteReadPhysicalAddress;
+    IN OPTIONAL WdkTypes::PVOID64 OnExecuteWritePhysicalAddress;
 });
 
 DECLARE_STRUCT(KB_VMM_DEINTERCEPT_PAGE_IN, {
