@@ -93,6 +93,67 @@ namespace Supplementation
     {
         PhysicalMemory::FreePhysicalMemory(Memory);
     }
+
+    namespace FastPhys
+    {
+        // As is from ntoskrnl.exe disassembly (VirtualAddress may be unaligned):
+        inline static unsigned long long MiGetPteAddress(unsigned long long VirtualAddress)
+        {
+            return 0xFFFFF680'00000000ull + ((VirtualAddress >> 9ull) & 0x7FFFFFFFF8ull);
+        }
+
+        // To fixup differences between different kernels:
+        static const unsigned long long g_PteCorrective = []() -> unsigned long long
+        {
+            unsigned long long TestVa = reinterpret_cast<unsigned long long>(&g_PteCorrective);
+
+            /* Manual traversal to obtain a valid PTE pointer in system memory */
+
+            VIRTUAL_ADDRESS Va = { TestVa };
+
+            auto Pml4ePhys = PFN_TO_PAGE(CR3{ __readcr3() }.x64.Bitmap.PML4) + Va.x64.NonPageSize.Generic.PageMapLevel4Offset * sizeof(PML4E);
+            const PML4E* Pml4e = reinterpret_cast<const PML4E*>(MmGetVirtualForPhysical(PHYSICAL_ADDRESS{ .QuadPart = static_cast<long long>(Pml4ePhys) }));
+
+            auto PdpePhys = PFN_TO_PAGE(Pml4e->x64.Generic.PDP) + Va.x64.NonPageSize.Generic.PageDirectoryPointerOffset * sizeof(PDPE);
+            const PDPE* Pdpe = reinterpret_cast<const PDPE*>(MmGetVirtualForPhysical(PHYSICAL_ADDRESS{ .QuadPart = static_cast<long long>(PdpePhys) }));
+
+            auto PdePhys = PFN_TO_PAGE(Pdpe->x64.NonPageSize.Generic.PD) + Va.x64.NonPageSize.Generic.PageDirectoryOffset * sizeof(PDE);
+            const PDE* Pde = reinterpret_cast<const PDE*>(MmGetVirtualForPhysical(PHYSICAL_ADDRESS{ .QuadPart = static_cast<long long>(PdePhys) }));
+
+            auto PtePhys = PFN_TO_PAGE(Pde->x64.Page4Kb.PT) + Va.x64.NonPageSize.Page4Kb.PageTableOffset * sizeof(PTE);
+            const PTE* Pte = reinterpret_cast<const PTE*>(MmGetVirtualForPhysical(PHYSICAL_ADDRESS{ .QuadPart = static_cast<long long>(PtePhys) }));
+
+            /* Then get a PTE pointer by MiGetPteAddress and calculate a difference */
+
+            unsigned long long PteByMi = MiGetPteAddress(TestVa & 0xFFFFFFFFFFFFF000ull);
+
+            return reinterpret_cast<unsigned long long>(Pte) - PteByMi;
+        }();
+
+        inline unsigned long long GetPhysAddressFast4KbUnsafe(unsigned long long Va)
+        {
+            return PFN_TO_PAGE(reinterpret_cast<const PTE*>(MiGetPteAddress(Va) + g_PteCorrective)->x64.Page4Kb.PhysicalPageFrameNumber) + (Va & 0xFFF);
+        }
+
+        unsigned long long GetPhysAddressFast4Kb(unsigned long long Cr3, unsigned long long VirtualAddress)
+        {
+            VIRTUAL_ADDRESS Va = { VirtualAddress };
+
+            auto Pml4ePhys = PFN_TO_PAGE(CR3{ Cr3 }.x64.Bitmap.PML4) + Va.x64.NonPageSize.Generic.PageMapLevel4Offset * sizeof(PML4E);
+            const PML4E* Pml4e = reinterpret_cast<const PML4E*>(MmGetVirtualForPhysical(PHYSICAL_ADDRESS{ .QuadPart = static_cast<long long>(Pml4ePhys) }));
+
+            auto PdpePhys = PFN_TO_PAGE(Pml4e->x64.Generic.PDP) + Va.x64.NonPageSize.Generic.PageDirectoryPointerOffset * sizeof(PDPE);
+            const PDPE* Pdpe = reinterpret_cast<const PDPE*>(MmGetVirtualForPhysical(PHYSICAL_ADDRESS{ .QuadPart = static_cast<long long>(PdpePhys) }));
+
+            auto PdePhys = PFN_TO_PAGE(Pdpe->x64.NonPageSize.Generic.PD) + Va.x64.NonPageSize.Generic.PageDirectoryOffset * sizeof(PDE);
+            const PDE* Pde = reinterpret_cast<const PDE*>(MmGetVirtualForPhysical(PHYSICAL_ADDRESS{ .QuadPart = static_cast<long long>(PdePhys) }));
+
+            auto PtePhys = PFN_TO_PAGE(Pde->x64.Page4Kb.PT) + Va.x64.NonPageSize.Page4Kb.PageTableOffset * sizeof(PTE);
+            const PTE* Pte = reinterpret_cast<const PTE*>(MmGetVirtualForPhysical(PHYSICAL_ADDRESS{ .QuadPart = static_cast<long long>(PtePhys) }));
+
+            return PFN_TO_PAGE(Pte->x64.Page4Kb.PhysicalPageFrameNumber) + Va.x64.NonPageSize.Page4Kb.PageOffset;
+        }
+    }
 }
 
 namespace VMX
@@ -586,7 +647,7 @@ namespace VMX
         // For the first 1 megabyte of the physical address space:
         union
         {
-            MTRR_FIXED_GENERIC Generic[10];
+            MTRR_FIXED_GENERIC Generic[11];
             struct {
                 // 512-Kbyte range:
                 IA32_MTRR_FIX64K RangeFrom00000To7FFFF;
@@ -805,11 +866,14 @@ namespace VMX
                 if (AreRangesIntersects(PhysRange, FixedRanges[i]))
                 {
                     MTRR_MEMORY_TYPE FixedMemType = CalcMemoryTypeByFixedMtrr(MtrrFixedGeneric, FixedRanges[i], PhysRange);
-                    if (FixedMemType == MTRR_MEMORY_TYPE::Uncacheable) return MemType;
+                    if (FixedMemType == MTRR_MEMORY_TYPE::Uncacheable) return FixedMemType;
                     if (IsMemTypeInitialized)
                     {
                         bool IsMixed = MixMtrrTypes(MemType, FixedMemType, OUT MemType);
-                        if (!IsMixed) return MTRR_MEMORY_TYPE::Uncacheable;
+                        if (!IsMixed)
+                        {
+                            return MTRR_MEMORY_TYPE::Uncacheable;
+                        }
                     }
                     else
                     {
@@ -890,6 +954,7 @@ namespace VMX
         DECLSPEC_ALIGN(PAGE_SIZE) EPT_PML4E Pml4e;
         DECLSPEC_ALIGN(PAGE_SIZE) EPT_PDPTE Pdpte[512];
         DECLSPEC_ALIGN(PAGE_SIZE) EPT_PDE Pde[512][512];
+        DECLSPEC_ALIGN(PAGE_SIZE) EPT_PTE PteForFirstLargePage[2 * 1048576 / 4096];
     };
 
     struct EPT_ENTRIES
@@ -927,15 +992,12 @@ namespace VMX
         PAGE_HANDLER Handlers;
     };
 
-    static void InitializeEptTables(__out EPT_TABLES* Ept, __out EPTP* Eptp)
+    static void InitializeEptTables(__in const MTRR_INFO* MtrrInfo, __out EPT_TABLES* Ept, __out EPTP* Eptp)
     {
         using namespace PhysicalMemory;
 
         memset(Ept, 0, sizeof(EPT_TABLES));
         memset(Eptp, 0, sizeof(EPTP));
-
-        MTRR_INFO MtrrInfo = {};
-        InitMtrr(&MtrrInfo);
 
         PVOID64 Pml4ePhys = GetPhysicalAddress(&Ept->Pml4e);
         Eptp->Bitmap.EptMemoryType = static_cast<unsigned char>(MTRR_MEMORY_TYPE::WriteBack);
@@ -959,21 +1021,47 @@ namespace VMX
 
             for (unsigned int j = 0; j < _ARRAYSIZE(Ept->Pde[i]); ++j)
             {
-                unsigned long long PagePfn = i * _ARRAYSIZE(Ept->Pde[i]) + j;
-                constexpr unsigned long long PageSize = 2 * 1048576; // 2 Mb
-
-                MTRR_MEMORY_TYPE MemType = MTRR_MEMORY_TYPE::Uncacheable;
-                if (MtrrInfo.IsSupported)
+                if (i == 0 && j == 0)
                 {
-                    MemType = GetMtrrMemoryType(&MtrrInfo, PFN_TO_LARGE_PAGE(PagePfn), PageSize);
-                }
+                    PVOID64 PtePhys = GetPhysicalAddress(Ept->PteForFirstLargePage);
+                    Ept->Pde[i][j].Page4Kb.ReadAccess = TRUE;
+                    Ept->Pde[i][j].Page4Kb.WriteAccess = TRUE;
+                    Ept->Pde[i][j].Page4Kb.ExecuteAccess = TRUE;
+                    Ept->Pde[i][j].Page4Kb.EptPtePhysicalPfn = PAGE_TO_PFN(reinterpret_cast<UINT64>(PtePhys));
 
-                Ept->Pde[i][j].Page2Mb.ReadAccess = TRUE;
-                Ept->Pde[i][j].Page2Mb.WriteAccess = TRUE;
-                Ept->Pde[i][j].Page2Mb.ExecuteAccess = TRUE;
-                Ept->Pde[i][j].Page2Mb.Type = static_cast<unsigned char>(MemType);
-                Ept->Pde[i][j].Page2Mb.LargePage = TRUE;
-                Ept->Pde[i][j].Page2Mb.PagePhysicalPfn = PagePfn;
+                    for (unsigned int k = 0; k < _ARRAYSIZE(Ept->PteForFirstLargePage); ++k)
+                    {
+                        MTRR_MEMORY_TYPE MemType = MTRR_MEMORY_TYPE::Uncacheable;
+                        if (MtrrInfo->IsSupported)
+                        {
+                            MemType = GetMtrrMemoryType(MtrrInfo, PFN_TO_PAGE(static_cast<unsigned long long>(k)), PAGE_SIZE);
+                        }
+
+                        Ept->PteForFirstLargePage[k].Page4Kb.ReadAccess = TRUE;
+                        Ept->PteForFirstLargePage[k].Page4Kb.WriteAccess = TRUE;
+                        Ept->PteForFirstLargePage[k].Page4Kb.ExecuteAccess = TRUE;
+                        Ept->PteForFirstLargePage[k].Page4Kb.Type = static_cast<unsigned char>(MemType);
+                        Ept->PteForFirstLargePage[k].Page4Kb.PagePhysicalPfn = k;
+                    }
+                }
+                else
+                {
+                    unsigned long long PagePfn = i * _ARRAYSIZE(Ept->Pde[i]) + j;
+                    constexpr unsigned long long LargePageSize = 2 * 1048576; // 2 Mb
+
+                    MTRR_MEMORY_TYPE MemType = MTRR_MEMORY_TYPE::Uncacheable;
+                    if (MtrrInfo->IsSupported)
+                    {
+                        MemType = GetMtrrMemoryType(MtrrInfo, PFN_TO_LARGE_PAGE(PagePfn), LargePageSize);
+                    }
+
+                    Ept->Pde[i][j].Page2Mb.ReadAccess = TRUE;
+                    Ept->Pde[i][j].Page2Mb.WriteAccess = TRUE;
+                    Ept->Pde[i][j].Page2Mb.ExecuteAccess = TRUE;
+                    Ept->Pde[i][j].Page2Mb.Type = static_cast<unsigned char>(MemType);
+                    Ept->Pde[i][j].Page2Mb.LargePage = TRUE;
+                    Ept->Pde[i][j].Page2Mb.PagePhysicalPfn = PagePfn;
+                }
             }
         }
     }
@@ -1394,6 +1482,7 @@ namespace VMX
     struct VCPU_INFO
     {
         PRIVATE_VM_DATA* VmData;
+        MTRR_INFO* MtrrInfo;
         VMX::VM_INSTRUCTION_ERROR Error;
         bool Status;
     };
@@ -1806,7 +1895,7 @@ namespace VMX
         __vmx_vmwrite(VMX::VMCS_FIELD_HOST_IDTR_BASE, Idtr.BaseAddress);
 
         EPTP Eptp = {};
-        InitializeEptTables(OUT &Private->Ept, OUT &Eptp);
+        InitializeEptTables(IN Shared->Processors[CurrentProcessor].MtrrInfo, OUT &Private->Ept, OUT &Eptp);
         __vmx_vmwrite(VMX::VMCS_FIELD_EPT_POINTER_FULL, Eptp.Value);
         Private->EptInterceptor->CompleteInitialization(Eptp);
 
@@ -2136,7 +2225,6 @@ namespace VMX
 
             VMX::EXIT_QUALIFICATION Info = { vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION) };
             unsigned long long AccessedPa = vmread(VMX::VMCS_FIELD_GUEST_PHYSICAL_ADDRESS_FULL);
-            unsigned long long AccessedVa = vmread(VMX::VMCS_FIELD_GUEST_LINEAR_ADDRESS);
 
             if (!(Info.EptViolations.GuestPhysicalReadable || Info.EptViolations.GuestPhysicalExecutable))
             {
@@ -2146,11 +2234,16 @@ namespace VMX
             }
 
             bool Handled = false;
-            bool InterceptedPageSelfAccess = ALIGN_DOWN_BY(AccessedVa, PAGE_SIZE) == ALIGN_DOWN_BY(Rip, PAGE_SIZE);
-
+            
             if (Info.EptViolations.AccessedRead)
             {
-                if (InterceptedPageSelfAccess)
+                unsigned long long HostCr3 = __readcr3();
+                unsigned long long GuestCr3 = vmread(VMX::VMCS_FIELD_GUEST_CR3);
+                __writecr3(GuestCr3);
+                unsigned long long RipPa = Supplementation::FastPhys::GetPhysAddressFast4KbUnsafe(Rip);
+                __writecr3(HostCr3);
+
+                if (ALIGN_DOWN_BY(AccessedPa, PAGE_SIZE) == ALIGN_DOWN_BY(RipPa, PAGE_SIZE))
                 {
                     unsigned long long InstructionLength = vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_LENGTH);
                     Handled = Private->EptInterceptor->HandleExecuteRead(AccessedPa, reinterpret_cast<void*>(Rip + InstructionLength));
@@ -2170,7 +2263,13 @@ namespace VMX
             {
                 unsigned long long InstructionLength = vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_LENGTH);
 
-                if (InterceptedPageSelfAccess)
+                unsigned long long HostCr3 = __readcr3();
+                unsigned long long GuestCr3 = vmread(VMX::VMCS_FIELD_GUEST_CR3);
+                __writecr3(GuestCr3);
+                unsigned long long RipPa = Supplementation::FastPhys::GetPhysAddressFast4KbUnsafe(Rip);
+                __writecr3(HostCr3);
+
+                if (ALIGN_DOWN_BY(AccessedPa, PAGE_SIZE) == ALIGN_DOWN_BY(RipPa, PAGE_SIZE))
                 {
                     Handled = Private->EptInterceptor->HandleExecuteWrite(AccessedPa, reinterpret_cast<void*>(Rip + InstructionLength));
                 }
@@ -2501,13 +2600,10 @@ namespace VMX
     }
 
     _IRQL_requires_same_
+    _IRQL_requires_min_(HIGH_LEVEL)
     extern "C" VMM_STATUS VmxVmexitHandler(PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context)
     {
-        KIRQL Irql = KeGetCurrentIrql();
-        if (Irql < DISPATCH_LEVEL)
-        {
-            Irql = KeRaiseIrqlToDpcLevel();
-        }
+        /* Interrupts are locked */
 
         unsigned long long Rip = vmread(VMX::VMCS_FIELD_GUEST_RIP);
 
@@ -2525,12 +2621,92 @@ namespace VMX
             __vmx_vmwrite(VMX::VMCS_FIELD_GUEST_RIP, Rip);
         }
 
-        if (Irql < DISPATCH_LEVEL)
+        return Status;
+    }
+
+    static void DbgPrintMtrrEptCacheLayout(__in const EPT_TABLES* Ept, __in const MTRR_INFO* MtrrInfo)
+    {
+        auto MemTypeToStr = [](MTRR_MEMORY_TYPE MemType) -> const char*
         {
-            KeLowerIrql(Irql);
+            switch (MemType)
+            {
+            case MTRR_MEMORY_TYPE::Uncacheable: return "Uncacheable (0)";
+            case MTRR_MEMORY_TYPE::WriteCombining: return "WriteCombining (1)";
+            case MTRR_MEMORY_TYPE::WriteThrough: return "WriteThrough (4)";
+            case MTRR_MEMORY_TYPE::WriteProtected: return "WriteProtected (5)";
+            case MTRR_MEMORY_TYPE::WriteBack: return "WriteBack (6)";
+            default:
+                return "Unknown";
+            }
+        };
+
+        MTRR_MEMORY_TYPE CurrentRangeType = MTRR_MEMORY_TYPE::Uncacheable;
+        unsigned long long RangeBeginning = 0;
+        for (unsigned int i = 0; i < _ARRAYSIZE(Ept->Pdpte); ++i)
+        {
+            for (unsigned int j = 0; j < _ARRAYSIZE(Ept->Pde[i]); ++j)
+            {
+                if (i == 0 && j == 0)
+                {
+                    for (unsigned int k = 0; k < _ARRAYSIZE(Ept->PteForFirstLargePage); ++k)
+                    {
+                        auto Page = Ept->PteForFirstLargePage[k].Page4Kb;
+                        MTRR_MEMORY_TYPE MemType = static_cast<MTRR_MEMORY_TYPE>(Page.Type);
+                        unsigned long long PagePa = Page.PagePhysicalPfn * PAGE_SIZE;
+                        if (MemType != CurrentRangeType)
+                        {
+                            if ((PagePa - RangeBeginning) > 0)
+                            {
+                                DbgPrint("Physical range [%p..%p]: %s\r\n", reinterpret_cast<void*>(RangeBeginning), reinterpret_cast<void*>(PagePa - 1), MemTypeToStr(CurrentRangeType));
+                            }
+                            CurrentRangeType = MemType;
+                            RangeBeginning = PagePa;
+                        }
+                    }
+                }
+                else
+                {
+                    constexpr unsigned long long PageSize = 2 * 1048576; // 2 Mb
+
+                    auto Page = Ept->Pde[i][j].Page2Mb;
+                    MTRR_MEMORY_TYPE MemType = static_cast<MTRR_MEMORY_TYPE>(Page.Type);
+                    unsigned long long PagePa = Page.PagePhysicalPfn * PageSize;
+                    if (MemType != CurrentRangeType)
+                    {
+                        if ((PagePa - RangeBeginning) > 0)
+                        {
+                            DbgPrint("Physical range [%p..%p]: %s\r\n", reinterpret_cast<void*>(RangeBeginning), reinterpret_cast<void*>(PagePa - 1), MemTypeToStr(CurrentRangeType));
+                        }
+                        CurrentRangeType = MemType;
+                        RangeBeginning = PagePa;
+                    }
+                }
+            }
         }
 
-        return Status;
+        DbgPrint("%p..%p: %s\r\n", reinterpret_cast<void*>(RangeBeginning), reinterpret_cast<void*>(512ull * 1024ull * 1048576ull - 1ull), MemTypeToStr(CurrentRangeType));
+
+        DbgPrint("EptVpidCap      : 0x%I64X\r\n", MtrrInfo->EptVpidCap.Value);
+        DbgPrint("MaxPhysAddrBits : 0x%I64X\r\n", MtrrInfo->MaxPhysAddrBits);
+        DbgPrint("MtrrCap         : 0x%I64X\r\n", MtrrInfo->MtrrCap.Value);
+        DbgPrint("MtrrDefType     : 0x%I64X\r\n", MtrrInfo->MtrrDefType.Value);
+        DbgPrint("PhysAddrMask    : 0x%I64X\r\n", MtrrInfo->PhysAddrMask);
+        DbgPrint("MTRR.Fixed [00000..7FFFF]: 0x%I64X\r\n", MtrrInfo->Fixed.Ranges.RangeFrom00000To7FFFF.Value);
+        DbgPrint("MTRR.Fixed [80000..9FFFF]: 0x%I64X\r\n", MtrrInfo->Fixed.Ranges.RangeFrom80000To9FFFF.Value);
+        DbgPrint("MTRR.Fixed [A0000..BFFFF]: 0x%I64X\r\n", MtrrInfo->Fixed.Ranges.RangeFromA0000ToBFFFF.Value);
+        DbgPrint("MTRR.Fixed [C0000..C7FFF]: 0x%I64X\r\n", MtrrInfo->Fixed.Ranges.RangeFromC0000ToC7FFF.Value);
+        DbgPrint("MTRR.Fixed [C8000..CFFFF]: 0x%I64X\r\n", MtrrInfo->Fixed.Ranges.RangeFromC8000ToCFFFF.Value);
+        DbgPrint("MTRR.Fixed [D0000..D7FFF]: 0x%I64X\r\n", MtrrInfo->Fixed.Ranges.RangeFromD0000ToD7FFF.Value);
+        DbgPrint("MTRR.Fixed [D8000..DFFFF]: 0x%I64X\r\n", MtrrInfo->Fixed.Ranges.RangeFromD8000ToDFFFF.Value);
+        DbgPrint("MTRR.Fixed [E0000..E7FFF]: 0x%I64X\r\n", MtrrInfo->Fixed.Ranges.RangeFromE0000ToE7FFF.Value);
+        DbgPrint("MTRR.Fixed [E8000..EFFFF]: 0x%I64X\r\n", MtrrInfo->Fixed.Ranges.RangeFromE8000ToEFFFF.Value);
+        DbgPrint("MTRR.Fixed [F0000..F7FFF]: 0x%I64X\r\n", MtrrInfo->Fixed.Ranges.RangeFromF0000ToF7FFF.Value);
+        DbgPrint("MTRR.Fixed [F8000..FFFFF]: 0x%I64X\r\n", MtrrInfo->Fixed.Ranges.RangeFromF8000ToFFFFF.Value);
+
+        for (unsigned int i = 0; i < _ARRAYSIZE(MtrrInfo->Variable); ++i)
+        {
+            DbgPrint("MTRR.Variable[%u]: Base: 0x%I64X, Mask: 0x%I64X\r\n", i, MtrrInfo->Variable[i].PhysBase.Value, MtrrInfo->Variable[i].PhysMask.Value);
+        }
     }
 
     static bool VirtualizeAllProcessors()
@@ -2549,6 +2725,11 @@ namespace VMX
             CPUID::Intel::VIRTUAL_AND_PHYSICAL_ADDRESS_SIZES MaxAddrSizes = {};
             __cpuid(MaxAddrSizes.Regs.Raw, CPUID::Intel::CPUID_VIRTUAL_AND_PHYSICAL_ADDRESS_SIZES);
 
+            // Initializing MTRRs shared between all processors:
+            MTRR_INFO MtrrInfo;
+            memset(&MtrrInfo, 0, sizeof(MtrrInfo));
+            InitMtrr(&MtrrInfo);
+
             ULONG ProcessorsCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
             Shared->Processors = VirtualMemory::AllocArray<VCPU_INFO>(ProcessorsCount);
             for (ULONG i = 0; i < ProcessorsCount; ++i)
@@ -2566,6 +2747,7 @@ namespace VMX
                     }
                     return false;
                 }
+                Proc->MtrrInfo = &MtrrInfo;
                 Proc->VmData->EptInterceptor = new EptHandler(&Proc->VmData->Ept);
             }
 
@@ -2588,7 +2770,11 @@ namespace VMX
                 }
             }
 
-            if (!Status)
+            if (Status)
+            {
+                DbgPrintMtrrEptCacheLayout(&Shared->Processors[0].VmData->Ept, Shared->Processors[0].MtrrInfo);
+            }
+            else
             {
                 DevirtualizeAllProcessors();
                 VirtualMemory::FreePoolMemory(Shared->Processors);

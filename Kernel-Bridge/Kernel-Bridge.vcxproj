@@ -37,6 +37,7 @@
     <ClCompile Include="API\PteUtils.cpp" />
     <ClCompile Include="API\SectionsUtils.cpp" />
     <ClCompile Include="API\Signatures.cpp" />
+    <ClCompile Include="API\Stopwatch.cpp" />
     <ClCompile Include="Kernel-Bridge\DriverEvents.cpp" />
     <ClCompile Include="Kernel-Bridge\FilterCallbacks.cpp" />
     <ClCompile Include="Kernel-Bridge\IOCTLHandlers.cpp" />
@@ -283,6 +284,7 @@
     <ClInclude Include="API\RAII.h" />
     <ClInclude Include="API\SectionsUtils.h" />
     <ClInclude Include="API\Signatures.h" />
+    <ClInclude Include="API\Stopwatch.h" />
     <ClInclude Include="API\StringsAPI.h" />
     <ClInclude Include="Kernel-Bridge\DriverEvents.h" />
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h" />

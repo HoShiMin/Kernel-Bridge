@@ -1,6 +1,7 @@
 #pragma once
 
-namespace Pte {
+namespace Pte
+{
     struct PAGE_TABLES_INFO {
         PML4E* Pml4e;
         PDPE* Pdpe;

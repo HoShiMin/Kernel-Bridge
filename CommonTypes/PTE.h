@@ -197,7 +197,7 @@ union PDPE {
             unsigned long long PCD : 1; // Page-Level Cache Disable
             unsigned long long A : 1; // Accessed
             unsigned long long Reserved0 : 1;
-            unsigned long long PS : 1; // PageSize == 0
+            unsigned long long PS : 1; // PageSize
             unsigned long long Reserved1 : 1;
             unsigned long long AVL : 3; // Available to software
             unsigned long long Reserved3 : 51;
@@ -299,7 +299,7 @@ union PDE {
                 unsigned long long PCD : 1; // Page-Level Cache Disable
                 unsigned long long A : 1; // Accessed
                 unsigned long long Reserved0 : 1;
-                unsigned long long PS : 1; // PageSize == 0
+                unsigned long long PS : 1; // PageSize
                 unsigned long long Reserved1 : 1;
                 unsigned long long AVL : 3; // Available to software
                 unsigned long long Reserved2 : 51;
@@ -349,7 +349,7 @@ union PDE {
             unsigned long long PCD : 1; // Page-Level Cache Disable
             unsigned long long A : 1; // Accessed
             unsigned long long Reserved0 : 1;
-            unsigned long long PS : 1; // PageSize == 0
+            unsigned long long PS : 1; // PageSize
             unsigned long long Reserved1 : 1;
             unsigned long long AVL : 3; // Available to software
             unsigned long long Reserved2 : 51;

@@ -16,7 +16,8 @@ namespace Pte {
 #endif
 
     _IRQL_requires_max_(APC_LEVEL)
-    BOOLEAN GetPageTables(PVOID Address, OUT PAGE_TABLES_INFO* Info) {
+    BOOLEAN GetPageTables(PVOID Address, OUT PAGE_TABLES_INFO* Info)
+    {
         if (!Info) return FALSE;
         *Info = {};
 
@@ -40,20 +41,24 @@ namespace Pte {
         PVOID64 PdpePhys = reinterpret_cast<PVOID64>(PFN_TO_PAGE(Info->Pml4e->x64.Generic.PDP) + Va.x64.Generic.PageDirectoryPointerOffset * sizeof(PDPE::x64));
         Info->Pdpe = reinterpret_cast<PDPE*>(GetVirtualForPhysical(PdpePhys));
         if (!Info->Pdpe) return FALSE;
-        if (Info->Pdpe->x64.Generic.PS) {
+        if (Info->Pdpe->x64.Generic.PS)
+        {
             // Page size = 1 Gb:
             if (!Info->Pdpe->x64.PageSize.Page1Gb.P) return FALSE;
             Info->Type = PAGE_TABLES_INFO::pt64Page1Gb;
         }
-        else {
+        else
+        {
             PVOID64 PdePhys = reinterpret_cast<PVOID64>(PFN_TO_PAGE(Info->Pdpe->x64.NonPageSize.Generic.PD) + Va.x64.NonPageSize.Generic.PageDirectoryOffset * sizeof(PDE::x64));
             Info->Pde = reinterpret_cast<PDE*>(GetVirtualForPhysical(PdePhys));
             if (!Info->Pde) return FALSE;
-            if (Info->Pde->x64.Generic.PS) {
+            if (Info->Pde->x64.Generic.PS)
+            {
                 // Page size = 2 Mb:
                 Info->Type = PAGE_TABLES_INFO::pt64Page2Mb;
             }
-            else {
+            else
+            {
                 // Page size = 4 Kb:
                 Info->Type = PAGE_TABLES_INFO::pt64Page4Kb;
 
@@ -63,7 +68,8 @@ namespace Pte {
             }
         }
 #else
-        if (Cr4.x32.Bitmap.PAE) {
+        if (Cr4.x32.Bitmap.PAE)
+        {
             PVOID64 PdpePhys = reinterpret_cast<PVOID64>(PFN_TO_PDP_PAE(Cr3.x32.Pae.PDP) + Va.x32.Pae.Generic.PageDirectoryPointerOffset * sizeof(PDPE::x32));
             Info->Pdpe = reinterpret_cast<PDPE*>(GetVirtualForPhysical(PdpePhys));
             if (!Info->Pdpe) return FALSE;
@@ -72,11 +78,13 @@ namespace Pte {
             PVOID64 PdePhys = reinterpret_cast<PVOID64>(PFN_TO_PAGE(Info->Pdpe->x32.Pae.Generic.PD) + Va.x32.Pae.Generic.PageDirectoryOffset * sizeof(PDE::x32));
             Info->Pde = reinterpret_cast<PDE*>(GetVirtualForPhysical(PdePhys));
             if (!Info->Pde) return FALSE;
-            if (!Info->Pde->x32.Pae.Generic.PS) {
+            if (!Info->Pde->x32.Pae.Generic.PS)
+            {
                 // Page size = 2 Mb:
                 Info->Type = PAGE_TABLES_INFO::pt32PaePage2Mb;
             }
-            else {
+            else
+            {
                 // Page size = 4 Kb:
                 Info->Type = PAGE_TABLES_INFO::pt32PaePage4Kb;
 
@@ -86,17 +94,21 @@ namespace Pte {
                 if (!Info->Pte) return FALSE;
             }
         }
-        else {
-            if (Cr4.x32.Bitmap.PSE) {
+        else
+        {
+            if (Cr4.x32.Bitmap.PSE)
+            {
                 PVOID64 PdePhys = reinterpret_cast<PVOID64>(PFN_TO_PAGE(Cr3.x32.NonPae.PD) + Va.x32.NonPae.Page4Kb.PageDirectoryOffset * sizeof(PDE::x32));
                 Info->Pde = reinterpret_cast<PDE*>(GetVirtualForPhysical(PdePhys));
                 if (!Info->Pde) return FALSE;
 
-                if (Info->Pde->x32.NonPae.Generic.PS) {
+                if (Info->Pde->x32.NonPae.Generic.PS)
+                {
                     // Page size = 4 Mb:
                     Info->Type = PAGE_TABLES_INFO::pt32NonPaePage4Mb;
                 }
-                else {
+                else
+                {
                     // Page size = 4 Kb:
                     Info->Type = PAGE_TABLES_INFO::pt32NonPaePage4Kb;
 
@@ -107,7 +119,8 @@ namespace Pte {
                     if (!Info->Pte) return FALSE;
                 }
             }
-            else {
+            else
+            {
                 // Page size = 4 Kb:
                 Info->Type = PAGE_TABLES_INFO::pt32NonPaePage4Kb;
 
@@ -126,7 +139,8 @@ namespace Pte {
     }
 
     _IRQL_requires_max_(APC_LEVEL)
-    BOOLEAN TriggerCopyOnWrite(OPTIONAL PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize) {
+    BOOLEAN TriggerCopyOnWrite(OPTIONAL PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize)
+    {
         BOOLEAN NeedToAttach = Process && Process != PsGetCurrentProcess();
         KAPC_STATE ApcState;
         if (NeedToAttach)
@@ -135,7 +149,8 @@ namespace Pte {
         BOOLEAN Status = FALSE;
         PAGE_TABLES_INFO Info = {};
         Status = GetPageTables(Address, &Info);
-        if (Status) __try {
+        if (Status) __try
+        {
             // AVL is a 3-bit field:
             //   AVL:CopyOnWrite : 1
             //   AVL:Unused : 1
@@ -145,7 +160,8 @@ namespace Pte {
 
             if (PageSize) *PageSize = 0;
 
-            switch (Info.Type) {
+            switch (Info.Type)
+            {
             case PAGE_TABLES_INFO::pt32NonPaePage4Kb:
                 // PDE -> PTE -> PA:
                 if (PageSize) *PageSize = 4096;
@@ -193,7 +209,8 @@ namespace Pte {
             __invlpg(Address); // Reset the TLB
             *reinterpret_cast<unsigned char*>(Address) = *reinterpret_cast<unsigned char*>(Address);
         }
-        __except (EXCEPTION_EXECUTE_HANDLER) {
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
             Status = FALSE;
         }
 
@@ -204,11 +221,12 @@ namespace Pte {
     }
 
     _IRQL_requires_max_(APC_LEVEL)
-    BOOLEAN IsPagePresent(PVOID Address, OPTIONAL OUT PULONG PageSize) {
+    BOOLEAN IsPagePresent(PVOID Address, OPTIONAL OUT PULONG PageSize)
+    {
         BOOLEAN IsPresent = FALSE;
         PAGE_TABLES_INFO Info = {};
-        if (GetPageTables(Address, &Info)) __try {
-
+        if (GetPageTables(Address, &Info)) __try
+        {
             if (PageSize) *PageSize = 0;
 
             switch (Info.Type) {
@@ -249,7 +267,8 @@ namespace Pte {
                 break;
             }
         }
-        __except (EXCEPTION_EXECUTE_HANDLER) {
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
             IsPresent = FALSE;
         }
 
@@ -257,7 +276,8 @@ namespace Pte {
     }
 
     _IRQL_requires_max_(APC_LEVEL)
-    BOOLEAN IsProcessPagePresent(OPTIONAL PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize) {
+    BOOLEAN IsProcessPagePresent(OPTIONAL PEPROCESS Process, PVOID Address, OPTIONAL OUT PULONG PageSize)
+    {
         if (!Process || Process == PsGetCurrentProcess()) 
             return IsPagePresent(Address, PageSize);
         KAPC_STATE ApcState;
@@ -268,7 +288,8 @@ namespace Pte {
     }
 
     _IRQL_requires_max_(APC_LEVEL)
-    BOOLEAN IsMemoryRangePresent(OPTIONAL PEPROCESS Process, PVOID Address, SIZE_T Size) {
+    BOOLEAN IsMemoryRangePresent(OPTIONAL PEPROCESS Process, PVOID Address, SIZE_T Size)
+    {
         if (!Size) return FALSE;
 
         BOOLEAN NeedToAttach = Process && Process != PsGetCurrentProcess();

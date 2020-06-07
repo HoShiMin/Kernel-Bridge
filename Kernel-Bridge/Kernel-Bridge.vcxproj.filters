@@ -110,6 +110,9 @@
     <ClCompile Include="API\Callable.cpp">
       <Filter>API</Filter>
     </ClCompile>
+    <ClCompile Include="API\Stopwatch.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Kernel-Bridge\FilterCallbacks.h">
@@ -225,6 +228,9 @@
     </ClInclude>
     <ClInclude Include="..\HookLib\HookLib\HookLib\HookLib.h">
       <Filter>HookLib</Filter>
+    </ClInclude>
+    <ClInclude Include="API\Stopwatch.h">
+      <Filter>API</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

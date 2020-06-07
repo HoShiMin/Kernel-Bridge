@@ -23,7 +23,8 @@
 #include "SymParser.h"
 
 #include <PTE.h>
-#include "Registers.h"
+#include <Registers.h>
+#include <VMX.h>
 
 #include <intrin.h>
 
@@ -279,9 +280,11 @@ void* GetFuncPtr(const void* Func)
 __declspec(code_seg(".hidden")) unsigned int HiddenFunc()
 {
     printf("Called from hidden func!\n");
-    auto* Self = reinterpret_cast<PBYTE>(GetFuncPtr(HiddenFunc));
-    *Self = 0x55;
-    printf("Self memory: 0x%X\n", static_cast<unsigned int>(*Self));
+    for (unsigned int i = 0; i < 100; ++i)
+    {
+        volatile BYTE* Self = reinterpret_cast<PBYTE>(GetFuncPtr(HiddenFunc));
+        *Self = 0x55;
+    }
     return 0x1EE7C0DE;
 }
 
