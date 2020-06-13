@@ -203,7 +203,6 @@ __invvpid PROC PUBLIC
 __invvpid ENDP
 
 VmxVmmRun PROC PUBLIC
-    cli
     PUSHAQ
     mov rcx, [rsp + GPR_CONTEXT_SIZE + 16]
     mov rdx, rsp
@@ -218,7 +217,6 @@ VmxVmmRun PROC PUBLIC
     jz VmmExit
 
     POPAQ
-    sti
     vmresume
 
 VmmExit:
@@ -232,7 +230,6 @@ VmmExit:
 
     mov rsp, rcx
     mov ecx, CPUID_VMM_SHUTDOWN ; Signature that says about the VM shutdown
-    sti
     jmp rbx
 VmxVmmRun ENDP
 

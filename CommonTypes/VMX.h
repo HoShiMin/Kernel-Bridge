@@ -671,6 +671,16 @@ namespace VMX
             unsigned long long Reserved2 : 47;
         } DebugExceptions;
         struct {
+            unsigned long long LinearAddress;
+        } Invlpg;
+        struct {
+            unsigned long long InstructionDisplacementField;
+        } Invept, Invpcid, Invvpid,
+          Lgdt, Lidt, Lldt, Ltr,
+          Sgdt, Sidt, Sldt, Str,
+          Vmclear, Vmptrld, Vmptrst, Vmread, Vmwrite, Vmxon,
+          Xrstors, Xsaves;
+        struct {
             unsigned long long SelectorOfTss : 16; // To which the guest attempted to switch
             unsigned long long Reserved0 : 14;
             unsigned long long SourceOfTaskSwitchInitiation : 2; // 0 = CALL, 1 = IRET, 2 = JMP, 3 = Task gate in IDT
@@ -907,7 +917,7 @@ namespace VMX
     struct INVVPID_DESCRIPTOR {
         unsigned long long Vpid : 16;
         unsigned long long Reserved : 48;
-        unsigned long long LinearAddress : 64;
+        unsigned long long LinearAddress;
     };
     static_assert(sizeof(INVVPID_DESCRIPTOR) == 2 * sizeof(unsigned long long), "Size of INVVPID_DESCRIPTOR != 2 * sizeof(unsigned long long)");
 

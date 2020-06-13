@@ -1600,6 +1600,11 @@ namespace VMX
         Info->Selector = Selector;
     }
 
+    inline unsigned long long GetVpid()
+    {
+        return static_cast<unsigned long long>(KeGetCurrentProcessorNumber()) + 1ull;
+    }
+
     union CONTROLS_MASK
     {
         unsigned long long Value;
@@ -1904,7 +1909,6 @@ namespace VMX
         __vmx_vmwrite(VMX::VMCS_FIELD_PIN_BASED_VM_EXECUTION_CONTROLS, PinControls.Value);
 
         PRIMARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS PrimaryControls = {};
-        PrimaryControls.Bitmap.RdtscExiting = TRUE;
         PrimaryControls.Bitmap.UseMsrBitmaps = TRUE;
         PrimaryControls.Bitmap.ActivateSecondaryControls = TRUE;
         PrimaryControls = ApplyMask(PrimaryControls, GetPrimaryControlsMask(VmxBasicInfo));
@@ -1926,7 +1930,6 @@ namespace VMX
         SecondaryControls.Bitmap.EnableEpt = TRUE;
         SecondaryControls.Bitmap.EnableRdtscp = TRUE;
         SecondaryControls.Bitmap.EnableVpid = TRUE;
-        SecondaryControls.Bitmap.WbinvdExiting = TRUE;
         SecondaryControls.Bitmap.EnableInvpcid = TRUE;
         SecondaryControls.Bitmap.EnableVmFunctions = TRUE;
         SecondaryControls.Bitmap.EptViolation = FALSE;
@@ -2178,34 +2181,6 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS InvdHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
-        {
-            UNREFERENCED_PARAMETER(Private);
-            UNREFERENCED_PARAMETER(Context);
-            UNREFERENCED_PARAMETER(Rip);
-            UNREFERENCED_PARAMETER(RepeatInstruction);
-
-            // Invalidate caches:
-            __invd();
-            return VMM_STATUS::VMM_CONTINUE;
-        }
-
-        _IRQL_requires_same_
-        _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS WbinvdHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
-        {
-            UNREFERENCED_PARAMETER(Private);
-            UNREFERENCED_PARAMETER(Context);
-            UNREFERENCED_PARAMETER(Rip);
-            UNREFERENCED_PARAMETER(RepeatInstruction);
-
-            // Write-back & invalidate caches:
-            __wbinvd();
-            return VMM_STATUS::VMM_CONTINUE;
-        }
-
-        _IRQL_requires_same_
-        _IRQL_requires_min_(DISPATCH_LEVEL)
         static VMM_STATUS XsetbvHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
@@ -2237,11 +2212,17 @@ namespace VMX
             
             if (Info.EptViolations.AccessedRead)
             {
-                unsigned long long HostCr3 = __readcr3();
-                unsigned long long GuestCr3 = vmread(VMX::VMCS_FIELD_GUEST_CR3);
-                __writecr3(GuestCr3);
-                unsigned long long RipPa = Supplementation::FastPhys::GetPhysAddressFast4KbUnsafe(Rip);
-                __writecr3(HostCr3);
+                unsigned long long RipPa;
+                if (AddressRange::IsUserAddress(reinterpret_cast<void*>(Rip)))
+                {
+                    __writecr3(vmread(VMX::VMCS_FIELD_GUEST_CR3));
+                    RipPa = Supplementation::FastPhys::GetPhysAddressFast4KbUnsafe(Rip);
+                    __writecr3(g_Shared.KernelCr3);
+                }
+                else
+                {
+                    RipPa = Supplementation::FastPhys::GetPhysAddressFast4KbUnsafe(Rip);
+                }
 
                 if (ALIGN_DOWN_BY(AccessedPa, PAGE_SIZE) == ALIGN_DOWN_BY(RipPa, PAGE_SIZE))
                 {
@@ -2263,11 +2244,17 @@ namespace VMX
             {
                 unsigned long long InstructionLength = vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_LENGTH);
 
-                unsigned long long HostCr3 = __readcr3();
-                unsigned long long GuestCr3 = vmread(VMX::VMCS_FIELD_GUEST_CR3);
-                __writecr3(GuestCr3);
-                unsigned long long RipPa = Supplementation::FastPhys::GetPhysAddressFast4KbUnsafe(Rip);
-                __writecr3(HostCr3);
+                unsigned long long RipPa;
+                if (AddressRange::IsUserAddress(reinterpret_cast<void*>(Rip)))
+                {
+                    __writecr3(vmread(VMX::VMCS_FIELD_GUEST_CR3));
+                    RipPa = Supplementation::FastPhys::GetPhysAddressFast4KbUnsafe(Rip);
+                    __writecr3(g_Shared.KernelCr3);
+                }
+                else
+                {
+                    RipPa = Supplementation::FastPhys::GetPhysAddressFast4KbUnsafe(Rip);
+                }
 
                 if (ALIGN_DOWN_BY(AccessedPa, PAGE_SIZE) == ALIGN_DOWN_BY(RipPa, PAGE_SIZE))
                 {
@@ -2421,36 +2408,6 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS RdtscHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
-        {
-            UNREFERENCED_PARAMETER(Private);
-            UNREFERENCED_PARAMETER(Rip);
-            UNREFERENCED_PARAMETER(RepeatInstruction);
-
-            unsigned long long TSC = __rdtsc();
-            Context->Rax = TSC & 0xFFFFFFFF;
-            Context->Rdx = TSC >> 32;
-            return VMM_STATUS::VMM_CONTINUE;
-        }
-
-        _IRQL_requires_same_
-        _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS RdtscpHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
-        {
-            UNREFERENCED_PARAMETER(Private);
-            UNREFERENCED_PARAMETER(Rip);
-            UNREFERENCED_PARAMETER(RepeatInstruction);
-
-            unsigned int Rcx = 0;
-            unsigned long long TSC = __rdtscp(&Rcx);
-            Context->Rax = TSC & 0xFFFFFFFF;
-            Context->Rcx = Rcx;
-            Context->Rdx = TSC >> 32;
-            return VMM_STATUS::VMM_CONTINUE;
-        }
-
-        _IRQL_requires_same_
-        _IRQL_requires_min_(DISPATCH_LEVEL)
         static VMM_STATUS RdmsrHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
@@ -2495,50 +2452,6 @@ namespace VMX
 
         _IRQL_requires_same_
         _IRQL_requires_min_(DISPATCH_LEVEL)
-        static VMM_STATUS InvpcidHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
-        {
-            UNREFERENCED_PARAMETER(Private);
-            UNREFERENCED_PARAMETER(Rip);
-            UNREFERENCED_PARAMETER(RepeatInstruction);
-
-            VMX::INSTRUCTION_INFORMATION_FIELD Instr = { static_cast<unsigned int>(vmread(VMX::VMCS_FIELD_VMEXIT_INSTRUCTION_INFORMATION)) };
-            unsigned long long Disp = vmread(VMX::VMCS_FIELD_EXIT_QUALIFICATION);
-            unsigned long long Rsp = vmread(VMX::VMCS_FIELD_GUEST_RSP);
-
-            // invpcid reg2, oword ptr [base + index * scale + disp]
-            // base  - GP register
-            // index - GP register (can't be ESP/RSP)
-            // scale - value of 2/4/8
-            // disp  - 8/16/32-bit value
-
-            unsigned long long InvType = 0;
-            unsigned long long DescAddr = 0;
-
-            unsigned long long* TypeReg = GetRegPtr(Instr.Invpcid.Reg2, Context);
-            InvType = TypeReg ? *TypeReg : Rsp;
-
-            if (Instr.Invpcid.BaseRegInvalid == 0)
-            {
-                unsigned long long* BaseReg = GetRegPtr(Instr.Invpcid.BaseReg, Context);
-                DescAddr += BaseReg ? *BaseReg : Rsp;
-            }
-
-            if (Instr.Invpcid.IndexRegInvalid == 0)
-            {
-                unsigned long long* IndexReg = GetRegPtr(Instr.Invpcid.IndexReg, Context);
-                unsigned long long Scale = 1ull < Instr.Invpcid.Scaling;
-                DescAddr += *IndexReg * Scale;
-            }
-
-            DescAddr += Disp;
-
-            _invpcid(static_cast<unsigned int>(InvType), reinterpret_cast<void*>(DescAddr));
-
-            return VMM_STATUS::VMM_CONTINUE;
-        }
-
-        _IRQL_requires_same_
-        _IRQL_requires_min_(DISPATCH_LEVEL)
         static VMM_STATUS VmxRelatedHandler(__inout PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context, unsigned long long Rip, __inout_opt bool& RepeatInstruction)
         {
             UNREFERENCED_PARAMETER(Private);
@@ -2570,19 +2483,14 @@ namespace VMX
             }
 
             InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_CPUID    , CpuidHandler);
-            InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_INVD     , InvdHandler);
-            InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_WBINVD   , WbinvdHandler);
             InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_XSETBV   , XsetbvHandler);
             InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_EPT_VIOLATION, EptViolationHandler);
             InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_EPT_MISCONFIGURATION, EptMisconfigurationHandler);
             InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_MONITOR_TRAP_FLAG, MonitorTrapFlagHandler);
             InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_EXCEPTION_OR_NMI, ExceptionOrNmiHandler);
             InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_VMCALL   , VmcallHandler);
-            InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_RDTSC    , RdtscHandler);
-            InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_RDTSCP   , RdtscpHandler);
             InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_RDMSR    , RdmsrHandler);
             InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_WRMSR    , WrmsrHandler);
-            InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_INVPCID  , InvpcidHandler);
 
             InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_VMCLEAR , VmxRelatedHandler);
             InsertHandler(VMX::VMX_EXIT_REASON::EXIT_REASON_VMLAUNCH, VmxRelatedHandler);
@@ -2684,7 +2592,7 @@ namespace VMX
             }
         }
 
-        DbgPrint("%p..%p: %s\r\n", reinterpret_cast<void*>(RangeBeginning), reinterpret_cast<void*>(512ull * 1024ull * 1048576ull - 1ull), MemTypeToStr(CurrentRangeType));
+        DbgPrint("Physical range [%p..%p]: %s\r\n", reinterpret_cast<void*>(RangeBeginning), reinterpret_cast<void*>(512ull * 1024ull * 1048576ull - 1ull), MemTypeToStr(CurrentRangeType));
 
         DbgPrint("EptVpidCap      : 0x%I64X\r\n", MtrrInfo->EptVpidCap.Value);
         DbgPrint("MaxPhysAddrBits : 0x%I64X\r\n", MtrrInfo->MaxPhysAddrBits);
