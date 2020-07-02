@@ -154,9 +154,9 @@ namespace Pte {
             // AVL is a 3-bit field:
             //   AVL:CopyOnWrite : 1
             //   AVL:Unused : 1
-            //   AVL:Writeable : 1;
-            // We're setting the CoW and Writeable bits (0b101):
-            constexpr unsigned int COW_AND_WRITEABLE_MASK = 0b101;
+            //   AVL:Write : 1;
+            // We're setting the CoW bit (0b001):
+            constexpr unsigned int COW_MASK = 0b001;
 
             if (PageSize) *PageSize = 0;
 
@@ -166,48 +166,50 @@ namespace Pte {
                 // PDE -> PTE -> PA:
                 if (PageSize) *PageSize = 4096;
                 if (Info.Pte->x32.NonPae.Page4Kb.D) break;
-                Info.Pte->x32.NonPae.Page4Kb.AVL = COW_AND_WRITEABLE_MASK;
+                Info.Pte->x32.NonPae.Page4Kb.AVL = COW_MASK;
                 break;
             case PAGE_TABLES_INFO::pt32NonPaePage4Mb:
                 // PDE -> PA:
                 if (PageSize) *PageSize = 4096 * 1024;
                 if (Info.Pde->x32.NonPae.Page4Mb.D) break;
-                Info.Pde->x32.NonPae.Page4Mb.AVL = COW_AND_WRITEABLE_MASK;
+                Info.Pde->x32.NonPae.Page4Mb.AVL = COW_MASK;
                 break;
             case PAGE_TABLES_INFO::pt32PaePage4Kb:
                 // PDPE -> PDE -> PTE -> PA:
                 if (PageSize) *PageSize = 4096;
                 if (Info.Pte->x32.Pae.Page4Kb.D) break;
-                Info.Pte->x32.Pae.Page4Kb.AVL = COW_AND_WRITEABLE_MASK;
+                Info.Pte->x32.Pae.Page4Kb.AVL = COW_MASK;
                 break;
             case PAGE_TABLES_INFO::pt32PaePage2Mb:
                 // PDPE -> PDE -> PA:
                 if (PageSize) *PageSize = 2048 * 1024;
                 if (Info.Pde->x32.Pae.Page2Mb.D) break;
-                Info.Pde->x32.Pae.Page2Mb.AVL = COW_AND_WRITEABLE_MASK;
+                Info.Pde->x32.Pae.Page2Mb.AVL = COW_MASK;
                 break;
             case PAGE_TABLES_INFO::pt64Page4Kb:
                 // PML4E -> PDPE -> PDE -> PTE -> PA:
                 if (PageSize) *PageSize = 4096;
                 if (Info.Pte->x64.Page4Kb.D) break;
-                Info.Pte->x64.Page4Kb.AVL = COW_AND_WRITEABLE_MASK;
+                Info.Pte->x64.Page4Kb.AVL = COW_MASK;
                 break;
             case PAGE_TABLES_INFO::pt64Page2Mb:
                 // PML4E -> PDPE -> PDE -> PA:
                 if (PageSize) *PageSize = 2048 * 1024;
                 if (Info.Pde->x64.Page2Mb.D) break;
-                Info.Pde->x64.Page2Mb.AVL = COW_AND_WRITEABLE_MASK;
+                Info.Pde->x64.Page2Mb.AVL = COW_MASK;
                 break;
             case PAGE_TABLES_INFO::pt64Page1Gb:
                 // PML4E -> PDPE -> PA:
                 if (PageSize) *PageSize = 1024 * 1024 * 1024;
                 if (Info.Pdpe->x64.PageSize.Page1Gb.D) break;
-                Info.Pdpe->x64.PageSize.Page1Gb.AVL = COW_AND_WRITEABLE_MASK;
+                Info.Pdpe->x64.PageSize.Page1Gb.AVL = COW_MASK;
                 break;
             }
 
             __invlpg(Address); // Reset the TLB
-            *reinterpret_cast<unsigned char*>(Address) = *reinterpret_cast<unsigned char*>(Address);
+
+            volatile LONG* PageAddress = reinterpret_cast<volatile LONG*>(ALIGN_DOWN_POINTER_BY(Address, PAGE_SIZE));
+            InterlockedExchange(PageAddress, *PageAddress);
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {

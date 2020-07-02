@@ -2653,6 +2653,8 @@ namespace VMX
                             FreePhys(Shared->Processors[j].VmData);
                         }
                     }
+                    VirtualMemory::FreePoolMemory(Shared->Processors);
+                    Shared->Processors = NULL;
                     return false;
                 }
                 Proc->MtrrInfo = &MtrrInfo;
