@@ -92,42 +92,43 @@ namespace Ctls
         /* 63 */ KbUnsecureVirtualMemory,
         /* 64 */ KbReadProcessMemory,
         /* 65 */ KbWriteProcessMemory,
-        /* 66 */ KbSuspendProcess,
-        /* 67 */ KbResumeProcess,
-        /* 68 */ KbGetThreadContext,
-        /* 69 */ KbSetThreadContext,
-        /* 70 */ KbCreateUserThread,
-        /* 71 */ KbCreateSystemThread,
-        /* 72 */ KbQueueUserApc,
-        /* 73 */ KbRaiseIopl,
-        /* 74 */ KbResetIopl,
-        /* 75 */ KbGetProcessCr3Cr4,
+        /* 66 */ KbTriggerCopyOnWrite,
+        /* 67 */ KbSuspendProcess,
+        /* 68 */ KbResumeProcess,
+        /* 69 */ KbGetThreadContext,
+        /* 70 */ KbSetThreadContext,
+        /* 71 */ KbCreateUserThread,
+        /* 72 */ KbCreateSystemThread,
+        /* 73 */ KbQueueUserApc,
+        /* 74 */ KbRaiseIopl,
+        /* 75 */ KbResetIopl,
+        /* 76 */ KbGetProcessCr3Cr4,
 
         // Sections:
-        /* 76 */ KbCreateSection,
-        /* 77 */ KbOpenSection,
-        /* 78 */ KbMapViewOfSection,
-        /* 79 */ KbUnmapViewOfSection,
+        /* 77 */ KbCreateSection,
+        /* 78 */ KbOpenSection,
+        /* 79 */ KbMapViewOfSection,
+        /* 80 */ KbUnmapViewOfSection,
 
         // Loadable modules:
-        /* 80 */ KbCreateDriver,
-        /* 81 */ KbLoadModule,
-        /* 82 */ KbGetModuleHandle,
-        /* 83 */ KbCallModule,
-        /* 84 */ KbUnloadModule,
+        /* 81 */ KbCreateDriver,
+        /* 82 */ KbLoadModule,
+        /* 83 */ KbGetModuleHandle,
+        /* 84 */ KbCallModule,
+        /* 85 */ KbUnloadModule,
 
         // Hypervisor:
-        /* 85 */ KbVmmEnable,
-        /* 86 */ KbVmmDisable,
-        /* 87 */ KbVmmInterceptPage,
-        /* 88 */ KbVmmDeinterceptPage,
+        /* 86 */ KbVmmEnable,
+        /* 87 */ KbVmmDisable,
+        /* 88 */ KbVmmInterceptPage,
+        /* 89 */ KbVmmDeinterceptPage,
 
         // Stuff u kn0w:
-        /* 89 */ KbExecuteShellCode,
-        /* 90 */ KbGetKernelProcAddress,
-        /* 91 */ KbStallExecutionProcessor,
-        /* 92 */ KbBugCheck,
-        /* 93 */ KbFindSignature
+        /* 90 */ KbExecuteShellCode,
+        /* 91 */ KbGetKernelProcAddress,
+        /* 92 */ KbStallExecutionProcessor,
+        /* 93 */ KbBugCheck,
+        /* 94 */ KbFindSignature
     };
 }
 
@@ -527,18 +528,23 @@ DECLARE_STRUCT(KB_UNSECURE_VIRTUAL_MEMORY_IN, {
 });
 
 DECLARE_STRUCT(KB_READ_PROCESS_MEMORY_IN, {
-    UINT64 ProcessId;
+    OPTIONAL UINT64 ProcessId;
     WdkTypes::PVOID BaseAddress;
     WdkTypes::PVOID Buffer;
     ULONG Size;
 });
 
 DECLARE_STRUCT(KB_WRITE_PROCESS_MEMORY_IN, {
-    UINT64 ProcessId;
+    OPTIONAL UINT64 ProcessId;
     WdkTypes::PVOID BaseAddress;
     WdkTypes::PVOID Buffer;
     ULONG Size;
     BOOLEAN PerformCopyOnWrite;
+});
+
+DECLARE_STRUCT(KB_TRIGGER_COPY_ON_WRITE_IN, {
+    OPTIONAL UINT64 ProcessId;
+    WdkTypes::PVOID PageVirtualAddress;
 });
 
 DECLARE_STRUCT(KB_SUSPEND_RESUME_PROCESS_IN, {

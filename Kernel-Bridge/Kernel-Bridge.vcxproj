@@ -160,6 +160,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>..\HookLib\HookLib\HookLib\;..\HookLib\HookLib\Zydis\include\;$(IntDir);%(AdditionalIncludeDirectories);$(ProjectDir)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <PostBuildEvent>
       <Command>makecab /f ../x32-debug.ddf</Command>
@@ -191,6 +192,7 @@
       </PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>..\HookLib\HookLib\HookLib\;..\HookLib\HookLib\Zydis\include\;$(IntDir);%(AdditionalIncludeDirectories);$(ProjectDir)</AdditionalIncludeDirectories>
       <ControlFlowGuard>false</ControlFlowGuard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <PostBuildEvent>
       <Command>makecab /f ../x32-release.ddf</Command>
@@ -215,6 +217,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>..\HookLib\HookLib\HookLib\;..\HookLib\HookLib\Zydis\include\;$(IntDir);%(AdditionalIncludeDirectories);$(ProjectDir)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <PostBuildEvent>
       <Command>makecab /f ../x64-debug.ddf</Command>
@@ -243,6 +246,7 @@
       <AdditionalIncludeDirectories>..\HookLib\HookLib\HookLib\;..\HookLib\HookLib\Zydis\include\;$(IntDir);%(AdditionalIncludeDirectories);$(ProjectDir)</AdditionalIncludeDirectories>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <ControlFlowGuard>false</ControlFlowGuard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <PostBuildEvent>
       <Command>makecab /f ../x64-release.ddf</Command>

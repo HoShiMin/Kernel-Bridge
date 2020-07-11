@@ -1097,6 +1097,15 @@ namespace Processes
             return KbSendRequest(Ctls::KbWriteProcessMemory, &Input, sizeof(Input));
         }
 
+        BOOL WINAPI KbTriggerCopyOnWrite(ULONG ProcessId, IN WdkTypes::PVOID PageVirtualAddress)
+        {
+            if (!PageVirtualAddress) return FALSE;
+            KB_TRIGGER_COPY_ON_WRITE_IN Input = {};
+            Input.ProcessId = ProcessId;
+            Input.PageVirtualAddress = PageVirtualAddress;
+            return KbSendRequest(Ctls::KbTriggerCopyOnWrite, &Input, sizeof(Input));
+        }
+
         BOOL WINAPI KbGetProcessCr3Cr4(ULONG ProcessId, OUT OPTIONAL PUINT64 Cr3, OUT OPTIONAL PUINT64 Cr4)
         {
             if (!ProcessId) return FALSE;

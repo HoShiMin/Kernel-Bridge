@@ -343,8 +343,40 @@ VOID TestHvPageInterception()
     VirtualFree(Read, 0, MEM_RELEASE);
 }
 
+WdkTypes::PVOID GetPhysAddr(OPTIONAL WdkTypes::PEPROCESS Process, PVOID VirtualAddress)
+{
+    using namespace PhysicalMemory;
+    WdkTypes::PVOID64 Pa = 0;
+    KbGetPhysicalAddress(Process, reinterpret_cast<WdkTypes::PVOID>(VirtualAddress), &Pa);
+    return Pa;
+}
+
+VOID VirtualMemoryTests()
+{
+    using namespace Processes::MemoryManagement;
+
+    HMODULE hModule = GetModuleHandle(L"ntdll.dll");
+    __assume(hModule != 0);
+    PVOID Address = GetProcAddress(hModule, "NtTestAlert");
+
+    printf("NtTestAlert: VA:%p, PA:0x%I64X\n", Address, GetPhysAddr(NULL, Address));
+    KbTriggerCopyOnWrite(0, reinterpret_cast<WdkTypes::PVOID>(Address));
+    printf("NtTestAlert: CoW-PA:0x%I64X\n", GetPhysAddr(NULL, Address));
+
+    KbTriggerCopyOnWrite(0, reinterpret_cast<WdkTypes::PVOID>(Address));
+    printf("NtTestAlert: Double CoW-PA:0x%I64X\n", GetPhysAddr(NULL, Address));
+
+    for (unsigned long long i = 0; i < 100000; ++i)
+    {
+        KbTriggerCopyOnWrite(0, reinterpret_cast<WdkTypes::PVOID>(Address) + i * 4096ull);
+    }
+}
+
 VOID RunAllTests()
 {
+    VirtualMemoryTests();
+    return;
+
     //ThreadingTests();
     //return;
 

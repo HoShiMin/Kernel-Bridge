@@ -1472,6 +1472,27 @@ namespace
         return Status; 
     }
 
+    NTSTATUS FASTCALL KbTriggerCopyOnWrite(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
+    {
+        UNREFERENCED_PARAMETER(ResponseLength);
+
+        if (RequestInfo->InputBufferSize != sizeof(KB_TRIGGER_COPY_ON_WRITE_IN))
+            return STATUS_INFO_LENGTH_MISMATCH;
+
+        auto Input = static_cast<PKB_TRIGGER_COPY_ON_WRITE_IN>(RequestInfo->InputBuffer);
+        if (!Input) return STATUS_INVALID_PARAMETER;
+
+        HANDLE ProcessId = Input->ProcessId ? reinterpret_cast<HANDLE>(Input->ProcessId) : PsGetCurrentProcessId();
+        PEPROCESS Process = Processes::Descriptors::GetEPROCESS(ProcessId);
+        if (!Process) return STATUS_UNSUCCESSFUL;
+
+        BOOLEAN Status = Pte::TriggerCopyOnWrite(Process, reinterpret_cast<PVOID>(Input->PageVirtualAddress));
+
+        ObDereferenceObject(Process);
+
+        return Status ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
+    }
+
     NTSTATUS FASTCALL KbSuspendProcess(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T ResponseLength)
     {    
         UNREFERENCED_PARAMETER(ResponseLength);
@@ -2428,42 +2449,43 @@ NTSTATUS FASTCALL DispatchIOCTL(IN PIOCTL_INFO RequestInfo, OUT PSIZE_T Response
         /* 63 */ KbUnsecureVirtualMemory,
         /* 64 */ KbReadProcessMemory,
         /* 65 */ KbWriteProcessMemory,
-        /* 66 */ KbSuspendProcess,
-        /* 67 */ KbResumeProcess,
-        /* 68 */ KbGetThreadContext,
-        /* 69 */ KbSetThreadContext,
-        /* 70 */ KbCreateUserThread,
-        /* 71 */ KbCreateSystemThread,
-        /* 72 */ KbQueueUserApc,
-        /* 73 */ KbRaiseIopl,
-        /* 74 */ KbResetIopl,
-        /* 75 */ KbGetProcessCr3Cr4,
+        /* 66 */ KbTriggerCopyOnWrite,
+        /* 67 */ KbSuspendProcess,
+        /* 68 */ KbResumeProcess,
+        /* 69 */ KbGetThreadContext,
+        /* 70 */ KbSetThreadContext,
+        /* 71 */ KbCreateUserThread,
+        /* 72 */ KbCreateSystemThread,
+        /* 73 */ KbQueueUserApc,
+        /* 74 */ KbRaiseIopl,
+        /* 75 */ KbResetIopl,
+        /* 76 */ KbGetProcessCr3Cr4,
 
         // Sections:
-        /* 76 */ KbCreateSection,
-        /* 77 */ KbOpenSection,
-        /* 78 */ KbMapViewOfSection,
-        /* 79 */ KbUnmapViewOfSection,
+        /* 77 */ KbCreateSection,
+        /* 78 */ KbOpenSection,
+        /* 79 */ KbMapViewOfSection,
+        /* 80 */ KbUnmapViewOfSection,
 
         // Loadable modules:
-        /* 80 */ KbCreateDriver,
-        /* 81 */ KbLoadModule,
-        /* 82 */ KbGetModuleHandle,
-        /* 83 */ KbCallModule,
-        /* 84 */ KbUnloadModule,
+        /* 81 */ KbCreateDriver,
+        /* 82 */ KbLoadModule,
+        /* 83 */ KbGetModuleHandle,
+        /* 84 */ KbCallModule,
+        /* 85 */ KbUnloadModule,
 
         // Hypervisor:
-        /* 85 */ KbVmmEnable,
-        /* 86 */ KbVmmDisable,
-        /* 87 */ KbVmmInterceptPage,
-        /* 88 */ KbVmmDeinterceptPage,
+        /* 86 */ KbVmmEnable,
+        /* 87 */ KbVmmDisable,
+        /* 88 */ KbVmmInterceptPage,
+        /* 89 */ KbVmmDeinterceptPage,
 
         // Stuff u kn0w:
-        /* 89 */ KbExecuteShellCode,
-        /* 90 */ KbGetKernelProcAddress,
-        /* 91 */ KbStallExecutionProcessor,
-        /* 92 */ KbBugCheck,
-        /* 93 */ KbFindSignature
+        /* 90 */ KbExecuteShellCode,
+        /* 91 */ KbGetKernelProcAddress,
+        /* 92 */ KbStallExecutionProcessor,
+        /* 93 */ KbBugCheck,
+        /* 94 */ KbFindSignature
     };
 
     USHORT Index = EXTRACT_CTL_CODE(RequestInfo->ControlCode) - CTL_BASE;

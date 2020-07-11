@@ -360,6 +360,8 @@ namespace Processes
             BOOLEAN PerformCopyOnWrite = TRUE
         );
 
+        BOOL WINAPI KbTriggerCopyOnWrite(ULONG ProcessId, IN WdkTypes::PVOID PageVirtualAddress);
+
         BOOL WINAPI KbGetProcessCr3Cr4(ULONG ProcessId, OUT OPTIONAL PUINT64 Cr3, OUT OPTIONAL PUINT64 Cr4);
     }
 
