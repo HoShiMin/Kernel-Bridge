@@ -4,7 +4,7 @@ kernel-mode API and wrappers.
   
 [Precompiled and signed binaries with the SecureBoot support](https://github.com/HoShiMin/Kernel-Bridge/releases)
   
-### ✔ Capabilites:
+### ✔ Capabilities:
 * Hypervisor (both Intel VT-x/EPT and AMD-V/RVI) with the Hyper-V support
 * Extremely fast hypervisor-based memory interceptions and hiding (+ support of Write-only pages), VT-x only
 * Support of [HookLib](https://github.com/HoShiMin/HookLib) and [Zydis](https://github.com/zyantific/zydis)
