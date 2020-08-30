@@ -87,6 +87,6 @@ public:
         ULONG Size, 
         OUT PVOID Response = NULL, 
         ULONG ResponseSize = 0,
-        ULONG Timeout = 0
+        ULONG MsecTimeout = 0
     );
 };

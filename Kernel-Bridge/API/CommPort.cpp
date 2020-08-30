@@ -156,7 +156,7 @@ NTSTATUS CommPort::Send(
     ULONG ResponseSize,
     ULONG MsecTimeout
 ) {
-    if (MsecTimeout == 0xFFFFFFFF) // Infinite wait:
+    if (MsecTimeout == 0) // Infinite wait:
         return FltSendMessage(ParentFilter, &Client, Buffer, Size, Response, &ResponseSize, NULL);
 
     LARGE_INTEGER _Timeout; // In 100-ns units
