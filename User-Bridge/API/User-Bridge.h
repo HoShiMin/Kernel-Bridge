@@ -253,13 +253,13 @@ namespace Processes
         BOOL WINAPI KbOpenThread(
             ULONG ThreadId, 
             OUT WdkTypes::HANDLE* hThread, 
-            OPTIONAL ACCESS_MASK Access = PROCESS_ALL_ACCESS, 
+            OPTIONAL ACCESS_MASK Access = THREAD_ALL_ACCESS, 
             OPTIONAL ULONG Attributes = ObjFlags::_OBJ_CASE_INSENSITIVE | ObjFlags::_OBJ_KERNEL_HANDLE
         );
         BOOL WINAPI KbOpenThreadByPointer(
             WdkTypes::PETHREAD Thread, 
             OUT WdkTypes::HANDLE* hThread, 
-            OPTIONAL ACCESS_MASK Access = PROCESS_ALL_ACCESS, 
+            OPTIONAL ACCESS_MASK Access = THREAD_ALL_ACCESS, 
             OPTIONAL ULONG Attributes = ObjFlags::_OBJ_CASE_INSENSITIVE | ObjFlags::_OBJ_KERNEL_HANDLE,
             OPTIONAL WdkTypes::KPROCESSOR_MODE ProcessorMode = WdkTypes::KernelMode
         );
