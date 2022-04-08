@@ -2,7 +2,7 @@
 The "Kernel-Bridge" project is a C++20-ready Windows kernel driver template, development framework and
 kernel-mode API and wrappers.  
   
-[Precompiled and signed binaries with the SecureBoot support](https://github.com/HoShiMin/Kernel-Bridge/releases)
+[Precompiled and signed binaries with the SecureBoot support](https://github.com/HoShiMin/Kernel-Bridge/releases)  
 [Delphi bindings](https://github.com/diversenok/Kernel-Bridge-Delphi-Connector)
   
 ### ✔ Capabilities:
