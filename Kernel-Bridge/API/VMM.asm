@@ -45,8 +45,10 @@ __kb_vmcall ENDP
 
 GPR_CONTEXT_ENTRIES equ 15 ; rax, rbx, rcx, rdx, rsi, rdi, rbp, r8..r15
 GPR_CONTEXT_SIZE    equ GPR_CONTEXT_ENTRIES * sizeof(QWORD)
-XMM_CONTEXT_ENTRIES equ 6 ; xmm0..xmm5
+XMM_CONTEXT_ENTRIES equ 16 ; xmm0..xmm15
 XMM_CONTEXT_SIZE    equ XMM_CONTEXT_ENTRIES * sizeof(OWORD)
+YMM_CONTEXT_ENTRIES equ 16 ; ymm0..ymm15
+YMM_CONTEXT_SIZE    equ YMM_CONTEXT_ENTRIES * sizeof(YMMWORD)
 
 CPUID_VMM_SHUTDOWN equ 01EE7C0DEh
 
@@ -98,6 +100,16 @@ PUSHAXMM MACRO
     movaps [rsp + 3 * sizeof(OWORD)], xmm3
     movaps [rsp + 4 * sizeof(OWORD)], xmm4
     movaps [rsp + 5 * sizeof(OWORD)], xmm5
+    movaps [rsp + 6 * sizeof(OWORD)], xmm6
+    movaps [rsp + 7 * sizeof(OWORD)], xmm7
+    movaps [rsp + 8 * sizeof(OWORD)], xmm8
+    movaps [rsp + 9 * sizeof(OWORD)], xmm9
+    movaps [rsp + 10 * sizeof(OWORD)], xmm10
+    movaps [rsp + 11 * sizeof(OWORD)], xmm11
+    movaps [rsp + 12 * sizeof(OWORD)], xmm12
+    movaps [rsp + 13 * sizeof(OWORD)], xmm13
+    movaps [rsp + 14 * sizeof(OWORD)], xmm14
+    movaps [rsp + 15 * sizeof(OWORD)], xmm15
 ENDM
 
 POPAXMM MACRO
@@ -107,7 +119,69 @@ POPAXMM MACRO
     movaps xmm3, [rsp + 3 * sizeof(OWORD)]
     movaps xmm4, [rsp + 4 * sizeof(OWORD)]
     movaps xmm5, [rsp + 5 * sizeof(OWORD)]
+    movaps xmm6, [rsp + 0 * sizeof(OWORD)]
+    movaps xmm7, [rsp + 1 * sizeof(OWORD)]
+    movaps xmm8, [rsp + 2 * sizeof(OWORD)]
+    movaps xmm9, [rsp + 3 * sizeof(OWORD)]
+    movaps xmm10, [rsp + 4 * sizeof(OWORD)]
+    movaps xmm11, [rsp + 5 * sizeof(OWORD)]
+    movaps xmm12, [rsp + 0 * sizeof(OWORD)]
+    movaps xmm13, [rsp + 1 * sizeof(OWORD)]
+    movaps xmm14, [rsp + 2 * sizeof(OWORD)]
+    movaps xmm15, [rsp + 3 * sizeof(OWORD)]
     add rsp, XMM_CONTEXT_SIZE
+ENDM
+
+PUSHAYMM MACRO
+    sub rsp, YMM_CONTEXT_SIZE
+    vmovdqu ymmword ptr [rsp + 0 * sizeof(YMMWORD)], ymm0
+    vmovdqu ymmword ptr [rsp + 1 * sizeof(YMMWORD)], ymm1
+    vmovdqu ymmword ptr [rsp + 2 * sizeof(YMMWORD)], ymm2
+    vmovdqu ymmword ptr [rsp + 3 * sizeof(YMMWORD)], ymm3
+    vmovdqu ymmword ptr [rsp + 4 * sizeof(YMMWORD)], ymm4
+    vmovdqu ymmword ptr [rsp + 5 * sizeof(YMMWORD)], ymm5
+    vmovdqu ymmword ptr [rsp + 6 * sizeof(YMMWORD)], ymm6
+    vmovdqu ymmword ptr [rsp + 7 * sizeof(YMMWORD)], ymm7
+    vmovdqu ymmword ptr [rsp + 8 * sizeof(YMMWORD)], ymm8
+    vmovdqu ymmword ptr [rsp + 9 * sizeof(YMMWORD)], ymm9
+    vmovdqu ymmword ptr [rsp + 10 * sizeof(YMMWORD)], ymm10
+    vmovdqu ymmword ptr [rsp + 11 * sizeof(YMMWORD)], ymm11
+    vmovdqu ymmword ptr [rsp + 12 * sizeof(YMMWORD)], ymm12
+    vmovdqu ymmword ptr [rsp + 13 * sizeof(YMMWORD)], ymm13
+    vmovdqu ymmword ptr [rsp + 14 * sizeof(YMMWORD)], ymm14
+    vmovdqu ymmword ptr [rsp + 15 * sizeof(YMMWORD)], ymm15
+ENDM
+
+POPAYMM MACRO
+    vmovdqu ymm0, ymmword ptr [rsp + 0 * sizeof(YMMWORD)]
+    vmovdqu ymm1, ymmword ptr [rsp + 1 * sizeof(YMMWORD)]
+    vmovdqu ymm2, ymmword ptr [rsp + 2 * sizeof(YMMWORD)]
+    vmovdqu ymm3, ymmword ptr [rsp + 3 * sizeof(YMMWORD)]
+    vmovdqu ymm4, ymmword ptr [rsp + 4 * sizeof(YMMWORD)]
+    vmovdqu ymm5, ymmword ptr [rsp + 5 * sizeof(YMMWORD)]
+    vmovdqu ymm6, ymmword ptr [rsp + 0 * sizeof(YMMWORD)]
+    vmovdqu ymm7, ymmword ptr [rsp + 1 * sizeof(YMMWORD)]
+    vmovdqu ymm8, ymmword ptr [rsp + 2 * sizeof(YMMWORD)]
+    vmovdqu ymm9, ymmword ptr [rsp + 3 * sizeof(YMMWORD)]
+    vmovdqu ymm10, ymmword ptr [rsp + 4 * sizeof(YMMWORD)]
+    vmovdqu ymm11, ymmword ptr [rsp + 5 * sizeof(YMMWORD)]
+    vmovdqu ymm12, ymmword ptr [rsp + 0 * sizeof(YMMWORD)]
+    vmovdqu ymm13, ymmword ptr [rsp + 1 * sizeof(YMMWORD)]
+    vmovdqu ymm14, ymmword ptr [rsp + 2 * sizeof(YMMWORD)]
+    vmovdqu ymm15, ymmword ptr [rsp + 3 * sizeof(YMMWORD)]
+    add rsp, YMM_CONTEXT_SIZE
+ENDM
+
+MULTIPUSH MACRO
+    PUSHAQ
+    mov rcx, [rsp + GPR_CONTEXT_SIZE + 16] ; RCX -> PRIVATE_VM_DATA* Private
+    mov rdx, rsp ; RDX -> Guest context
+
+    PUSHAXMM
+    mov r8, rsp
+
+    PUSHAYMM
+    mov r9, rsp
 ENDM
 
 PROLOGUE MACRO
@@ -157,14 +231,12 @@ VmmLoop:
     vmsave rax ; RAX was restored to host's state (RAX -> GuestVmcbPa)
 
     ; On #VMEXIT we have the guest context, so save it to the stack:
-    PUSHAQ
-    mov rcx, [rsp + GPR_CONTEXT_SIZE + 16] ; RCX -> PRIVATE_VM_DATA* Private
-    mov rdx, rsp ; RDX -> Guest context
+    MULTIPUSH
 
-    PUSHAXMM
     sub rsp, 32 ; Homing space for the x64 call convention
-    call SvmVmexitHandler ; VMM_STATUS SvmVmexitHandler(PRIVATE_VM_DATA* Private, GUEST_CONTEXT* Context)
+    call SvmVmexitHandler ; VMM_STATUS SvmVmexitHandler(PRIVATE_VM_DATA* Private, GUEST_CONTEXT* Context, GUEST_SSE_CONTEXT* SSeContext, GUEST_AVX_CONTEXT* AvxContext)
     add rsp, 32
+    POPAYMM
     POPAXMM
 
     test al, al ; if (!SvmVmexitHandler(...)) break;
@@ -203,14 +275,12 @@ __invvpid PROC PUBLIC
 __invvpid ENDP
 
 VmxVmmRun PROC PUBLIC
-    PUSHAQ
-    mov rcx, [rsp + GPR_CONTEXT_SIZE + 16]
-    mov rdx, rsp
+    MULTIPUSH
 
-    PUSHAXMM
     sub rsp, 32 ; Homing space for the x64 call convention
-    call VmxVmexitHandler ; VMM_STATUS VmxVmexitHandler(PRIVATE_VM_DATA* Private, GUEST_CONTEXT* Context)
+    call VmxVmexitHandler ; VMM_STATUS VmxVmexitHandler(PRIVATE_VM_DATA* Private, GUEST_CONTEXT* Context, GUEST_SSE_CONTEXT* SSeContext, GUEST_AVX_CONTEXT* AvxContext)
     add rsp, 32
+    POPAYMM
     POPAXMM
 
     test al, al ; if (!SvmVmexitHandler(...)) break;
