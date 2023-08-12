@@ -49,23 +49,67 @@ enum class VMM_STATUS : bool
     VMM_CONTINUE = true   // Continue execution in the virtualized environment
 };
 
+typedef uint64_t uint128_t[2];
+typedef uint64_t uint256_t[4];
+
 struct GUEST_CONTEXT
 {
-    unsigned long long Rax;
-    unsigned long long Rbx;
-    unsigned long long Rcx;
-    unsigned long long Rdx;
-    unsigned long long Rsi;
-    unsigned long long Rdi;
-    unsigned long long Rbp;
-    unsigned long long R8;
-    unsigned long long R9;
-    unsigned long long R10;
-    unsigned long long R11;
-    unsigned long long R12;
-    unsigned long long R13;
-    unsigned long long R14;
-    unsigned long long R15;
+    
+    uint64_t Rax;
+    uint64_t Rbx;
+    uint64_t Rcx;
+    uint64_t Rdx;
+    uint64_t Rsi;
+    uint64_t Rdi;
+    uint64_t Rbp;
+    uint64_t R8;
+    uint64_t R9;
+    uint64_t R10;
+    uint64_t R11;
+    uint64_t R12;
+    uint64_t R13;
+    uint64_t R14;
+    uint64_t R15;
+};
+
+struct GUEST_SSE_CONTEXT
+{
+    uint128_t xmm0;
+    uint128_t xmm1;
+    uint128_t xmm2;
+    uint128_t xmm3;
+    uint128_t xmm4;
+    uint128_t xmm5;
+    uint128_t xmm6;
+    uint128_t xmm7;
+    uint128_t xmm8;
+    uint128_t xmm9;
+    uint128_t xmm10;
+    uint128_t xmm11;
+    uint128_t xmm12;
+    uint128_t xmm13;
+    uint128_t xmm14;
+    uint128_t xmm15;
+};
+
+struct GUEST_AVX_CONTEXT
+{
+    uint256_t ymm0;
+    uint256_t ymm1;
+    uint256_t ymm2;
+    uint256_t ymm3;
+    uint256_t ymm4;
+    uint256_t ymm5;
+    uint256_t ymm6;
+    uint256_t ymm7;
+    uint256_t ymm8;
+    uint256_t ymm9;
+    uint256_t ymm10;
+    uint256_t ymm11;
+    uint256_t ymm12;
+    uint256_t ymm13;
+    uint256_t ymm14;
+    uint256_t ymm15;
 };
 
 static volatile bool g_IsVirtualized = false;
@@ -371,7 +415,7 @@ namespace SVM
         Guest->ControlArea.EventInjection = Event.Value;
     }
 
-    extern "C" VMM_STATUS SvmVmexitHandler(PRIVATE_VM_DATA* Private, GUEST_CONTEXT* Context)
+    extern "C" VMM_STATUS SvmVmexitHandler(PRIVATE_VM_DATA* Private, GUEST_CONTEXT* Context, GUEST_SSE_CONTEXT* SSeContext, GUEST_AVX_CONTEXT* AvxContext)
     {
         // Load the host state:
         __svm_vmload(reinterpret_cast<size_t>(Private->VmmStack.Layout.InitialStack.HostVmcbPa));
@@ -388,7 +432,7 @@ namespace SVM
             int Function = static_cast<int>(Context->Rax);
             int SubLeaf = static_cast<int>(Context->Rcx);
             __cpuidex(Regs.Raw, Function, SubLeaf);
-
+            
             switch (Function) {
             case CPUID_VMM_SHUTDOWN:
             {
@@ -593,6 +637,16 @@ namespace SVM
         // Check the 'AuthenticAMD' vendor name:
         __cpuid(Regs.Raw, CPUID::Generic::CPUID_MAXIMUM_FUNCTION_NUMBER_AND_VENDOR_ID);
         if (Regs.Regs.Ebx != 'htuA' || Regs.Regs.Edx != 'itne' || Regs.Regs.Ecx != 'DMAc') return false;
+        
+        // Check for SSE (Streaming SIMD Extensions) support
+        constexpr unsigned int CPUID_FN0000001_EDX_SSE_SET = 1 << 25;
+        __cpuid(Regs.Raw, CPUID::AMD::CPUID_FEATURE_INFORMATION);
+        if ((Regs.Regs.Edx & CPUID_FN0000001_EDX_SSE_SET) == 0) return false;
+
+        // Check for AVX (Advanced Vector Extensions) support
+        constexpr unsigned int CPUID_FN0000001_ECX_AVX_SET = 1 << 28;
+        __cpuid(Regs.Raw, CPUID::AMD::CPUID_FEATURE_INFORMATION);
+        if ((Regs.Regs.Ecx & CPUID_FN0000001_ECX_AVX_SET) == 0) return false;
 
         // Check the AMD SVM (AMD-V) support:
         constexpr unsigned int CPUID_FN80000001_ECX_SVM = 1 << 2;
@@ -2509,7 +2563,7 @@ namespace VMX
 
     _IRQL_requires_same_
     _IRQL_requires_min_(HIGH_LEVEL)
-    extern "C" VMM_STATUS VmxVmexitHandler(PRIVATE_VM_DATA* Private, __inout GUEST_CONTEXT* Context)
+    extern "C" VMM_STATUS VmxVmexitHandler(PRIVATE_VM_DATA* Private, GUEST_CONTEXT* Context, GUEST_SSE_CONTEXT* SSeContext, GUEST_AVX_CONTEXT* AvxContext)
     {
         /* Interrupts are locked */
 
@@ -2713,6 +2767,16 @@ namespace VMX
         // Check the 'GenuineIntel' vendor name:
         __cpuid(Regs.Raw, CPUID::Generic::CPUID_MAXIMUM_FUNCTION_NUMBER_AND_VENDOR_ID);
         if (Regs.Regs.Ebx != 'uneG' || Regs.Regs.Edx != 'Ieni' || Regs.Regs.Ecx != 'letn') return false;
+
+        // Check for SSE (Streaming SIMD Extensions) support
+        constexpr unsigned int CPUID_FN0000001_EDX_SSE_SET = 1 << 25;
+        __cpuid(Regs.Raw, CPUID::AMD::CPUID_FEATURE_INFORMATION);
+        if ((Regs.Regs.Edx & CPUID_FN0000001_EDX_SSE_SET) == 0) return false;
+
+        // Check for AVX (Advanced Vector Extensions) support
+        constexpr unsigned int CPUID_FN0000001_ECX_AVX_SET = 1 << 28;
+        __cpuid(Regs.Raw, CPUID::AMD::CPUID_FEATURE_INFORMATION);
+        if ((Regs.Regs.Ecx & CPUID_FN0000001_ECX_AVX_SET) == 0) return false;
 
         // Support by processor:
         __cpuid(Regs.Raw, CPUID::Intel::CPUID_FEATURE_INFORMATION);
