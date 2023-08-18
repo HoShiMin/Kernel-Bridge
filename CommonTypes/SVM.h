@@ -418,7 +418,7 @@ namespace SVM
         unsigned long long Value;
         struct {
             unsigned long long Vector : 8; // IDT vector of the interrupt/exception (ignored if Type == 2)
-            unsigned long long Type : 2; // 0 = External/virtual interrupt (INTR), 2 = NMI, 3 = Exception (fault/trap), 4 = Software interrupt (INTn instruction)
+            unsigned long long Type : 3; // 0 = External/virtual interrupt (INTR), 2 = NMI, 3 = Exception (fault/trap), 4 = Software interrupt (INTn instruction)
             unsigned long long ErrorCodeValid : 1; // 1 - Exception should push an error code onto the stack
             unsigned long long Reserved : 19;
             unsigned long long Valid : 1; // 1 - Event is to be injected into the guest
