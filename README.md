@@ -53,7 +53,8 @@ Driver template has full support of C++ static and global initializers and all o
 ### 💨 Building and using:  
 Download [Microsoft Visual Studio Community](https://visualstudio.microsoft.com/downloads/) and [Windows Driver Kit](https://docs.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk).  
 Clone the repository with: `git clone --recurse-submodules https://github.com/HoShiMin/Kernel-Bridge.git` <br>
-Open the Kernel-Bridge.sln with Visual Studio and build the solution. (Requires the correct WDK version).
+Open the Kernel-Bridge.sln with Visual Studio and build the solution. (Requires the correct WDK version). <br>
+You may need to set the target os to Windows 10 or higher in Zydis -> Properties -> Driver Settings -> General
 
 For driver testing use [VMware Player](https://my.vmware.com/en/web/vmware/free#desktop_end_user_computing/vmware_workstation_player/14_0).  
 For load an unsigned drivers you should to enable Test-mode of Windows and disable signs checkings:
